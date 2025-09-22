@@ -1,0 +1,412 @@
+/* App.css */
+
+/* Reset & box sizing */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body */
+body {
+  background: radial-gradient(circle at center, #0d001f, #020006);
+  font-family: "Orbitron", "Poppins", sans-serif;
+  color: #00f0ff;
+  padding: 20px;
+  user-select: none;
+}
+
+/* Container */
+.appContainer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Titles */
+.appTitle {
+  font-size: 3.5rem;
+  font-weight: 900;
+  text-align: center;
+  color: #00f0ff;
+  text-shadow:
+    0 0 10px #00f0ff,
+    0 0 25px #00c2ff,
+    0 0 35px #00f0ff;
+  margin-bottom: 10px;
+  letter-spacing: 0.3rem;
+  text-transform: uppercase;
+  user-select: text;
+}
+
+.appBalance {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1rem;
+  color: #39ff14;
+  text-shadow:
+    0 0 6px #39ff14,
+    0 0 15px #0f9d0f;
+}
+
+/* Budget alert */
+.budgetAlert {
+  text-align: center;
+  font-weight: 900;
+  color: #ff0055;
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 0 10px #ff0055, 0 0 25px #ff3366;
+}
+
+/* Form wrapper and form */
+.formWrapper {
+  background: rgba(10, 10, 25, 0.85);
+  padding: 30px;
+  border-radius: 25px;
+  box-shadow:
+    0 0 30px #00f0ffaa,
+    inset 0 0 50px #007799aa;
+  margin-bottom: 3rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.formWrapper:hover {
+  box-shadow:
+    0 0 60px #00f0ffcc,
+    inset 0 0 70px #00f0ffcc;
+}
+
+.transactionForm .field {
+  margin-bottom: 15px;
+}
+
+.transactionForm label {
+  color: #00f0ff;
+  font-weight: 700;
+  letter-spacing: 0.06rem;
+  margin-bottom: 6px;
+  display: block;
+  text-shadow: 0 0 8px #00f0ff;
+}
+
+/* Inputs */
+.neonInput {
+  width: 100%;
+  padding: 14px 16px;
+  background: #001833;
+  border-radius: 15px;
+  border: 2px solid #00f0ff;
+  color: #a0f0ff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-shadow: 0 0 5px #00b6ff;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+  outline: none;
+}
+
+.neonInput::placeholder {
+  color: #00f0ffa0;
+  font-style: italic;
+}
+
+.neonInput:focus {
+  border-color: #39ff14;
+  background: #002f00;
+  box-shadow:
+    0 0 12px 3px #39ff14,
+    inset 0 0 15px #39ff14;
+}
+
+/* Neon select wrapper */
+.neonSelectWrapper select {
+  background: #001833;
+  color: #a0f0ff;
+  border-radius: 15px;
+  border: 2px solid #00f0ff;
+  padding: 0 12px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  box-shadow: 0 0 8px #00b6ff;
+  text-shadow: 0 0 5px #00b6ff;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.neonSelectWrapper select:focus {
+  border-color: #39ff14;
+  box-shadow:
+    0 0 14px 3px #39ff14,
+    inset 0 0 18px #39ff14;
+  outline: none;
+}
+
+/* Checkbox field */
+.neonCheckboxField label {
+  color: #00f0ff;
+  font-weight: 700;
+  cursor: pointer;
+  text-shadow: 0 0 6px #00f0ff;
+}
+
+.neonCheckboxField input[type="checkbox"] {
+  accent-color: #39ff14;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Neon button */
+.neonButton {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(45deg, #39ff14, #00f0ff);
+  border: none;
+  border-radius: 25px;
+  color: #000;
+  font-weight: 900;
+  font-size: 1.4rem;
+  letter-spacing: 0.1rem;
+  cursor: pointer;
+  box-shadow:
+    0 0 30px #39ff14,
+    0 0 70px #00f0ff,
+    inset 0 0 20px #00baff;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.neonButton:hover {
+  box-shadow:
+    0 0 50px #39ff14,
+    0 0 90px #00f0ff,
+    inset 0 0 30px #00fff7;
+  transform: translateY(-4px) scale(1.03);
+}
+
+/* Search bar */
+.searchWrapper {
+  margin-bottom: 30px;
+}
+
+.searchWrapper input {
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: 25px;
+  background: #001833;
+  border: 2px solid #00f0ff;
+  color: #a0f0ff;
+  font-weight: 700;
+  font-size: 1.15rem;
+  box-shadow: 0 0 10px #00b6ff;
+  text-shadow: 0 0 6px #00b6ff;
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.searchWrapper input::placeholder {
+  color: #00f0ffa0;
+  font-style: italic;
+}
+
+.searchWrapper input:focus {
+  border-color: #39ff14;
+  box-shadow:
+    0 0 15px 3px #39ff14,
+    inset 0 0 15px #39ff14;
+}
+
+/* Transactions List */
+.transactionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Individual transaction card */
+.transactionCard {
+  background: linear-gradient(90deg, #001833 0%, #000814 100%);
+  border-radius: 25px;
+  box-shadow:
+    0 0 25px #00f0ffcc,
+    inset 0 0 40px #004f8bcc;
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  user-select: text;
+}
+
+.transactionCard:hover {
+  transform: scale(1.03);
+  box-shadow:
+    0 0 50px #39ff14dd,
+    inset 0 0 55px #39ff14dd;
+}
+
+/* Transaction details */
+.transactionDetails {
+  max-width: 60%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #00f0ff;
+}
+
+.transactionName {
+  font-weight: 900;
+  font-size: 1.5rem;
+  text-shadow: 0 0 10px #00f0ff;
+}
+
+.transactionDescription {
+  font-size: 1rem;
+  color: #80e5ffcc;
+  font-style: italic;
+}
+
+.transactionDatetime {
+  font-size: 0.8rem;
+  color: #3388ccaa;
+  user-select: none;
+}
+
+/* Category tag */
+.neonTag {
+  background: #00f0ff;
+  color: #00222b;
+  font-weight: 700;
+  padding: 3px 14px;
+  border-radius: 20px;
+  align-self: flex-start;
+  text-shadow: 0 0 5px #00b0ff;
+  box-shadow: 0 0 15px #00d4ff;
+  margin-top: 8px;
+  user-select: none;
+}
+
+
+/* Actions container */
+.transactionActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 180px;
+}
+
+/* Price styling */
+.transactionPrice {
+  font-weight: 900;
+  font-size: 1.6rem;
+  user-select: text;
+  text-shadow: 0 0 10px #00f0ff;
+  padding: 4px 10px;
+  border-radius: 15px;
+  width: fit-content;
+}
+
+.positivePrice {
+  color: #39ff14;
+  background: #002600cc;
+  box-shadow: 0 0 20px #39ff14cc;
+}
+
+.negativePrice {
+  color: #ff0044;
+  background: #330010cc;
+  box-shadow: 0 0 20px #ff0044cc;
+}
+
+/* Buttons group */
+.buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Common button style */
+button.button {
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 15px;
+  padding: 8px 15px;
+  cursor: pointer;
+  user-select: none;
+  border: none;
+  transition: box-shadow 0.3s ease, background-color 0.3s ease;
+  box-shadow: 0 0 10px #00f0ffcc;
+  color: #00f0ff;
+  background: #002244cc;
+  text-shadow: 0 0 5px #00aaff;
+}
+
+/* Button hover effects */
+button.button:hover {
+  box-shadow:
+    0 0 25px #39ff14,
+    0 0 45px #39ff14;
+  background-color: #004400cc;
+  color: #39ff14;
+}
+
+/* Specific button colors */
+button.editBtn {
+  background-color: #0066cccc;
+  color: #99d6ff;
+  box-shadow: 0 0 8px #3399ff;
+}
+
+button.editBtn:hover {
+  background-color: #3399ffcc;
+  color: #004488;
+  box-shadow: 0 0 20px #3399ff;
+}
+
+button.deleteBtn {
+  background-color: #cc0033cc;
+  color: #ff99a2;
+  box-shadow: 0 0 8px #ff4466;
+}
+
+button.deleteBtn:hover {
+  background-color: #ff4466cc;
+  color: #660011;
+  box-shadow: 0 0 20px #ff4466;
+}
+
+button.receiptBtn {
+  background-color: #009999cc;
+  color: #aaffff;
+  box-shadow: 0 0 8px #33cccc;
+}
+
+button.receiptBtn:hover {
+  background-color: #33cccccc;
+  color: #004d4d;
+  box-shadow: 0 0 20px #33cccc;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .transactionCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .transactionDetails {
+    max-width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .transactionActions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .transactionPrice {
+    font-size: 1.3rem;
+  }
+}

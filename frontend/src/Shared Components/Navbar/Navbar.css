@@ -1,0 +1,137 @@
+.neon-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 2rem;
+  background-color: #0d0d0d;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.7);
+  border-bottom: 2px solid #00f0ff;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+/* Logo area */
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #00f0ff;
+  text-shadow: 0 0 10px #00f0ff;
+}
+
+.nav-logo span {
+  display: inline-block;
+  letter-spacing: 1px;
+}
+
+/* Logo image glow */
+.logo-img {
+  height: 42px;
+  width: auto;
+  filter: drop-shadow(0 0 6px #00f0ff);
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.logo-img:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 12px #00f0ff);
+}
+
+/* Links */
+.nav-links {
+  display: flex;
+  align-items: center;
+}
+
+.nav-links a {
+  margin-left: 1.5rem;
+  text-decoration: none;
+  color: #e0e0e0;
+  font-weight: 500;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.nav-links a:hover {
+  color: #00f0ff;
+  text-shadow: 0 0 8px #00f0ff;
+}
+
+/* Logout button */
+.logout-btn {
+  margin-left: 1.5rem;
+  background: transparent;
+  border: 1px solid #00f0ff;
+  color: #00f0ff;
+  font-weight: bold;
+  border-radius: 5px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  transition: color 0.3s ease, background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.logout-btn:hover {
+  color: #fff;
+  background-color: #ff4c4c;
+  border-color: #ff4c4c;
+  box-shadow: 0 0 8px #ff4c4c;
+}
+
+/* Hamburger styles */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+  gap: 5px;
+}
+
+.hamburger span {
+  width: 25px;
+  height: 3px;
+  background: #00f0ff;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+/* Hamburger animation when active */
+.hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translateY(8px);
+}
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translateY(-8px);
+}
+
+/* Responsive menu */
+@media (max-width: 768px) {
+  .nav-links {
+    position: absolute;
+    top: 64px;
+    right: 0;
+    background-color: #0d0d0d;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+    gap: 1rem;
+    border-left: 2px solid #00f0ff;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.7);
+    display: none;
+  }
+
+  .nav-links.open {
+    display: flex;
+  }
+
+  .nav-links a,
+  .logout-btn {
+    margin-left: 0;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+}

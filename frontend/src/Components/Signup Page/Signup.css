@@ -1,0 +1,214 @@
+/* Signup.css */
+
+/* Background with animated neon gradient */
+@keyframes neonGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.signupContainer {
+  min-height: 100vh;
+  background: linear-gradient(270deg, #0f0c29, #302b63, #24243e);
+  background-size: 600% 600%;
+  animation: neonGradient 20s ease infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Orbitron", "Poppins", sans-serif;
+  padding: 2rem;
+  color: #00fff7;
+}
+
+/* Form container with dark translucent background and neon glow */
+.signupForm {
+  background: rgba(10, 10, 10, 0.85);
+  border-radius: 24px;
+  box-shadow:
+    0 0 15px #00fff7,
+    0 0 30px #00fff7,
+    inset 0 0 10px #00fff7;
+  padding: 3rem 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+  border: 2px solid #00fff7;
+}
+
+.signupForm:hover {
+  transform: translateY(-8px);
+  box-shadow:
+    0 0 20px #00fff7,
+    0 0 40px #00fff7,
+    inset 0 0 20px #00fff7;
+}
+
+.signupTitle {
+  font-size: 2.4rem;
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 2rem;
+  letter-spacing: 0.15rem;
+  text-transform: uppercase;
+  color: #00fff7;
+  text-shadow:
+    0 0 5px #00fff7,
+    0 0 15px #00fff7,
+    0 0 25px #00fff7;
+}
+
+/* Labels with neon glow */
+.inputLabel {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: #00fff7;
+  text-shadow: 0 0 8px #00fff7;
+}
+
+/* Inputs with neon border and glow on focus */
+.inputField {
+  padding: 1rem 1.2rem;
+  font-size: 1.1rem;
+  border-radius: 14px;
+  border: 2px solid #00fff7;
+  margin-bottom: 1.5rem;
+  background: #111;
+  color: #00fff7;
+  box-shadow: 0 0 8px #00fff7 inset;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  outline: none;
+  font-weight: 600;
+  letter-spacing: 0.05rem;
+}
+
+.inputField::placeholder {
+  color: #00fff7aa;
+  font-style: italic;
+}
+
+.inputField:focus {
+  border-color: #00fff7;
+  box-shadow:
+    0 0 12px 2px #00fff7,
+    0 0 20px 6px #00fff7 inset;
+  background: #0b0b0b;
+}
+
+/* Submit button with neon glow and hover pulse */
+.submitBtn {
+  background: #00fff7;
+  color: #000;
+  font-weight: 900;
+  font-size: 1.2rem;
+  padding: 1rem 0;
+  border-radius: 18px;
+  border: none;
+  cursor: pointer;
+  box-shadow:
+    0 0 15px #00fff7,
+    0 0 40px #00fff7;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  width: 100%;
+  margin-top: 0.8rem;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
+  font-family: "Orbitron", sans-serif;
+}
+
+.submitBtn:hover {
+  box-shadow:
+    0 0 30px #00fff7,
+    0 0 60px #00fff7,
+    0 0 90px #00fff7;
+  transform: scale(1.05);
+}
+
+/* Divider with glowing lines */
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 2.5rem 0 2rem;
+  color: #00fff7bb;
+  font-size: 1rem;
+  position: relative;
+  user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+  font-weight: 600;
+  text-shadow: 0 0 8px #00fff7bb;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1.5px;
+  background: #00fff7bb;
+  margin: 0 1rem;
+  border-radius: 5px;
+  box-shadow: 0 0 10px #00fff7bb;
+}
+
+/* Google Button Wrapper with neon effect */
+.googleButtonWrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 20px;
+  background: #111;
+  border: 2px solid #00fff7;
+  box-shadow:
+    0 0 15px #00fff7,
+    inset 0 0 10px #00fff7;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.googleButtonWrapper:hover {
+  box-shadow:
+    0 0 30px #00fff7,
+    inset 0 0 20px #00fff7;
+  transform: translateY(-4px) scale(1.03);
+  cursor: pointer;
+}
+
+.loginLink {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #8affff;
+}
+
+.loginHighlight {
+  color: #00e5ff;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.loginHighlight:hover {
+  text-decoration: underline;
+  text-shadow: 0 0 8px #00e5ff;
+}
+
+/* Responsive tweaks */
+@media (max-width: 480px) {
+  .signupForm {
+    padding: 2rem 1.5rem;
+    max-width: 100%;
+    border-radius: 16px;
+  }
+
+  .signupTitle {
+    font-size: 1.9rem;
+  }
+}

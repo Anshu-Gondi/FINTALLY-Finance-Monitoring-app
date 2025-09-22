@@ -1,0 +1,25 @@
+# === FastAPI server and ASGI support ===
+fastapi
+uvicorn[standard]
+
+# === LLM Inference (CPU-based) ===
+llama-cpp-python==0.2.38        # Lightweight llama.cpp wrapper (for GPT4All etc.)
+
+# === Embedding model (for text vectorization) ===
+sentence-transformers==2.2.2    # Needed for embedding financial texts
+
+# === Vector similarity search ===
+faiss-cpu==1.7.4                # For efficient retrieval over embedded vectors
+
+# === Core utilities ===
+numpy
+scikit-learn
+tqdm
+pydantic
+python-dotenv
+
+# === Optional: local UI testing ===
+gradio==4.15.0                  # For local web UI (optional)
+
+# === Optional: PDF/document parsing (for training on financial books) ===
+PyMuPDF                         # if parsing .pdf files

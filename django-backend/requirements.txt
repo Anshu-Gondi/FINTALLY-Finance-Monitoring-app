@@ -1,0 +1,22 @@
+# --- Django core ---
+django               # Web framework
+djangorestframework  # For building APIs if needed
+python-decouple      # For managing environment variables (like dotenv)
+dj-database-url      # For parsing DB URLs (especially useful in production)
+pymongo              # Already included, used if connecting MongoDB with Django
+
+# --- Data Science core packages ---
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn
+
+# --- Optional but highly useful ---
+scipy               # Scientific computing
+plotly              # Interactive charts
+openpyxl            # Excel file reading
+xlrd                # Older Excel file support
+joblib              # Model saving/loading
+statsmodels         # Statistical modeling
+requests            # Useful for API calls
