@@ -1,0 +1,24 @@
+# Node junk
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local builds (Docker must rebuild clean)
+build/
+Release/
+Debug/
+obj.target/
+*.node
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Git metadata
+.git
+.gitignore
+
+# Docs
+README.md

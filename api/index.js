@@ -14,6 +14,7 @@ const transactionRoutes = require("./routes/Transaction_route");
 const insightRoutes = require("./routes/insights");
 const chatbotRoutes = require("./routes/chatbot");
 const feedbackRoutes = require("./routes/Feedback");
+const budgetRoutes = require("./routes/budget");
 
 app.use(
   cors({
@@ -51,6 +52,9 @@ app.use("/api", chatbotRoutes);
 
 // Feedback endpoint
 app.use("/api", feedbackRoutes);
+
+// Budget endpoint
+app.use("/api/budget", budgetRoutes);
 
 // Start the server
 app.listen(port, () => {

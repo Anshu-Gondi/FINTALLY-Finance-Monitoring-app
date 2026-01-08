@@ -1,0 +1,17 @@
+{
+  "name": "fintally-finance-cpp",
+  "version": "1.0.0",
+  "description": "High-performance finance calculations for FinTally",
+  "main": "index.js",
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "clean": "node-gyp clean"
+  },
+  "dependencies": {
+    "node-addon-api": "^7.1.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.1.0"
+  },
+  "gypfile": true
+}

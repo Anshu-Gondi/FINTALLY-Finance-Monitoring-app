@@ -1,0 +1,41 @@
+# Rust build output
+target/
+**/*.rs.bk
+
+# Generated bindings or build artifacts
+/build/
+*.dll
+*.exe
+*.pdb
+*.lib
+*.so
+*.dylib
+
+# Cargo package files
+Cargo.lock
+
+# IDE / editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.log
+*.tmp
+
+# OneDrive/backup conflicts (avoid syncing lock files)
+~$*
+
+# Python virtual environment if mixed project
+*venv/
+__pycache__/
+*.py[cod]
+
+# Node.js / JS stuff if present
+node_modules/
+dist/

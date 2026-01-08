@@ -1,0 +1,8 @@
+[build]
+rustflags = ["-C", "link-args=/EHsc"]
+
+[target.x86_64-pc-windows-msvc]
+linker = "link.exe"
+
+[env]
+CXXFLAGS = "/std:c++17 /EHsc"

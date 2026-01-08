@@ -1,25 +1,26 @@
-# === FastAPI server and ASGI support ===
-fastapi
-uvicorn[standard]
+-r requirements-llama.txt
 
-# === LLM Inference (CPU-based) ===
-llama-cpp-python==0.2.38        # Lightweight llama.cpp wrapper (for GPT4All etc.)
+# --- Core Server ---
+fastapi==0.115.2
+uvicorn==0.31.1
+python-dotenv==1.0.1
 
-# === Embedding model (for text vectorization) ===
-sentence-transformers==2.2.2    # Needed for embedding financial texts
+# --- Auth & Security ---
+PyJWT==2.9.0
 
-# === Vector similarity search ===
-faiss-cpu==1.7.4                # For efficient retrieval over embedded vectors
+# --- Database ---
+motor==3.6.0
+pymongo==4.9.1   # ✅ Compatible with motor 3.6.0
 
-# === Core utilities ===
-numpy
-scikit-learn
-tqdm
-pydantic
-python-dotenv
+# --- AI / NLP ---
+sentence-transformers==3.2.0
 
-# === Optional: local UI testing ===
-gradio==4.15.0                  # For local web UI (optional)
+# --- Utilities ---
+numpy==1.26.4
+requests==2.32.3
+beautifulsoup4==4.12.3
+pydantic==2.9.2
+PyMuPDF==1.24.9
 
-# === Optional: PDF/document parsing (for training on financial books) ===
-PyMuPDF                         # if parsing .pdf files
+# --- Optional (PDF text embedding / RAG) ---
+scikit-learn==1.5.2

@@ -1,0 +1,37 @@
+# =========================
+# Builder stage
+# =========================
+FROM node:22-bookworm-slim AS builder
+
+# Install build deps
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Cache deps
+COPY package*.json ./
+RUN npm ci
+
+# Copy source
+COPY . .
+
+# Build native addon
+RUN npm run build
+
+# =========================
+# Runtime stage (minimal)
+# =========================
+FROM node:22-bookworm-slim
+
+WORKDIR /app
+
+# Copy only what is needed
+COPY --from=builder /app/build/Release/finance.node ./finance.node
+COPY package.json .
+
+# Optional test
+CMD ["node", "-e", "require('./finance.node'); console.log('C++ addon loaded')"]

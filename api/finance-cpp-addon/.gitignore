@@ -1,0 +1,52 @@
+# =================================================
+# Node / Package managers
+# =================================================
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =================================================
+# Local build artifacts (KEEP OUT OF GIT)
+# =================================================
+build/
+Release/
+Debug/
+obj.target/
+*.node
+*.o
+*.obj
+*.lo
+*.a
+*.lib
+*.exp
+*.pdb
+*.ipdb
+*.iobj
+*.ilk
+
+# =================================================
+# node-gyp generated
+# =================================================
+config.gypi
+binding.Makefile
+*.target.mk
+*.vcxproj
+*.vcxproj.filters
+*.sln
+
+# =================================================
+# OS / Editor
+# =================================================
+.vscode/
+.DS_Store
+Thumbs.db
+*.code-workspace
+
+# =================================================
+# Logs / temp
+# =================================================
+*.log
+.cache/
+tmp/
+temp/
