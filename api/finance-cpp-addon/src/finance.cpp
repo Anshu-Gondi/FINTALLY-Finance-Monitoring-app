@@ -1,89 +1,145 @@
 #include <napi.h>
-#include <memory>
-#include <vector>
 #include <cmath>
-#include <stdexcept>
+#include <cstdint>
 
-namespace Finance {
+namespace finance {
 
-// RAII wrapper for temporary buffers (auto cleanup)
-class ComputationBuffer {
-public:
-    explicit ComputationBuffer(size_t size) : data_(std::make_unique<double[]>(size)) {}
-    double* data() { return data_.get(); }
-private:
-    std::unique_ptr<double[]> data_;
-};
+/* ===============================
+   COMPOUND INTEREST (BATCH)
+   =============================== */
 
-// Compound Interest: A = P(1 + r/n)^(nt)
-Napi::Value CalculateCompoundInterest(const Napi::CallbackInfo& info) {
+Napi::Value CalculateCompoundInterestBatch(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-    if (info.Length() < 4 || !info[0].IsNumber() || !info[1].IsNumber() || !info[2].IsNumber() || !info[3].IsNumber()) {
-        Napi::TypeError::New(env, "Expected 4 numbers: principal, rate, years, compounding_per_year").ThrowAsJavaScriptException();
-        return env.Null();
+
+    if (info.Length() != 4)
+        throw Napi::TypeError::New(env, "Expected 4 TypedArrays");
+
+    auto principals = info[0].As<Napi::BigInt64Array>();   // paise
+    auto rates = info[1].As<Napi::Float64Array>();        // %
+    auto years = info[2].As<Napi::Int32Array>();
+    auto compounds = info[3].As<Napi::Int32Array>();
+
+    size_t n = principals.ElementLength();
+
+    Napi::BigInt64Array result = Napi::BigInt64Array::New(env, n);
+
+    int64_t* P = principals.Data();
+    double* R = rates.Data();
+    int32_t* Y = years.Data();
+    int32_t* C = compounds.Data();
+    int64_t* out = result.Data();
+
+    for (size_t i = 0; i < n; i++) {
+        if (P[i] <= 0 || R[i] < 0 || Y[i] <= 0 || C[i] <= 0) {
+            out[i] = 0;
+            continue;
+        }
+
+        double rate = R[i] / 100.0;
+        double amount =
+            static_cast<double>(P[i]) *
+            std::pow(1.0 + rate / C[i], C[i] * Y[i]);
+
+        out[i] = static_cast<int64_t>(std::llround(amount));
     }
 
-    double principal = info[0].As<Napi::Number>().DoubleValue();
-    double rate = info[1].As<Napi::Number>().DoubleValue() / 100.0;  // % to decimal
-    int years = info[2].As<Napi::Number>().Int32Value();
-    int n = info[3].As<Napi::Number>().Int32Value();
-
-    if (principal <= 0 || rate < 0 || years <= 0 || n <= 0) {
-        Napi::RangeError::New(env, "Invalid financial inputs").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    double amount = principal * std::pow(1 + rate/n, n * years);
-    return Napi::Number::New(env, amount);
+    return result;
 }
 
-// EMI Calculation
-Napi::Value CalculateEMI(const Napi::CallbackInfo& info) {
+/* ===============================
+   EMI (BATCH)
+   =============================== */
+
+Napi::Value CalculateEMIBatch(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-    if (info.Length() < 3) {
-        Napi::TypeError::New(env, "Expected 3 numbers: principal, annual_rate, months").ThrowAsJavaScriptException();
-        return env.Null();
+
+    auto principals = info[0].As<Napi::BigInt64Array>();
+    auto rates = info[1].As<Napi::Float64Array>();
+    auto months = info[2].As<Napi::Int32Array>();
+
+    size_t n = principals.ElementLength();
+    Napi::BigInt64Array outArr = Napi::BigInt64Array::New(env, n);
+
+    int64_t* P = principals.Data();
+    double* R = rates.Data();
+    int32_t* M = months.Data();
+    int64_t* out = outArr.Data();
+
+    for (size_t i = 0; i < n; i++) {
+        if (P[i] <= 0 || M[i] <= 0) {
+            out[i] = 0;
+            continue;
+        }
+
+        double r = (R[i] / 100.0) / 12.0;
+
+        if (r == 0.0) {
+            out[i] = P[i] / M[i];
+            continue;
+        }
+
+        double p = std::pow(1.0 + r, M[i]);
+        double emi = (P[i] * r * p) / (p - 1.0);
+
+        out[i] = static_cast<int64_t>(std::llround(emi));
     }
 
-    double P = info[0].As<Napi::Number>().DoubleValue();
-    double annual_r = info[1].As<Napi::Number>().DoubleValue() / 100.0 / 12.0;  // monthly rate
-    int months = info[2].As<Napi::Number>().Int32Value();
-
-    if (months == 0) return Napi::Number::New(env, 0.0);
-
-    double emi = P * annual_r * std::pow(1 + annual_r, months) /
-                 (std::pow(1 + annual_r, months) - 1);
-    return Napi::Number::New(env, emi);
+    return outArr;
 }
 
-// Future SIP Value
-Napi::Value CalculateSIP(const Napi::CallbackInfo& info) {
+/* ===============================
+   SIP (BATCH)
+   =============================== */
+
+Napi::Value CalculateSIPBatch(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-    if (info.Length() < 4) {
-        Napi::TypeError::New(env, "Expected 4 numbers: monthly, rate, years, compounding_per_year").ThrowAsJavaScriptException();
-        return env.Null();
+
+    auto monthly = info[0].As<Napi::BigInt64Array>();   // paise
+    auto rates = info[1].As<Napi::Float64Array>();     // %
+    auto years = info[2].As<Napi::Int32Array>();
+    auto compounds = info[3].As<Napi::Int32Array>();
+
+    size_t n = monthly.ElementLength();
+    Napi::BigInt64Array result = Napi::BigInt64Array::New(env, n);
+
+    int64_t* M = monthly.Data();
+    double* R = rates.Data();
+    int32_t* Y = years.Data();
+    int32_t* C = compounds.Data();
+    int64_t* out = result.Data();
+
+    for (size_t i = 0; i < n; i++) {
+        int totalMonths = Y[i] * 12;
+        double rate = (R[i] / 100.0) / C[i];
+
+        if (rate == 0.0) {
+            out[i] = M[i] * totalMonths;
+            continue;
+        }
+
+        double fv =
+            M[i] *
+            (std::pow(1.0 + rate, totalMonths) - 1.0) /
+            rate *
+            (1.0 + rate);
+
+        out[i] = static_cast<int64_t>(std::llround(fv));
     }
 
-    double M = info[0].As<Napi::Number>().DoubleValue();
-    double r = info[1].As<Napi::Number>().DoubleValue() / 100.0;
-    int years = info[2].As<Napi::Number>().Int32Value();
-    int n = info[3].As<Napi::Number>().Int32Value();
-
-    int total_months = years * 12;
-    double monthly_rate = r / n;
-    double future_value = M * (std::pow(1 + monthly_rate, total_months) - 1) / monthly_rate * (1 + monthly_rate);
-    return Napi::Number::New(env, future_value);
+    return result;
 }
 
-// Add more: tax calculation, ROI, etc.
+/* ===============================
+   MODULE EXPORT
+   =============================== */
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-    exports.Set("calculateCompoundInterest", Napi::Function::New(env, CalculateCompoundInterest));
-    exports.Set("calculateEMI", Napi::Function::New(env, CalculateEMI));
-    exports.Set("calculateSIP", Napi::Function::New(env, CalculateSIP));
+    exports.Set("compoundInterestBatch", Napi::Function::New(env, CalculateCompoundInterestBatch));
+    exports.Set("emiBatch", Napi::Function::New(env, CalculateEMIBatch));
+    exports.Set("sipBatch", Napi::Function::New(env, CalculateSIPBatch));
     return exports;
 }
 
 NODE_API_MODULE(finance, Init)
 
-}  // namespace Finance
+} // namespace finance 
