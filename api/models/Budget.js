@@ -7,7 +7,6 @@ const BudgetSchema = new Schema({
   category: { type: String, default: "Overall" },
 
   amount: { type: Number, required: true }, // Budget limit
-  spent: { type: Number, default: 0 },      // Auto-updated based on transactions
 
   startDate: { type: Date, default: Date.now }, // Start period
   endDate: { type: Date }, // End of budget period

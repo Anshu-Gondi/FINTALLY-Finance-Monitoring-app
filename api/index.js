@@ -14,8 +14,12 @@ const transactionRoutes = require("./routes/Transaction_route");
 const insightRoutes = require("./routes/insights");
 const chatbotRoutes = require("./routes/chatbot");
 const feedbackRoutes = require("./routes/Feedback");
+const incomeRoutes = require("./routes/income");
 const budgetRoutes = require("./routes/budget");
+const emiRoutes = require("./routes/emi");
+const taxRoutes = require("./routes/tax");
 
+// Middleware
 app.use(
   cors({
     origin: "http://localhost:5173", // your frontend
@@ -53,8 +57,17 @@ app.use("/api", chatbotRoutes);
 // Feedback endpoint
 app.use("/api", feedbackRoutes);
 
+// Income summary endpoint
+app.use("/api/income", incomeRoutes);
+
 // Budget endpoint
 app.use("/api/budget", budgetRoutes);
+
+// EMI calculation endpoint
+app.use("/api/emi", emiRoutes);
+
+// Tax calculation & Override endpoint
+app.use("/api/tax", taxRoutes);
 
 // Start the server
 app.listen(port, () => {

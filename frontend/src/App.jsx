@@ -27,9 +27,93 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [balance, setBalance] = useState(0);
 
-  const BUDGET_LIMIT = 5000;
+  const [isEMI, setIsEMI] = useState(false);
+  const [emiPrincipal, setEmiPrincipal] = useState("");
+  const [emiRate, setEmiRate] = useState("");
+  const [emiTenure, setEmiTenure] = useState("");
+  const [emiAmount, setEmiAmount] = useState(0);
+  const [emiAffordable, setEmiAffordable] = useState(true);
+
+  // 🟢 Budget state
+  const [budgets, setBudgets] = useState([]);
+  const [budgetAmount, setBudgetAmount] = useState("");
+  const [budgetCategory, setBudgetCategory] = useState("Overall");
+  const [budgetStartDate, setBudgetStartDate] = useState(null);
+  const [budgetEndDate, setBudgetEndDate] = useState(null);
+
+  const overallBudget = budgets.find(b => b.category === "Overall");
+  const monthlyBudget = overallBudget?.amount || 0;
 
   const API_URL = import.meta.env.VITE_API_URL;
+
+  const fetchBudgets = useCallback(async () => {
+    const res = await fetch(`${API_URL}/budget`, {
+      headers: {
+        Authorization: "Bearer " + localStorage.getItem("token"),
+      },
+    });
+    const json = await res.json();
+    if (json.success) setBudgets(json.data);
+  }, [API_URL]);
+
+  useEffect(() => {
+    fetchBudgets();
+  }, [fetchBudgets]);
+
+
+  const saveBudget = async () => {
+    if (!budgetAmount) {
+      alert("Please enter budget amount");
+      return;
+    }
+
+    const res = await fetch(`${API_URL}/budget`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + localStorage.getItem("token"),
+      },
+      body: JSON.stringify({
+        amount: Number(budgetAmount),
+        category: budgetCategory,
+        startDate: budgetStartDate,
+        endDate: budgetEndDate,
+        isRecurring: true,
+      }),
+    });
+
+    const json = await res.json();
+
+    if (json.success) {
+      alert("Budget saved");
+      setBudgetAmount("");
+      setBudgetStartDate(null);
+      setBudgetEndDate(null);
+      fetchBudgets();
+    }
+  };
+
+
+  // 🔹 Active EMI transactions
+  const activeEMIs = transactions.filter(
+    (t) =>
+      t.isRecurring &&
+      t.emiMeta &&
+      t.recurringFrequency === "Monthly" &&
+      t.emiMeta.tenureMonths > 0,
+  );
+
+  // 🔹 Monthly EMI outflow
+  const totalMonthlyEMI = activeEMIs.reduce(
+    (sum, t) => sum + Math.abs(t.price),
+    0,
+  );
+
+  // 🔹 EMI budget usage %
+  const emiBudgetPercent =
+    monthlyBudget > 0
+      ? Math.min((totalMonthlyEMI / monthlyBudget) * 100, 100)
+      : 0;
 
   const fetchTransactions = useCallback(
     async (pageNum) => {
@@ -43,7 +127,7 @@ function App() {
         setTransactions((prev) => [...prev, ...json.data]);
       }
     },
-    [API_URL]
+    [API_URL],
   );
 
   const fetchAndReplaceTransactions = async () => {
@@ -76,7 +160,7 @@ function App() {
 
   useEffect(() => {
     const uniqueTx = Array.from(
-      new Map(transactions.map((t) => [t._id, t])).values()
+      new Map(transactions.map((t) => [t._id, t])).values(),
     );
     const total = uniqueTx.reduce((acc, t) => acc + t.price, 0);
     setBalance(total);
@@ -87,12 +171,64 @@ function App() {
 
     const formData = new FormData();
     formData.append("name", name);
-    formData.append("price", price);
+    const finalPrice = isEMI ? -emiAmount : price;
+    formData.append("price", finalPrice);
     formData.append("description", description);
     formData.append("datetime", datetime);
     formData.append("category", category);
     formData.append("isRecurring", isRecurring);
     if (isRecurring) formData.append("recurringFrequency", recurringFrequency);
+    if (isEMI && recurringFrequency !== "Monthly") {
+      alert("EMI must be monthly");
+      return;
+    }
+    if (isEMI && !isRecurring) {
+      alert("EMI must be recurring");
+      return;
+    }
+    if (isEMI) {
+      const res = await fetch(`${API_URL}/emi/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + localStorage.getItem("token"),
+        },
+        body: JSON.stringify({
+          principal: emiPrincipal,
+          annualRate: emiRate,
+          months: emiTenure,
+          category,
+          name
+        }),
+      });
+
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.message || "EMI creation failed");
+        return;
+      }
+
+      resetForm();
+      await fetchAndReplaceTransactions();
+      return;
+    }
+
+    if (isEMI) {
+      if (!emiAffordable) {
+        alert("EMI not affordable under current budget");
+        return;
+      }
+
+      formData.append(
+        "emiMeta",
+        JSON.stringify({
+          principal: emiPrincipal,
+          annualRate: emiRate,
+          tenureMonths: emiTenure,
+          originalTenure: emiTenure,
+        }),
+      );
+    }
     if (receipt) formData.append("receipt", receipt);
 
     const res = await fetch(`${API_URL}/transaction`, {
@@ -135,7 +271,7 @@ function App() {
     if (res.ok) {
       const updated = await res.json();
       setTransactions((prev) =>
-        prev.map((tx) => (tx._id === editingId ? updated.data : tx))
+        prev.map((tx) => (tx._id === editingId ? updated.data : tx)),
       );
       resetForm();
     }
@@ -150,11 +286,18 @@ function App() {
     setCategory(transaction.category);
     setIsRecurring(transaction.isRecurring);
     setRecurringFrequency(transaction.recurringFrequency || "");
+
+    if (transaction.emiMeta) {
+      setIsEMI(true);
+      setEmiPrincipal(transaction.emiMeta.principal);
+      setEmiRate(transaction.emiMeta.annualRate);
+      setEmiTenure(transaction.emiMeta.tenureMonths);
+    }
   };
 
   const handleDelete = async (id) => {
     const confirm = window.confirm(
-      "Are you sure you want to delete this transaction?"
+      "Are you sure you want to delete this transaction?",
     );
     if (!confirm) return;
 
@@ -180,17 +323,57 @@ function App() {
     setIsRecurring(false);
     setRecurringFrequency("");
     setReceipt(null);
+    setIsEMI(false);
+    setEmiPrincipal("");
+    setEmiRate("");
+    setEmiTenure("");
+    setEmiAmount(0);
   };
+
+  const calculateEMI = useCallback(() => {
+    if (!emiPrincipal || !emiRate || !emiTenure) return 0;
+
+    const P = Number(emiPrincipal);
+    const r = Number(emiRate) / 12 / 100;
+    const n = Number(emiTenure);
+
+    const emi = (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+
+    return Number.isFinite(emi) ? emi : 0;
+  }, [emiPrincipal, emiRate, emiTenure]);
+
+  useEffect(() => {
+    const emi = calculateEMI();
+    setEmiAmount(emi);
+
+    if (!emi || !isEMI) return;
+
+    fetch(`${API_URL}/emi/check`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + localStorage.getItem("token"),
+      },
+      body: JSON.stringify({
+        emiAmount: emi,
+        category
+      }),
+    })
+      .then(res => res.json())
+      .then(json => {
+        setEmiAffordable(json.data?.budgetImpact?.affordable ?? true);
+      });
+  }, [calculateEMI, isEMI, emiPrincipal, emiRate, emiTenure, category, API_URL]);
 
   const filteredTransactions = transactions.filter(
     (t) =>
       t.name?.toLowerCase().includes(searchQuery) ||
       t.description?.toLowerCase().includes(searchQuery) ||
-      t.category?.toLowerCase().includes(searchQuery)
+      t.category?.toLowerCase().includes(searchQuery),
   );
 
   const uniqueTransactions = Array.from(
-    new Map(filteredTransactions.map((t) => [t._id, t])).values()
+    new Map(filteredTransactions.map((t) => [t._id, t])).values(),
   );
 
   useEffect(() => {
@@ -217,14 +400,115 @@ function App() {
       <Navbar />
       <div className="appContainer">
         <h1 className="appTitle">💸 FinTally</h1>
-        <h2 className="appBalance">
-          Balance: ₹{balance.toFixed(2)}
-        </h2>
+        <div className="neonBox mt-5">
+          <h3 className="title is-5">📊 Budget Manager</h3>
 
-        {balance < -BUDGET_LIMIT && (
+          <div className="field">
+            <label className="label">Category</label>
+            <div className="select is-fullwidth neonSelectWrapper">
+              <select
+                value={budgetCategory}
+                onChange={(e) => setBudgetCategory(e.target.value)}
+              >
+                <option value="Overall">Overall</option>
+                <option value="Food">Food</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Travel">Travel</option>
+                <option value="Bills">Bills</option>
+                <option value="Entertainment">Entertainment</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="field">
+            <label className="label">Amount (₹)</label>
+            <input
+              className="input neonInput"
+              type="number"
+              value={budgetAmount}
+              onChange={(e) => setBudgetAmount(e.target.value)}
+            />
+          </div>
+
+          <div className="field">
+            <label className="label">Start Date</label>
+            <Flatpickr
+              value={budgetStartDate}
+              onChange={([d]) => setBudgetStartDate(d?.toISOString())}
+              className="input neonInput"
+            />
+          </div>
+
+          <div className="field">
+            <label className="label">End Date (optional)</label>
+            <Flatpickr
+              value={budgetEndDate}
+              onChange={([d]) => setBudgetEndDate(d?.toISOString())}
+              className="input neonInput"
+            />
+          </div>
+
+          <button className="neonButton" onClick={saveBudget}>
+            Save Budget
+          </button>
+        </div>
+
+        {budgets.length > 0 && (
+          <div className="neonBox mt-4">
+            <h4 className="title is-6">📋 Active Budgets</h4>
+
+            {budgets.map((b) => (
+              <div key={b._id} className="mb-3">
+                <p>
+                  <strong>{b.category}</strong> — ₹{b.amount}
+                </p>
+                <p className="is-size-7 has-text-grey">
+                  {new Date(b.startDate).toLocaleDateString()} →{" "}
+                  {b.endDate ? new Date(b.endDate).toLocaleDateString() : "Ongoing"}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <h2 className="appBalance">Balance: ₹{balance.toFixed(2)}</h2>
+
+        {balance < -monthlyBudget && (
           <p className="budgetAlert">
-            🚨 Budget exceeded by ₹{Math.abs(balance + BUDGET_LIMIT).toFixed(2)}!
+            🚨 Budget exceeded by ₹
+            {Math.abs(balance + monthlyBudget).toFixed(2)}!
           </p>
+        )}
+
+        {activeEMIs.length > 0 && (
+          <div className="neonBox mt-4">
+            <h3 className="title is-5">💳 Monthly EMI Summary</h3>
+
+            <p>
+              📌 Active EMIs: <strong>{activeEMIs.length}</strong>
+            </p>
+            <p>
+              💸 Total Monthly EMI:{" "}
+              <strong>₹{totalMonthlyEMI.toFixed(2)}</strong>
+            </p>
+            <p>
+              📊 EMI Budget Usage:{" "}
+              <strong>{emiBudgetPercent.toFixed(1)}%</strong>
+            </p>
+
+            <progress
+              className={`progress ${emiBudgetPercent > 80 ? "is-danger" : "is-primary"
+                }`}
+              value={emiBudgetPercent}
+              max="100"
+            >
+              {emiBudgetPercent}%
+            </progress>
+
+            {emiBudgetPercent > 80 && (
+              <p className="has-text-danger mt-2">⚠ EMI burden is high</p>
+            )}
+          </div>
         )}
 
         <div className="formWrapper">
@@ -259,9 +543,14 @@ function App() {
                 className="input neonInput"
                 type="number"
                 value={price}
+                disabled={isEMI}
                 onChange={(e) => setPrice(Number(e.target.value))}
-                placeholder="Amount (negative for expense)"
-                required
+                placeholder={
+                  isEMI
+                    ? "Calculated from EMI"
+                    : "Amount (negative for expense)"
+                }
+                required={!isEMI}
               />
             </div>
 
@@ -335,6 +624,59 @@ function App() {
               </div>
             )}
 
+            {isRecurring && recurringFrequency === "Monthly" && (
+              <div className="field neonCheckboxField">
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={isEMI}
+                    onChange={(e) => setIsEMI(e.target.checked)}
+                  />{" "}
+                  This is an EMI
+                </label>
+              </div>
+            )}
+
+            {isEMI && (
+              <div className="emiBox neonBox mt-4">
+                <h4 className="title is-6">💳 EMI Details</h4>
+
+                <input
+                  className="input neonInput mb-2"
+                  type="number"
+                  placeholder="Principal (₹)"
+                  value={emiPrincipal}
+                  onChange={(e) => setEmiPrincipal(e.target.value)}
+                />
+
+                <input
+                  className="input neonInput mb-2"
+                  type="number"
+                  placeholder="Annual Interest Rate (%)"
+                  value={emiRate}
+                  onChange={(e) => setEmiRate(e.target.value)}
+                />
+
+                <input
+                  className="input neonInput mb-2"
+                  type="number"
+                  placeholder="Tenure (months)"
+                  value={emiTenure}
+                  onChange={(e) => setEmiTenure(e.target.value)}
+                />
+
+                <p>
+                  📆 Monthly EMI: <strong>₹{emiAmount.toFixed(2)}</strong>
+                </p>
+
+                {!emiAffordable && (
+                  <p className="has-text-danger mt-2">
+                    🚫 EMI not affordable under current budget
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="field mt-4">
               <button className="neonButton" type="submit">
                 {editingId ? "Update Transaction" : "Add Transaction"}
@@ -363,6 +705,34 @@ function App() {
                   {new Date(t.datetime).toLocaleString()}
                 </p>
                 <span className="tag neonTag">{t.category}</span>
+                {t.emiMeta && (
+                  <div className="mt-2">
+                    <p className="is-size-7">📆 EMI Progress</p>
+
+                    {(() => {
+                      const total =
+                        t.emiMeta.originalTenure || t.emiMeta.tenureMonths;
+                      const remaining = t.emiMeta.tenureMonths;
+                      const paid = total - remaining;
+                      const percent = total > 0 ? (paid / total) * 100 : 0;
+
+                      return (
+                        <>
+                          <progress
+                            className="progress is-small is-info"
+                            value={percent}
+                            max="100"
+                          >
+                            {percent}%
+                          </progress>
+                          <p className="is-size-7 has-text-grey">
+                            {paid} / {total} months paid
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
               <div className="transactionActions">

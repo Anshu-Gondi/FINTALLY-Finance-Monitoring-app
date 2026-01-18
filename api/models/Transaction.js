@@ -20,6 +20,14 @@ const TransactionSchema = new Schema({
 
   // 🏷️ Category Support
   category: { type: String, default: "General" },
+
+  // 💳 EMI Metadata (optional, only for EMI transactions)
+  emiMeta: {
+    principal: { type: Number },
+    annualRate: { type: Number },
+    tenureMonths: { type: Number },
+    originalTenure: { type: Number },
+  }
 });
 
 const TransactionModel = model("Transaction", TransactionSchema);
