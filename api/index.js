@@ -17,7 +17,6 @@ const feedbackRoutes = require("./routes/Feedback");
 const incomeRoutes = require("./routes/income");
 const budgetRoutes = require("./routes/budget");
 const emiRoutes = require("./routes/emi");
-const taxRoutes = require("./routes/tax");
 
 // Middleware
 app.use(
@@ -65,9 +64,6 @@ app.use("/api/budget", budgetRoutes);
 
 // EMI calculation endpoint
 app.use("/api/emi", emiRoutes);
-
-// Tax calculation & Override endpoint
-app.use("/api/tax", taxRoutes);
 
 // Start the server
 app.listen(port, () => {
