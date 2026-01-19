@@ -6,10 +6,19 @@ const financeCpp = require("../finance-cpp-addon");
  * Safely converts a value to BigInt
  */
 function toBigIntSafe(value) {
-  if (value == null) throw new Error("Value cannot be null or undefined for BigInt conversion");
+  if (value === null || value === undefined) {
+    throw new Error("BigInt conversion failed: null/undefined");
+  }
+
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || !Number.isInteger(value)) {
+      throw new Error(`BigInt conversion failed: ${value}`);
+    }
+  }
+
   try {
     return BigInt(value);
-  } catch (err) {
+  } catch {
     throw new Error(`Invalid BigInt value: ${value}`);
   }
 }
@@ -28,7 +37,7 @@ async function checkEmIAffordability({
   if (!userId) throw new Error("Missing userId");
   if (principalPaise == null || annualRate == null || months == null) {
     throw new Error(
-      `Invalid EMI parameters: principalPaise=${principalPaise}, annualRate=${annualRate}, months=${months}`
+      `Invalid EMI parameters: principalPaise=${principalPaise}, annualRate=${annualRate}, months=${months}`,
     );
   }
 
@@ -92,12 +101,17 @@ async function checkEmIAffordability({
   ]);
 
   const spent = spentAgg[0]?.spent || 0;
-  const projectedSpent = spent + emiAmount;
+  const batch = financeCpp.calculateBudgetBatch({
+    emis: [emiAmount],
+    budgets: [budget.amount],
+    spentSoFar: [spent],
+    months: [months],
+  });
+
+  const projectedSpent = batch.projectedSpent[0];
+  const usagePercent = batch.usagePercent[0];
+  const warningFlag = batch.warningFlag[0];
   const remaining = Math.max(budget.amount - projectedSpent, 0);
-  const usagePercent =
-    budget.amount > 0
-      ? Number(((projectedSpent / budget.amount) * 100).toFixed(2))
-      : 100;
 
   return {
     affordable: projectedSpent <= budget.amount,
@@ -111,8 +125,8 @@ async function checkEmIAffordability({
       usagePercent >= 100
         ? "BUDGET_EXCEEDED"
         : usagePercent >= 80
-        ? "BUDGET_NEAR_LIMIT"
-        : "SAFE",
+          ? "BUDGET_NEAR_LIMIT"
+          : "SAFE",
   };
 }
 
