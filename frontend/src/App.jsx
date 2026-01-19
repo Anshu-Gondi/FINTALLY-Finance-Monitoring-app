@@ -8,7 +8,6 @@ import Navbar from "./Shared Components/Navbar/Navbar";
 import Footer from "./Shared Components/Footer/Footer";
 
 Modal.setAppElement("#root");
-let scrollThrottleTimeout = null;
 
 function App() {
   const [transactions, setTransactions] = useState([]);
@@ -376,100 +375,116 @@ function App() {
     new Map(filteredTransactions.map((t) => [t._id, t])).values(),
   );
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (scrollThrottleTimeout) return;
-      scrollThrottleTimeout = setTimeout(() => {
-        if (
-          window.innerHeight + window.scrollY >=
-          document.body.offsetHeight - 50 &&
-          hasMore
-        ) {
-          setPage((prev) => prev + 1);
-        }
-        scrollThrottleTimeout = null;
-      }, 300); // throttle to 300ms
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore]);
-
   return (
     <>
       <Navbar />
       <div className="appContainer">
         <h1 className="appTitle">💸 FinTally</h1>
         <div className="neonBox mt-5">
-          <h3 className="title is-5">📊 Budget Manager</h3>
+          <h3 className="title is-5 budgetTitle">
+            📊 Budget Control Center
+          </h3>
+          <p className="budgetSubtitle">
+            Define limits to keep your spending & EMIs in control
+          </p>
 
-          <div className="field">
-            <label className="label">Category</label>
-            <div className="select is-fullwidth neonSelectWrapper">
-              <select
-                value={budgetCategory}
-                onChange={(e) => setBudgetCategory(e.target.value)}
-              >
-                <option value="Overall">Overall</option>
-                <option value="Food">Food</option>
-                <option value="Shopping">Shopping</option>
-                <option value="Travel">Travel</option>
-                <option value="Bills">Bills</option>
-                <option value="Entertainment">Entertainment</option>
-              </select>
+          <div className="neonBox budgetCreateBox">
+            <h4 className="title is-6 is-center">➕ Set / Update Budget</h4>
+            <div className="field">
+              <label className="label">Category</label>
+              <div className="select is-fullwidth neonSelectWrapper">
+                <select
+                  value={budgetCategory}
+                  onChange={(e) => setBudgetCategory(e.target.value)}
+                >
+                  <option value="Overall">Overall</option>
+                  <option value="Food">Food</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Bills">Bills</option>
+                  <option value="Entertainment">Entertainment</option>
+                </select>
+              </div>
             </div>
+
+            <div className="field">
+              <label className="label">Amount (₹)</label>
+              <input
+                className="input neonInput"
+                type="number"
+                value={budgetAmount}
+                onChange={(e) => setBudgetAmount(e.target.value)}
+              />
+            </div>
+
+            <div className="field">
+              <label className="label">Start Date</label>
+              <Flatpickr
+                value={budgetStartDate}
+                onChange={([d]) => setBudgetStartDate(d?.toISOString())}
+                className="input neonInput"
+              />
+            </div>
+
+            <div className="field">
+              <label className="label">End Date (optional)</label>
+              <Flatpickr
+                value={budgetEndDate}
+                onChange={([d]) => setBudgetEndDate(d?.toISOString())}
+                className="input neonInput"
+              />
+            </div>
+
+            <button className="neonButton" onClick={saveBudget}>
+              Save Budget
+            </button>
           </div>
 
-          <div className="field">
-            <label className="label">Amount (₹)</label>
-            <input
-              className="input neonInput"
-              type="number"
-              value={budgetAmount}
-              onChange={(e) => setBudgetAmount(e.target.value)}
-            />
-          </div>
-
-          <div className="field">
-            <label className="label">Start Date</label>
-            <Flatpickr
-              value={budgetStartDate}
-              onChange={([d]) => setBudgetStartDate(d?.toISOString())}
-              className="input neonInput"
-            />
-          </div>
-
-          <div className="field">
-            <label className="label">End Date (optional)</label>
-            <Flatpickr
-              value={budgetEndDate}
-              onChange={([d]) => setBudgetEndDate(d?.toISOString())}
-              className="input neonInput"
-            />
-          </div>
-
-          <button className="neonButton" onClick={saveBudget}>
-            Save Budget
-          </button>
-        </div>
-
-        {budgets.length > 0 && (
           <div className="neonBox mt-4">
             <h4 className="title is-6">📋 Active Budgets</h4>
 
-            {budgets.map((b) => (
-              <div key={b._id} className="mb-3">
-                <p>
-                  <strong>{b.category}</strong> — ₹{b.amount}
-                </p>
-                <p className="is-size-7 has-text-grey">
-                  {new Date(b.startDate).toLocaleDateString()} →{" "}
-                  {b.endDate ? new Date(b.endDate).toLocaleDateString() : "Ongoing"}
-                </p>
-              </div>
-            ))}
+            <div className="budgetGrid">
+              {budgets.map((b) => {
+                const spent =
+                  Math.abs(
+                    transactions
+                      .filter(t => t.category === b.category || b.category === "Overall")
+                      .reduce((s, t) => s + (t.price < 0 ? t.price : 0), 0)
+                  );
+
+                const percent = Math.min((spent / b.amount) * 100, 100);
+
+                return (
+                  <div key={b._id} className="budgetCard">
+                    <div className="budgetCardHeader">
+                      <span className="budgetCategory">{b.category}</span>
+                      <span className="budgetAmount">₹{b.amount}</span>
+                    </div>
+
+                    <progress
+                      className={`progress ${percent > 80 ? "is-danger" : "is-info"}`}
+                      value={percent}
+                      max="100"
+                    />
+
+                    <p className="budgetMeta">
+                      Used: ₹{spent.toFixed(0)} ({percent.toFixed(1)}%)
+                    </p>
+
+                    <p className="budgetDates">
+                      {new Date(b.startDate).toLocaleDateString()} →{" "}
+                      {b.endDate
+                        ? new Date(b.endDate).toLocaleDateString()
+                        : "Ongoing"}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        )}
+        </div>
+
+
 
         <h2 className="appBalance">Balance: ₹{balance.toFixed(2)}</h2>
 
@@ -482,7 +497,7 @@ function App() {
 
         {activeEMIs.length > 0 && (
           <div className="neonBox mt-4">
-            <h3 className="title is-5">💳 Monthly EMI Summary</h3>
+            <h3 className="title is-5">💳 EMI Load Monitor</h3>
 
             <p>
               📌 Active EMIs: <strong>{activeEMIs.length}</strong>

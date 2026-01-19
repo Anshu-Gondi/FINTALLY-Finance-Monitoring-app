@@ -410,3 +410,184 @@ button.receiptBtn:hover {
     font-size: 1.3rem;
   }
 }
+
+/* Budget section enhancements */
+
+.budgetTitle {
+  text-shadow: 0 0 12px #00f0ff;
+  letter-spacing: 0.15rem;
+}
+
+.budgetSubtitle {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #66eaff;
+  margin-bottom: 15px;
+  text-shadow: 0 0 6px #00b6ff;
+}
+
+.budgetCreateBox {
+  margin-bottom: 25px;
+}
+
+.budgetGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.budgetCard {
+  background: linear-gradient(135deg, #001833, #000814);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow:
+    0 0 20px #00f0ff99,
+    inset 0 0 25px #004f8b99;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.budgetCard:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 0 35px #39ff14cc,
+    inset 0 0 35px #39ff14aa;
+}
+
+.budgetCardHeader {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.budgetCategory {
+  color: #00f0ff;
+  text-shadow: 0 0 6px #00f0ff;
+}
+
+.budgetAmount {
+  color: #39ff14;
+  text-shadow: 0 0 6px #39ff14;
+}
+
+.budgetMeta {
+  font-size: 0.85rem;
+  color: #80e5ff;
+  margin-top: 8px;
+}
+
+.budgetDates {
+  font-size: 0.7rem;
+  color: #3388ccaa;
+  margin-top: 4px;
+}
+
+/* Center Budget Control Center */
+.neonBox.budgetCreateBox,
+.neonBox.mt-4 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 600px; /* or 80% of container */
+}
+
+/* Optional: center text inside budget header */
+.budgetTitle,
+.budgetSubtitle {
+  text-align: center;
+}
+
+/* Center Budget Control Center */
+.neonBox.budgetCreateBox,
+.neonBox.mt-4 {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 650px; /* slightly wider for better visual balance */
+  background: linear-gradient(
+    135deg,
+    rgba(0, 240, 255, 0.3),
+    rgba(57, 255, 20, 0.3)
+  ); /* subtle neon gradient background */
+  border: 2px solid #00f0ff;
+  box-shadow:
+    0 0 40px #00f0ffaa,
+    inset 0 0 60px #39ff14aa; /* stronger neon glow */
+  transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease;
+}
+
+.neonBox.budgetCreateBox:hover,
+.neonBox.mt-4:hover {
+  box-shadow:
+    0 0 60px #00f0ffcc,
+    inset 0 0 80px #39ff14cc;
+  transform: scale(1.02);
+  background: linear-gradient(
+    135deg,
+    rgba(0, 240, 255, 0.5),
+    rgba(57, 255, 20, 0.5)
+  );
+}
+
+/* Brighten Budget Cards */
+.budgetCard {
+  background: linear-gradient(135deg, #001833, #000814);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow:
+    0 0 35px #00f0ffcc, /* brighter glow */
+    inset 0 0 50px #39ff14aa; /* inner neon glow */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.budgetCard:hover {
+  transform: scale(1.06);
+  box-shadow:
+    0 0 50px #00f0ffcc,
+    inset 0 0 60px #39ff14cc;
+  background: linear-gradient(135deg, #001844, #002022);
+}
+
+/* Brighten Category and Amount text */
+.budgetCategory {
+  color: #00f0ff;
+  text-shadow: 0 0 12px #00f0ff, 0 0 25px #00c2ff;
+}
+
+.budgetAmount {
+  color: #39ff14;
+  text-shadow: 0 0 12px #39ff14, 0 0 25px #00ff66;
+}
+
+/* Budget Meta Info */
+.budgetMeta {
+  font-size: 0.9rem;
+  color: #a0f0ff;
+  text-shadow: 0 0 6px #00b6ff;
+}
+
+.budgetDates {
+  font-size: 0.75rem;
+  color: #66eaff;
+  text-shadow: 0 0 4px #00f0ff;
+}
+
+/* Progress Bars Brighter */
+.progress.is-info {
+  background-color: #00f0ff55;
+  box-shadow: 0 0 8px #00f0ff;
+}
+
+.progress.is-danger {
+  background-color: #ff0055aa;
+  box-shadow: 0 0 10px #ff3366;
+}
+
+/* Optional: titles brighter */
+.budgetTitle {
+  color: #00f0ff;
+  text-shadow: 0 0 15px #00f0ff, 0 0 40px #00c2ff;
+}
+
+.budgetSubtitle {
+  color: #39ff14;
+  text-shadow: 0 0 12px #39ff14, 0 0 30px #00ff88;
+}

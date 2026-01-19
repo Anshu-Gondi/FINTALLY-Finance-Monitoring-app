@@ -4,6 +4,14 @@ const authMiddleware = require("../middlewares/auth");
 const Transaction = require("../models/Transaction");
 const { checkEmIAffordability } = require("../services/emiBudget.service");
 
+// Helper to calculate EMI in JS
+function calculateEmi(principal, annualRate, months) {
+  const r = annualRate / (12 * 100);
+  const emi = (principal * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+  return Number(emi.toFixed(2));
+}
+
+// 🔹 Route: Just calculate EMI
 router.post("/calculate", authMiddleware, (req, res) => {
   const { principal, annualRate, months } = req.body;
 
@@ -11,111 +19,93 @@ router.post("/calculate", authMiddleware, (req, res) => {
     return res.status(400).json({ success: false, message: "Invalid input" });
   }
 
-  const r = annualRate / (12 * 100);
-  const emi =
-    (principal * r * Math.pow(1 + r, months)) /
-    (Math.pow(1 + r, months) - 1);
+  const emi = calculateEmi(principal, annualRate, months);
 
   res.json({
     success: true,
     data: {
-      emi: Number(emi.toFixed(2)),
+      emi,
       totalPayable: Number((emi * months).toFixed(2)),
       totalInterest: Number((emi * months - principal).toFixed(2)),
     },
   });
 });
 
-// 🧮 EMI + Budget Check
+// 🔹 Route: Check EMI against budget
 router.post("/check", authMiddleware, async (req, res) => {
-  const { principal, annualRate, months, category } = req.body;
+  const { principal, annualRate, months, category = "Overall" } = req.body;
 
   if (principal <= 0 || annualRate <= 0 || months <= 0) {
     return res.status(400).json({ success: false, message: "Invalid input" });
   }
 
-  const r = annualRate / (12 * 100);
-  const emi =
-    (principal * r * Math.pow(1 + r, months)) /
-    (Math.pow(1 + r, months) - 1);
+  const principalPaise = BigInt(Math.round(principal * 100));
 
-  const emiAmount = Number(emi.toFixed(2));
-
-  const budgetCheck = await checkEmIAffordability({
+  const budgetImpact = await checkEmIAffordability({
     userId: req.user.userId,
-    emiAmount,
-    category
+    principalPaise,
+    annualRate,
+    months,
+    category,
   });
+
+  const emi = calculateEmi(principal, annualRate, months);
 
   res.json({
     success: true,
     data: {
-      emi: emiAmount,
-      totalPayable: Number((emiAmount * months).toFixed(2)),
-      totalInterest: Number(
-        (emiAmount * months - principal).toFixed(2)
-      ),
-      budgetImpact: budgetCheck
-    }
+      emi,
+      totalPayable: Number((emi * months).toFixed(2)),
+      totalInterest: Number((emi * months - principal).toFixed(2)),
+      budgetImpact,
+    },
   });
 });
 
-// ✅ Create EMI as recurring transaction
+// 🔹 Route: Create EMI as recurring transaction
 router.post("/create", authMiddleware, async (req, res) => {
-  const {
-    principal,
-    annualRate,
-    months,
-    category = "EMI",
-    name = "Loan EMI"
-  } = req.body;
+  const { principal, annualRate, months, category = "EMI", name = "Loan EMI" } = req.body;
 
   if (principal <= 0 || annualRate <= 0 || months <= 0) {
     return res.status(400).json({ success: false, message: "Invalid input" });
   }
 
-  // 1️⃣ Calculate EMI
-  const r = annualRate / (12 * 100);
-  const emi =
-    (principal * r * Math.pow(1 + r, months)) /
-    (Math.pow(1 + r, months) - 1);
+  const principalPaise = BigInt(Math.round(principal * 100));
 
-  const emiAmount = Number(emi.toFixed(2));
-
-  // 2️⃣ Budget affordability check
-  const affordability = await checkEmIAffordability({
+  const budgetImpact = await checkEmIAffordability({
     userId: req.user.userId,
-    emiAmount,
-    category
+    principalPaise,
+    annualRate,
+    months,
+    category,
   });
 
-  if (!affordability.affordable) {
+  if (!budgetImpact.affordable) {
     return res.status(400).json({
       success: false,
       message: "EMI exceeds your budget",
-      data: affordability
+      data: budgetImpact,
     });
   }
 
-  // 3️⃣ Create recurring EMI transaction (MASTER)
+  const emi = calculateEmi(principal, annualRate, months);
+
   const emiTransaction = new Transaction({
     name,
-    price: -emiAmount,                 // ❗ expense
+    price: -emi, // expense
     description: `EMI for loan (${months} months @ ${annualRate}%)`,
     datetime: new Date(),
     category,
     userId: req.user.userId,
-
     isRecurring: true,
     recurringFrequency: "Monthly",
     lastGeneratedAt: null,
-
     emiMeta: {
       principal,
       annualRate,
       tenureMonths: months,
-      originalTenure: months
-    }
+      originalTenure: months,
+    },
   });
 
   await emiTransaction.save();
@@ -124,10 +114,10 @@ router.post("/create", authMiddleware, async (req, res) => {
     success: true,
     message: "EMI added as recurring transaction",
     data: {
-      emi: emiAmount,
+      emi,
       transactionId: emiTransaction._id,
-      budgetImpact: affordability
-    }
+      budgetImpact,
+    },
   });
 });
 

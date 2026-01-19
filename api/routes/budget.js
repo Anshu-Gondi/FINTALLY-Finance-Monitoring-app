@@ -4,72 +4,71 @@ const Budget = require("../models/Budget");
 const Transaction = require("../models/Transaction");
 const authMiddleware = require("../middlewares/auth");
 
-// 🟢 Create or Update Budget
+/* ================================
+   CREATE OR UPDATE BUDGET
+================================ */
 router.post("/", authMiddleware, async (req, res) => {
   try {
-    const { amount, category, startDate, endDate, isRecurring } = req.body;
+    const { amount, category = "Overall", startDate, endDate, isRecurring } = req.body;
     const userId = req.user.userId;
 
-    // 🟢 Calculate current spending in that category within the given period
+    const start = startDate ? new Date(startDate) : new Date();
+    const end = endDate ? new Date(endDate) : null;
+
+    /* 🟢 Calculate spent (expenses only, normalized) */
     const matchQuery = {
       userId,
-      ...(category && category !== "Overall" ? { category } : {}),
+      price: { $lt: 0 },
+      ...(category !== "Overall" && { category }),
+      datetime: {
+        $gte: start,
+        ...(end && { $lte: end }),
+      },
     };
 
-    // Add date filter if provided
-    if (startDate || endDate) {
-      matchQuery.datetime = {};
-      if (startDate) matchQuery.datetime.$gte = new Date(startDate);
-      if (endDate) matchQuery.datetime.$lte = new Date(endDate);
-    }
-
-    const totalSpentResult = await Transaction.aggregate([
+    const spentAgg = await Transaction.aggregate([
       { $match: matchQuery },
-      { $group: { _id: null, total: { $sum: "$price" } } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: { $abs: "$price" } },
+        },
+      },
     ]);
 
-    const spent = totalSpentResult[0]?.total || 0;
+    const spent = spentAgg[0]?.total || 0;
 
-    // 🟠 Check if a budget already exists for the same category & active period
+    /* 🟠 Prevent overlapping budgets */
     const existing = await Budget.findOne({
       userId,
       category,
-      endDate: { $gte: new Date() },
+      startDate: { $lte: end || new Date() },
+      $or: [{ endDate: null }, { endDate: { $gte: start } }],
     });
 
     if (existing) {
       existing.amount = amount;
-      existing.startDate = startDate;
-      existing.endDate = endDate;
+      existing.startDate = start;
+      existing.endDate = end;
       existing.isRecurring = isRecurring;
-      existing.spent = spent; // 🔄 Update spent when modifying existing
+      existing.spent = spent;
       await existing.save();
+
       return res.json({ success: true, data: existing });
     }
 
-    // 🟣 Create new budget
+    /* 🟣 Create new budget */
     const budget = new Budget({
       userId,
       amount,
       category,
-      startDate,
-      endDate,
+      startDate: start,
+      endDate: end,
       isRecurring,
-      spent, // 🔄 Set calculated spending
+      spent,
     });
+
     await budget.save();
-
-    // ✅ Optional: also update future transactions automatically to sync
-    await Budget.updateOne(
-      {
-        userId,
-        category: category || "Overall",
-        startDate: { $lte: new Date() },
-        $or: [{ endDate: null }, { endDate: { $gte: new Date() } }],
-      },
-      { $set: { spent } }
-    );
-
     res.json({ success: true, data: budget });
   } catch (error) {
     console.error("Budget creation error:", error);
@@ -77,10 +76,14 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-// 🟠 Get Budgets for User
+/* ================================
+   GET USER BUDGETS
+================================ */
 router.get("/", authMiddleware, async (req, res) => {
   try {
-    const budgets = await Budget.find({ userId: req.user.userId }).sort({ createdAt: -1 });
+    const budgets = await Budget.find({ userId: req.user.userId })
+      .sort({ createdAt: -1 });
+
     res.json({ success: true, data: budgets });
   } catch (error) {
     console.error("Error fetching budgets:", error);
@@ -88,35 +91,53 @@ router.get("/", authMiddleware, async (req, res) => {
   }
 });
 
-// 🔵 Get Budget Summary (with current spending)
+/* ================================
+   BUDGET SUMMARY (SINGLE AGG)
+================================ */
 router.get("/summary", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
+    const now = new Date();
+
     const budgets = await Budget.find({ userId });
 
-    const summaries = [];
-
-    for (const b of budgets) {
-      const spent = await Transaction.aggregate([
-        {
-          $match: {
-            userId: b.userId,
-            category: b.category === "Overall" ? { $exists: true } : b.category,
-            datetime: { $gte: b.startDate, $lte: b.endDate || new Date() },
-          },
+    /* 🔥 Aggregate expenses ONCE */
+    const expenses = await Transaction.aggregate([
+      {
+        $match: {
+          userId,
+          price: { $lt: 0 },
         },
-        { $group: { _id: null, total: { $sum: "$price" } } },
-      ]);
+      },
+      {
+        $group: {
+          _id: "$category",
+          total: { $sum: { $abs: "$price" } },
+        },
+      },
+    ]);
 
-      const totalSpent = spent[0]?.total || 0;
-      summaries.push({
+    const expenseMap = {};
+    for (const e of expenses) {
+      expenseMap[e._id] = e.total;
+    }
+
+    const summaries = budgets.map((b) => {
+      const spent =
+        b.category === "Overall"
+          ? Object.values(expenseMap).reduce((a, b) => a + b, 0)
+          : expenseMap[b.category] || 0;
+
+      return {
         category: b.category,
         budget: b.amount,
-        spent: totalSpent,
-        remaining: b.amount - totalSpent,
-        period: `${new Date(b.startDate).toLocaleDateString()} - ${b.endDate ? new Date(b.endDate).toLocaleDateString() : "Ongoing"}`,
-      });
-    }
+        spent,
+        remaining: Math.max(b.amount - spent, 0),
+        period: `${new Date(b.startDate).toLocaleDateString()} - ${
+          b.endDate ? new Date(b.endDate).toLocaleDateString() : "Ongoing"
+        }`,
+      };
+    });
 
     res.json({ success: true, data: summaries });
   } catch (error) {
@@ -125,10 +146,16 @@ router.get("/summary", authMiddleware, async (req, res) => {
   }
 });
 
-// 🔴 Delete Budget
+/* ================================
+   DELETE BUDGET
+================================ */
 router.delete("/:id", authMiddleware, async (req, res) => {
   try {
-    await Budget.findOneAndDelete({ _id: req.params.id, userId: req.user.userId });
+    await Budget.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.user.userId,
+    });
+
     res.json({ success: true, message: "Budget deleted successfully" });
   } catch (error) {
     console.error("Error deleting budget:", error);

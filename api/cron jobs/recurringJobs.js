@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const Transaction = require("../models/Transaction");
 
+// Helper to get week key
 function getWeekKey(date) {
   const d = new Date(date);
   const oneJan = new Date(d.getFullYear(), 0, 1);
@@ -8,14 +9,12 @@ function getWeekKey(date) {
   return `${d.getFullYear()}-W${week}`;
 }
 
+// Check if a new period has started
 function isNewPeriod(frequency, lastGeneratedAt, now) {
   if (!lastGeneratedAt) return true;
 
   if (frequency === "daily") {
-    return (
-      lastGeneratedAt.toISOString().split("T")[0] !==
-      now.toISOString().split("T")[0]
-    );
+    return lastGeneratedAt.toISOString().split("T")[0] !== now.toISOString().split("T")[0];
   }
 
   if (frequency === "weekly") {
@@ -23,99 +22,89 @@ function isNewPeriod(frequency, lastGeneratedAt, now) {
   }
 
   if (frequency === "monthly") {
-    const lastMonth = `${lastGeneratedAt.getFullYear()}-${lastGeneratedAt.getMonth()}`;
-    const thisMonth = `${now.getFullYear()}-${now.getMonth()}`;
-    return lastMonth !== thisMonth;
+    return lastGeneratedAt.getFullYear() !== now.getFullYear() || lastGeneratedAt.getMonth() !== now.getMonth();
   }
 
   return false;
 }
 
+// 🔹 Optimized Recurring Transaction Generator
 const generateRecurringTransactions = async () => {
   try {
+    const now = new Date();
+
+    // Only fetch transactions that are recurring AND are active (not finished)
     const recurringTxns = await Transaction.find({
       isRecurring: true,
       recurringFrequency: { $ne: null },
-    });
+      $or: [
+        { "emiMeta.tenureMonths": { $gt: 0 } },
+        { emiMeta: { $exists: false } } // Non-EMI recurring transactions
+      ]
+    }).lean(); // Use lean for faster read-only query
 
-    const now = new Date();
+    if (!recurringTxns.length) return;
+
+    // Batch insert new transactions instead of one by one
+    const toInsert = [];
+    const toUpdate = [];
 
     for (const tx of recurringTxns) {
       const frequency = tx.recurringFrequency?.toLowerCase();
       const lastGenerated = tx.lastGeneratedAt || tx.datetime;
 
-      // 🛑 Auto-stop EMI if tenure completed
-      if (
-        tx.emiMeta &&
-        tx.recurringFrequency?.toLowerCase() === "monthly" &&
-        typeof tx.emiMeta.tenureMonths === "number" &&
-        tx.emiMeta.tenureMonths <= 0
-      ) {
-        tx.isRecurring = false;
-        tx.recurringFrequency = null;
-        await tx.save();
-
-        console.log(`🛑 EMI completed for user ${tx.userId}`);
-        continue;
-      }
-
       if (!frequency) continue;
 
       const shouldGenerate = isNewPeriod(frequency, lastGenerated, now);
 
-      if (shouldGenerate) {
-        const newTx = new Transaction({
-          name: tx.name,
-          price: tx.price,
-          description: tx.description,
-          datetime: now,
-          category: tx.category,
-          isRecurring: false,
-          recurringFrequency: null,
-          userId: tx.userId,
-          lastGeneratedAt: null,
-        });
+      if (!shouldGenerate) continue;
 
-        await newTx.save();
+      // Create new transaction object
+      const newTx = {
+        name: tx.name,
+        price: tx.price,
+        description: tx.description,
+        datetime: now,
+        category: tx.category,
+        userId: tx.userId,
+        isRecurring: false,
+        recurringFrequency: null,
+        lastGeneratedAt: null,
+      };
+      toInsert.push(newTx);
 
-        // ⬇️ EMI tenure decrement
-        if (
-          tx.emiMeta &&
-          tx.recurringFrequency?.toLowerCase() === "monthly" &&
-          typeof tx.emiMeta.tenureMonths === "number"
-        ) {
-          tx.emiMeta.tenureMonths -= 1;
+      // Update original recurring transaction
+      const updatedTx = { _id: tx._id, lastGeneratedAt: now };
+
+      if (tx.emiMeta?.tenureMonths != null) {
+        updatedTx["emiMeta.tenureMonths"] = Math.max(tx.emiMeta.tenureMonths - 1, 0);
+        if (updatedTx["emiMeta.tenureMonths"] === 0) {
+          updatedTx.isRecurring = false;
+          updatedTx.recurringFrequency = null;
         }
-
-        tx.lastGeneratedAt = now;
-
-        // 🛑 Auto-disable EMI if finished
-        if (tx.emiMeta && tx.emiMeta.tenureMonths === 0) {
-          tx.isRecurring = false;
-          tx.recurringFrequency = null;
-        }
-
-        if (tx.emiMeta?.tenureMonths < 0) {
-          tx.emiMeta.tenureMonths = 0;
-        }
-
-        await tx.save();
-
-        console.log(
-          `✅ Recurring ${frequency} transaction added for user ${tx.userId}`,
-        );
       }
+
+      toUpdate.push(updatedTx);
     }
+
+    // 🔹 Bulk insert
+    if (toInsert.length) {
+      await Transaction.insertMany(toInsert);
+      console.log(`✅ ${toInsert.length} recurring transactions created`);
+    }
+
+    // 🔹 Bulk update
+    for (const tx of toUpdate) {
+      await Transaction.updateOne({ _id: tx._id }, { $set: tx });
+    }
+
   } catch (error) {
-    console.error(
-      "❌ Error in recurring transactions cron job:",
-      error.message,
-    );
+    console.error("❌ Error in recurring transactions cron job:", error.message);
   }
 };
 
-// Run every minute
-cron.schedule("* * * * *", () => {
+// Run every 5 minutes (or choose your frequency)
+cron.schedule("*/5 * * * *", () => {
   generateRecurringTransactions();
 });
 
