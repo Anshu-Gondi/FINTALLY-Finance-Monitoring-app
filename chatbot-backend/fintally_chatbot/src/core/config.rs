@@ -602,3 +602,116 @@ impl LoanPolicy {
         }
     }
 }
+
+/*
+    Configuration of Math side parts like stats and  similarity calculations are in src/core/math/ 
+ */
+
+// Stats Side Profiles
+impl StatProfile {
+    pub fn young_professional() -> Self {
+        Self {
+            metrics: vec![
+                // Health
+                StatMetric {
+                    name: "BMI".into(),
+                    category: StatCategory::Health,
+                    value: 0.0,
+                    target: Some(22.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.2,
+                },
+                StatMetric {
+                    name: "Resting Heart Rate".into(),
+                    category: StatCategory::Health,
+                    value: 0.0,
+                    target: Some(70.0),
+                    measurement: MeasurementType::Integer,
+                    weight: 0.1,
+                },
+                StatMetric {
+                    name: "Sleep Hours".into(),
+                    category: StatCategory::Health,
+                    value: 0.0,
+                    target: Some(8.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                },
+                // Finance
+                StatMetric {
+                    name: "Net Worth".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: None,
+                    measurement: MeasurementType::Float,
+                    weight: 0.3,
+                },
+                StatMetric {
+                    name: "Emergency Fund".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: None,
+                    measurement: MeasurementType::Float,
+                    weight: 0.2,
+                },
+                // Productivity
+                StatMetric {
+                    name: "Focus Hours".into(),
+                    category: StatCategory::Productivity,
+                    value: 0.0,
+                    target: Some(6.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                },
+            ],
+        }
+    }
+
+    pub fn family_with_dependents() -> Self {
+        Self {
+            metrics: vec![
+                StatMetric {
+                    name: "BMI".into(),
+                    category: StatCategory::Health,
+                    value: 0.0,
+                    target: Some(24.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.15,
+                },
+                StatMetric {
+                    name: "Debt-to-Income Ratio".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(35.0),
+                    measurement: MeasurementType::Percentage,
+                    weight: 0.25,
+                },
+                StatMetric {
+                    name: "Retirement Savings".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: None,
+                    measurement: MeasurementType::Float,
+                    weight: 0.2,
+                },
+                StatMetric {
+                    name: "Childcare Hours".into(),
+                    category: StatCategory::Lifestyle,
+                    value: 0.0,
+                    target: None,
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                },
+                StatMetric {
+                    name: "Focus Hours".into(),
+                    category: StatCategory::Productivity,
+                    value: 0.0,
+                    target: Some(5.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                },
+            ],
+        }
+    }
+}
+

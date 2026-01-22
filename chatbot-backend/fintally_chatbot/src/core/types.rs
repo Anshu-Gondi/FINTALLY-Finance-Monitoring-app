@@ -200,3 +200,67 @@ pub struct LoanPolicy {
     pub allow_business_loans: bool,
     pub allow_personal_loans: bool,
 }
+
+// Stats and Measurements Related Types and Enums
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StatCategory {
+    Health,
+    Finance,
+    Productivity,
+    Lifestyle,
+}
+
+#[derive(Debug, Clone)]
+pub enum MeasurementType {
+    Integer,
+    Float,
+    Percentage,
+    Score, // e.g., 300-850 credit score
+}
+
+#[derive(Debug, Clone)]
+pub struct StatMetric {
+    pub name: String,               // e.g., "BMI", "Net Worth", "Sleep Quality"
+    pub category: StatCategory,
+    pub value: f64,
+    pub target: Option<f64>,        // optional ideal value
+    pub measurement: MeasurementType,
+    pub weight: f64,                // relative importance (0-1)
+    pub history: Vec<f64>, // store past metrics for trend analysis
+}
+
+#[derive(Debug, Clone)]
+pub struct StatProfile {
+    pub metrics: Vec<StatMetric>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AlertLevel {
+    Info,
+    Warning,
+    Critical,
+}
+
+#[derive(Debug, Clone)]
+pub struct StatAlert {
+    pub metric_name: String,
+    pub category: StatCategory,
+    pub message: String,
+    pub level: AlertLevel,
+}
+
+// Similarity Calculation Related Types and Enums
+
+#[derive(Debug, Clone)]
+pub enum SimilarityMetric {
+    Euclidean,
+    Cosine,
+    Pearson,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserProfileVector {
+    pub user_id: String,
+    pub metrics: Vec<f64>, // flattened vector of metrics
+}
