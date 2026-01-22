@@ -1,0 +1,202 @@
+// src/core/types.rs
+
+/* Types and Enums for Financial Planning 
+    includes Files: savings.rs, budgeting.rs, cashflow.rs, investments.rs, emi.rs, loans.rs, tax.rs
+    Includes:
+    - Savings and Finance Related Types and Enums
+    - Budgeting Related Types and Enums
+    - Cashflow Related Types and Enums
+    - Investment Related Types and Enums
+    - Taxation Related Types and Enums
+*/
+
+// Savings and Finance Related Types and Enums
+
+#[derive(Debug, Clone)]
+pub struct EmergencyFundPolicy {
+    pub months: f64,
+    pub expense_multiplier: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct SavingsPolicy {
+    pub monthly_contribution: f64,
+    pub annual_growth_rate: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct FinanceProfile {
+    pub emergency_fund: EmergencyFundPolicy,
+    pub savings: SavingsPolicy,
+}
+
+// Budgeting Related Types and Enums
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BudgetCategory {
+    Housing,
+    Utilities,
+    Food,
+    Transportation,
+    Healthcare,
+    Insurance,
+    Childcare,
+    Education,
+    DebtRepayment,
+    Savings,
+    EmergencyFund,
+    Investments,
+    Lifestyle,
+    Miscellaneous,
+}
+
+#[derive(Debug, Clone)]
+pub struct BudgetRule {
+    pub category: BudgetCategory,
+    pub min_percent: f64, // minimum % of income
+    pub max_percent: f64, // cap
+    pub priority: u8,     // higher = funded first
+}
+
+#[derive(Debug, Clone)]
+pub struct BudgetProfile {
+    pub rules: Vec<BudgetRule>,
+}
+
+// Cashflow Related Types and Enums
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CashflowBucket {
+    Essentials,
+    FinancialStability,
+    Lifestyle,
+}
+
+#[derive(Debug, Clone)]
+pub struct CashflowRule {
+    pub bucket: CashflowBucket,
+    pub min_percent: f64,
+    pub max_percent: f64,
+    pub priority: u8,
+}
+
+#[derive(Debug, Clone)]
+pub struct CashflowProfile {
+    pub rules: Vec<CashflowRule>,
+}
+
+// Investment Related Types and Enums
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LifeStage {
+    YoungProfessional,
+    GrowingFamily,
+    MatureSaver,
+    Retiree,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RiskTolerance {
+    Low,
+    Moderate,
+    High,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InvestmentGoal {
+    EmergencyBuffer,
+    Retirement,
+    ChildEducation,
+    HomePurchase,
+    WealthGrowth,
+    IncomeGeneration,
+    HealthcareContingency,
+    LegacyPlanning,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AssetClass {
+    Equity,
+    Debt,
+    Hybrid,
+    RealAssets,
+    Cash,
+}
+
+#[derive(Debug, Clone)]
+pub struct AssetAllocation {
+    pub asset: AssetClass,
+    pub percent: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct InvestmentRule {
+    pub goal: InvestmentGoal,
+    pub min_percent: f64,
+    pub max_percent: f64,
+    pub priority: u8,
+    pub allocation: Vec<AssetAllocation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct InvestmentProfile {
+    pub life_stage: LifeStage,
+    pub risk_tolerance: RiskTolerance,
+    pub rules: Vec<InvestmentRule>,
+}
+
+// Taxation Related Types and Enums
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TaxDomain {
+    Income,
+    CapitalGains,
+    Insurance,
+    Healthcare,
+    Funeral,
+    Custom(String), // user-defined
+}
+
+#[derive(Debug, Clone)]
+pub enum TaxBase {
+    FlatAmount(f64),
+    PercentageOfIncome,
+    PercentageOfAmount,
+}
+
+#[derive(Debug, Clone)]
+pub struct TaxRule {
+    pub domain: TaxDomain,
+    pub rate_percent: f64,   // user supplied
+    pub base: TaxBase,
+    pub priority: u8,        // order of application
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct TaxProfile {
+    pub rules: Vec<TaxRule>,
+}
+
+// Emi and Loans Related Types and Enums
+
+#[derive(Debug, Clone)]
+pub enum IncomeType {
+    Salaried,
+    SelfEmployed,
+    Variable,
+}
+
+#[derive(Debug, Clone)]
+pub struct EmiPolicy {
+    pub max_emi_percent: f64,   // % of monthly income
+    pub min_surplus_percent: f64, // income left after EMI
+    pub income_type: IncomeType,
+    pub joint_borrowers: bool,
+}
+
+pub struct LoanPolicy {
+    pub emi_policy: EmiPolicy,
+    pub allow_business_loans: bool,
+    pub allow_personal_loans: bool,
+}
