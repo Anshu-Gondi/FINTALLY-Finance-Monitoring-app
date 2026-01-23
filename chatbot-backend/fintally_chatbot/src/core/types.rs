@@ -234,7 +234,7 @@ pub struct LoanAssessment {
     pub reason: String,
 }
 
-// Stats and Measurements Related Types and Enums
+// Stats, Alerts and Measurements Related Types and Enums
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum StatCategory {
@@ -266,6 +266,7 @@ pub struct StatMetric {
 #[derive(Debug, Clone)]
 pub struct StatProfile {
     pub metrics: Vec<StatMetric>,
+    pub alert_policy: AlertPolicy,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -283,6 +284,13 @@ pub struct StatAlert {
     pub level: AlertLevel,
 }
 
+#[derive(Debug, Clone)]
+pub struct AlertPolicy {
+    pub target_warning_percent: f64,
+    pub target_critical_percent: f64,
+    pub trend_warning_percent: f64,
+}
+
 // Similarity Calculation Related Types and Enums
 
 #[derive(Debug, Clone)]
@@ -296,4 +304,28 @@ pub enum SimilarityMetric {
 pub struct UserProfileVector {
     pub user_id: String,
     pub metrics: Vec<f64>, // flattened vector of metrics
+}
+
+/*
+    Utils Types and Enums
+    includes Files: logging.rs, errors.rs
+*/
+
+// Core error type for the application
+#[derive(Debug)]
+pub enum AppError {
+    InvalidInput(String),
+    CalculationError(String),
+    ProfileNotFound(String),
+    AllocationError(String),
+    ExternalServiceError(String), // placeholder if you ever integrate APIs
+    Other(String),
+}
+
+// Logging Related Types and Enums
+#[derive(Debug)]
+pub enum LogLevel {
+    Info,
+    Warn,
+    Error,
 }

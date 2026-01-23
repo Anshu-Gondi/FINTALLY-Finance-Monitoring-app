@@ -207,4 +207,15 @@ mod tests {
 
         assert_eq!(sum(&result), income);
     }
+
+    #[test]
+    fn never_allocates_more_than_income() {
+        let profile = CashflowProfile::young_professional();
+        let income = 123_456.78;
+
+        let result = generate_cashflow(income, &profile);
+        let total: f64 = result.values().sum();
+
+        assert!(total <= income + 1e-6);
+    }
 }

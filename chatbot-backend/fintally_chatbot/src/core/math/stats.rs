@@ -29,60 +29,56 @@ pub fn compute_stat_scores(profile: &StatProfile) -> HashMap<StatCategory, f64> 
 /// Generate alerts based on current value vs target & trends
 /// Generate alerts based on current value vs target & trends
 pub fn generate_alerts(profile: &StatProfile) -> Vec<StatAlert> {
+    let policy = &profile.alert_policy;
     let mut alerts = Vec::new();
 
     for metric in &profile.metrics {
-        // 1️⃣ Target-based alerts, only if target exists
+        // 1️⃣ Target-based alerts
         if let Some(target) = metric.target {
-            let diff_percent = ((metric.value - target) / target).abs() * 100.0;
-            let level = if diff_percent > 20.0 {
-                AlertLevel::Critical
-            } else if diff_percent > 10.0 {
-                AlertLevel::Warning
-            } else {
-                AlertLevel::Info
-            };
+            if target > 0.0 {
+                let diff_percent = ((metric.value - target) / target).abs() * 100.0;
 
-            if level != AlertLevel::Info {
-                alerts.push(StatAlert {
-                    metric_name: metric.name.clone(),
-                    category: metric.category.clone(),
-                    message: format!(
-                        "{} is {:.1}% away from target {:.1}",
-                        metric.name, diff_percent, target
-                    ),
-                    level,
-                });
+                let level = if diff_percent >= policy.target_critical_percent {
+                    AlertLevel::Critical
+                } else if diff_percent >= policy.target_warning_percent {
+                    AlertLevel::Warning
+                } else {
+                    AlertLevel::Info
+                };
+
+                if level != AlertLevel::Info {
+                    alerts.push(StatAlert {
+                        metric_name: metric.name.clone(),
+                        category: metric.category.clone(),
+                        message: format!(
+                            "{} is {:.1}% away from target {:.1}",
+                            metric.name, diff_percent, target
+                        ),
+                        level,
+                    });
+                }
             }
         }
 
-        // 2️⃣ Trend-based alerts (always check if history exists)
+        // 2️⃣ Trend-based alerts
         if metric.history.len() >= 2 {
             let last = metric.history[metric.history.len() - 1];
             let prev = metric.history[metric.history.len() - 2];
 
-            // Avoid division by zero
             let change_percent = if prev.abs() > 0.0 {
                 ((last - prev) / prev.abs()).abs() * 100.0
             } else {
-                100.0 // max warning if previous was zero
+                100.0
             };
 
-            if change_percent > 15.0 {
+            if change_percent >= policy.trend_warning_percent {
                 alerts.push(StatAlert {
                     metric_name: metric.name.clone(),
                     category: metric.category.clone(),
-                    message: if let Some(target) = metric.target {
-                        format!(
-                            "{} changed by {:.1}% from last measurement (target {:.1})",
-                            metric.name, change_percent, target
-                        )
-                    } else {
-                        format!(
-                            "{} changed by {:.1}% from last measurement",
-                            metric.name, change_percent
-                        )
-                    },
+                    message: format!(
+                        "{} changed by {:.1}% from last measurement",
+                        metric.name, change_percent
+                    ),
                     level: AlertLevel::Warning,
                 });
             }
@@ -94,7 +90,7 @@ pub fn generate_alerts(profile: &StatProfile) -> Vec<StatAlert> {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::math::stats::{compute_stat_scores, generate_alerts};
+    use crate::core::math::stats::compute_stat_scores;
     use crate::core::types::*;
 
     #[test]
@@ -133,27 +129,25 @@ mod tests {
     fn test_alerts_generation() {
         let mut profile = StatProfile::young_professional();
 
-        // Simulate metric values and history
         profile
             .metrics
             .iter_mut()
             .for_each(|m| match m.name.as_str() {
                 "BMI" => {
                     m.value = 30.0;
-                    m.history = vec![23.0, 25.0, 30.0]; // >20% away from target -> Critical
+                    m.history = vec![23.0, 25.0, 30.0];
                 }
                 "Sleep Hours" => {
                     m.value = 6.0;
-                    m.history = vec![8.0, 7.5, 6.0]; // 25% change -> Warning
+                    m.history = vec![8.0, 7.5, 6.0];
                 }
                 "Net Worth" => {
                     m.value = 40_000.0;
-                    m.history = vec![50_000.0, 45_000.0, 40_000.0]; // 11% change -> Warning
+                    m.history = vec![50_000.0, 45_000.0, 40_000.0];
                 }
-                _ => (),
+                _ => {}
             });
 
-        // Add a Custom Metric to specifically test trend-based warning
         profile.metrics.push(StatMetric {
             name: "Custom Metric".into(),
             category: StatCategory::Finance,
@@ -161,22 +155,24 @@ mod tests {
             target: None,
             measurement: MeasurementType::Float,
             weight: 0.1,
-            history: vec![400.0, 450.0, 600.0], // last change: 600-450=150 -> 33.3%
+            history: vec![400.0, 450.0, 600.0],
         });
 
-        let alerts = generate_alerts(&profile);
+        let alerts = profile.generate_alerts();
 
-        // Check target-based alerts
         assert!(alerts
             .iter()
             .any(|a| a.metric_name == "BMI" && a.level == AlertLevel::Critical));
         assert!(alerts.iter().any(|a| a.metric_name == "Sleep Hours"));
         assert!(alerts.iter().any(|a| a.metric_name == "Net Worth"));
 
-        // Check trend-based alert for Custom Metric
-        assert!(alerts
+        let custom_alerts: Vec<_> = alerts
             .iter()
-            .any(|a| a.metric_name == "Custom Metric" && a.level == AlertLevel::Warning));
+            .filter(|a| a.metric_name == "Custom Metric")
+            .collect();
+
+        assert!(!custom_alerts.is_empty());
+        assert!(custom_alerts.iter().any(|a| a.level == AlertLevel::Warning));
     }
 
     #[test]

@@ -1,10 +1,7 @@
 use crate::core::types::*;
 use std::collections::HashMap;
 
-pub fn calculate_tax(
-    amount: f64,
-    profile: &TaxProfile,
-) -> HashMap<TaxDomain, f64> {
+pub fn calculate_tax(amount: f64, profile: &TaxProfile) -> HashMap<TaxDomain, f64> {
     let mut result = HashMap::new();
 
     if amount <= 0.0 {
@@ -25,7 +22,7 @@ pub fn calculate_tax(
             TaxBase::PercentageOfAmount => amount * rule.rate_percent / 100.0,
         };
 
-        result.insert(rule.domain.clone(), tax);
+        *result.entry(rule.domain.clone()).or_insert(0.0) += tax;
     }
 
     result
@@ -42,9 +39,7 @@ mod tests {
 
     #[test]
     fn zero_income_returns_empty() {
-        let profile = TaxProfile {
-            rules: vec![],
-        };
+        let profile = TaxProfile { rules: vec![] };
 
         let taxes = calculate_tax(0.0, &profile);
         assert!(taxes.is_empty());
@@ -53,45 +48,35 @@ mod tests {
     #[test]
     fn single_income_tax_percentage() {
         let profile = TaxProfile {
-            rules: vec![
-                TaxRule {
-                    domain: TaxDomain::Income,
-                    rate_percent: 10.0,
-                    base: TaxBase::PercentageOfIncome,
-                    priority: 10,
-                    enabled: true,
-                }
-            ],
+            rules: vec![TaxRule {
+                domain: TaxDomain::Income,
+                rate_percent: 10.0,
+                base: TaxBase::PercentageOfIncome,
+                priority: 10,
+                enabled: true,
+            }],
         };
 
         let taxes = calculate_tax(100_000.0, &profile);
 
-        assert!(approx_eq(
-            *taxes.get(&TaxDomain::Income).unwrap(),
-            10_000.0
-        ));
+        assert!(approx_eq(*taxes.get(&TaxDomain::Income).unwrap(), 10_000.0));
     }
 
     #[test]
     fn flat_amount_tax() {
         let profile = TaxProfile {
-            rules: vec![
-                TaxRule {
-                    domain: TaxDomain::Funeral,
-                    rate_percent: 0.0,
-                    base: TaxBase::FlatAmount(5_000.0),
-                    priority: 5,
-                    enabled: true,
-                }
-            ],
+            rules: vec![TaxRule {
+                domain: TaxDomain::Funeral,
+                rate_percent: 0.0,
+                base: TaxBase::FlatAmount(5_000.0),
+                priority: 5,
+                enabled: true,
+            }],
         };
 
         let taxes = calculate_tax(50_000.0, &profile);
 
-        assert!(approx_eq(
-            *taxes.get(&TaxDomain::Funeral).unwrap(),
-            5_000.0
-        ));
+        assert!(approx_eq(*taxes.get(&TaxDomain::Funeral).unwrap(), 5_000.0));
     }
 
     #[test]
@@ -117,10 +102,7 @@ mod tests {
 
         let taxes = calculate_tax(100_000.0, &profile);
 
-        assert!(approx_eq(
-            *taxes.get(&TaxDomain::Income).unwrap(),
-            10_000.0
-        ));
+        assert!(approx_eq(*taxes.get(&TaxDomain::Income).unwrap(), 10_000.0));
         assert!(approx_eq(
             *taxes.get(&TaxDomain::Insurance).unwrap(),
             5_000.0
@@ -130,15 +112,13 @@ mod tests {
     #[test]
     fn disabled_tax_is_ignored() {
         let profile = TaxProfile {
-            rules: vec![
-                TaxRule {
-                    domain: TaxDomain::Income,
-                    rate_percent: 10.0,
-                    base: TaxBase::PercentageOfIncome,
-                    priority: 10,
-                    enabled: false,
-                }
-            ],
+            rules: vec![TaxRule {
+                domain: TaxDomain::Income,
+                rate_percent: 10.0,
+                base: TaxBase::PercentageOfIncome,
+                priority: 10,
+                enabled: false,
+            }],
         };
 
         let taxes = calculate_tax(100_000.0, &profile);
@@ -148,23 +128,19 @@ mod tests {
     #[test]
     fn custom_tax_domain_supported() {
         let profile = TaxProfile {
-            rules: vec![
-                TaxRule {
-                    domain: TaxDomain::Custom("WealthTax".into()),
-                    rate_percent: 2.0,
-                    base: TaxBase::PercentageOfAmount,
-                    priority: 10,
-                    enabled: true,
-                }
-            ],
+            rules: vec![TaxRule {
+                domain: TaxDomain::Custom("WealthTax".into()),
+                rate_percent: 2.0,
+                base: TaxBase::PercentageOfAmount,
+                priority: 10,
+                enabled: true,
+            }],
         };
 
         let taxes = calculate_tax(1_000_000.0, &profile);
 
         assert!(approx_eq(
-            *taxes
-                .get(&TaxDomain::Custom("WealthTax".into()))
-                .unwrap(),
+            *taxes.get(&TaxDomain::Custom("WealthTax".into())).unwrap(),
             20_000.0
         ));
     }

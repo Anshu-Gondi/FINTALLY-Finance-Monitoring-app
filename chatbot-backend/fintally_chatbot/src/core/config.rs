@@ -3,12 +3,12 @@
 use crate::core::types::*;
 
 /*
-    Default Implementations and Predefined Profiles for finance configurations 
-    includes Files: savings.rs, budgeting.rs, cashflow.rs, investments.rs, emi.rs, loans.rs, tax.rs
-    Includes:
-    - Default trait implementations for policy structs
-    - Predefined profiles for FinanceProfile, BudgetProfile, CashflowProfile, InvestmentProfile, TaxProfile, LoanPolicy, EmiPolicy
- */
+   Default Implementations and Predefined Profiles for finance configurations
+   includes Files: savings.rs, budgeting.rs, cashflow.rs, investments.rs, emi.rs, loans.rs, tax.rs
+   Includes:
+   - Default trait implementations for policy structs
+   - Predefined profiles for FinanceProfile, BudgetProfile, CashflowProfile, InvestmentProfile, TaxProfile, LoanPolicy, EmiPolicy
+*/
 
 // Emergency Fund Policy Default
 
@@ -474,44 +474,42 @@ impl InvestmentProfile {
 impl TaxProfile {
     pub fn simple_income_tax(rate: f64) -> Self {
         Self {
-            rules: vec![
-                TaxRule {
-                    domain: TaxDomain::Income,
-                    rate_percent: rate,
-                    base: TaxBase::PercentageOfIncome,
-                    priority: 10,
-                    enabled: true,
-                },
-            ],
+            rules: vec![TaxRule {
+                domain: TaxDomain::Income,
+                rate_percent: rate,
+                base: TaxBase::PercentageOfIncome,
+                priority: 10,
+                enabled: true,
+            }],
         }
     }
 
     pub fn investment_tax(capital_gains_rate: f64) -> Self {
         Self {
-            rules: vec![
-                TaxRule {
-                    domain: TaxDomain::CapitalGains,
-                    rate_percent: capital_gains_rate,
-                    base: TaxBase::PercentageOfAmount,
-                    priority: 10,
-                    enabled: true,
-                },
-            ],
+            rules: vec![TaxRule {
+                domain: TaxDomain::CapitalGains,
+                rate_percent: capital_gains_rate,
+                base: TaxBase::PercentageOfAmount,
+                priority: 10,
+                enabled: true,
+            }],
         }
     }
 
     pub fn insurance_tax(rate: f64) -> Self {
         Self {
-            rules: vec![
-                TaxRule {
-                    domain: TaxDomain::Insurance,
-                    rate_percent: rate,
-                    base: TaxBase::PercentageOfAmount,
-                    priority: 5,
-                    enabled: true,
-                },
-            ],
+            rules: vec![TaxRule {
+                domain: TaxDomain::Insurance,
+                rate_percent: rate,
+                base: TaxBase::PercentageOfAmount,
+                priority: 5,
+                enabled: true,
+            }],
         }
+    }
+
+    pub fn custom(rules: Vec<TaxRule>) -> Self {
+        Self { rules }
     }
 }
 
@@ -562,6 +560,20 @@ impl EmiPolicy {
             joint_borrowers: true,
         }
     }
+
+    pub fn custom(
+        max_emi_percent: f64,
+        min_surplus_percent: f64,
+        income_type: IncomeType,
+        joint_borrowers: bool,
+    ) -> Self {
+        Self {
+            max_emi_percent,
+            min_surplus_percent,
+            income_type,
+            joint_borrowers,
+        }
+    }
 }
 
 // Loan Policy Default
@@ -606,11 +618,23 @@ impl LoanPolicy {
             allow_personal_loans: true,
         }
     }
+
+    pub fn custom(
+        emi_policy: EmiPolicy,
+        allow_business_loans: bool,
+        allow_personal_loans: bool,
+    ) -> Self {
+        Self {
+            emi_policy,
+            allow_business_loans,
+            allow_personal_loans,
+        }
+    }
 }
 
 /*
-    Configuration of Math side parts like stats and  similarity calculations are in src/core/math/ 
- */
+   Configuration of Math side parts like stats and  similarity calculations are in src/core/math/
+*/
 
 // Stats Side Profiles
 impl StatProfile {
@@ -676,6 +700,7 @@ impl StatProfile {
                     history: vec![],
                 },
             ],
+            alert_policy: AlertPolicy::standard(),
         }
     }
 
@@ -732,6 +757,7 @@ impl StatProfile {
                     history: vec![],
                 },
             ],
+            alert_policy: AlertPolicy::standard(),
         }
     }
 
@@ -788,6 +814,7 @@ impl StatProfile {
                     history: vec![],
                 },
             ],
+            alert_policy: AlertPolicy::relaxed(),
         }
     }
 
@@ -853,6 +880,73 @@ impl StatProfile {
                     history: vec![],
                 },
             ],
+            alert_policy: AlertPolicy::strict(),
+        }
+    }
+    pub fn generate_alerts(&self) -> Vec<StatAlert> {
+        crate::core::math::stats::generate_alerts(self)
+    }
+}
+
+// Alert Policy Default
+
+impl AlertPolicy {
+    /// Default – conservative, general-purpose
+    pub fn standard() -> Self {
+        Self {
+            target_warning_percent: 10.0,
+            target_critical_percent: 20.0,
+            trend_warning_percent: 15.0,
+        }
+    }
+
+    /// More aggressive monitoring (e.g., single parent, health-focused)
+    pub fn strict() -> Self {
+        Self {
+            target_warning_percent: 5.0,
+            target_critical_percent: 15.0,
+            trend_warning_percent: 10.0,
+        }
+    }
+
+    /// Relaxed monitoring (e.g., retiree)
+    pub fn relaxed() -> Self {
+        Self {
+            target_warning_percent: 15.0,
+            target_critical_percent: 30.0,
+            trend_warning_percent: 20.0,
+        }
+    }
+
+    /// Full customization (mirror EMI/Loan)
+    pub fn custom(
+        target_warning_percent: f64,
+        target_critical_percent: f64,
+        trend_warning_percent: f64,
+    ) -> Self {
+        Self {
+            target_warning_percent,
+            target_critical_percent,
+            trend_warning_percent,
         }
     }
 }
+
+/*
+    Utilities related to configuration 
+*/
+
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
+            AppError::CalculationError(msg) => write!(f, "Calculation error: {}", msg),
+            AppError::ProfileNotFound(msg) => write!(f, "Profile not found: {}", msg),
+            AppError::AllocationError(msg) => write!(f, "Allocation error: {}", msg),
+            AppError::ExternalServiceError(msg) => write!(f, "External service error: {}", msg),
+            AppError::Other(msg) => write!(f, "Other error: {}", msg),
+        }
+    }
+}
+
+impl Error for AppError {}
