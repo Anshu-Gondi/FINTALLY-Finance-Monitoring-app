@@ -26,7 +26,7 @@ pub fn savings_projection(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::config::FinanceProfile;
+    use crate::core::types::FinanceProfile;
 
     #[test]
     fn emergency_fund_default_profile() {

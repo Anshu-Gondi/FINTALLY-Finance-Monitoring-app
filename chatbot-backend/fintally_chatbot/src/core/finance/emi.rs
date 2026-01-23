@@ -42,7 +42,7 @@ pub fn is_emi_affordable(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::config::EmiPolicy;
+    use crate::core::types::EmiPolicy;
 
     #[test]
     fn salaried_emi_within_limit() {

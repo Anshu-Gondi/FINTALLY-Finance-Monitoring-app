@@ -1,4 +1,4 @@
-use crate::core::types::{CashflowProfile, CashflowBucket};
+use crate::core::types::{CashflowBucket, CashflowMode, CashflowProfile};
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -8,19 +8,24 @@ struct AllocationState {
     priority: u8,
 }
 
-pub fn generate_cashflow(
+fn fixed_ratio_cashflow(income: f64, profile: &CashflowProfile) -> HashMap<CashflowBucket, f64> {
+    let mut result = HashMap::new();
+
+    for rule in &profile.rules {
+        let amount = income * rule.min_percent / 100.0;
+        result.insert(rule.bucket.clone(), amount);
+    }
+
+    result
+}
+
+fn priority_cashflow(
     monthly_income: f64,
     profile: &CashflowProfile,
 ) -> HashMap<CashflowBucket, f64> {
     let mut result = HashMap::new();
-
-    if monthly_income <= 0.0 {
-        return result;
-    }
-
     let mut remaining = monthly_income;
 
-    // Phase 1: minimum guarantees
     let mut states: Vec<(CashflowBucket, AllocationState)> = profile
         .rules
         .iter()
@@ -28,7 +33,10 @@ pub fn generate_cashflow(
             let min = monthly_income * rule.min_percent / 100.0;
             let max = monthly_income * rule.max_percent / 100.0;
 
-            let allocated = min.min(remaining);
+            // 🔒 enforce invariant: allocation ∈ [0, max]
+            let effective_min = min.min(max);
+
+            let allocated = effective_min.min(remaining);
             remaining -= allocated;
 
             (
@@ -42,23 +50,29 @@ pub fn generate_cashflow(
         })
         .collect();
 
-    // Phase 2: redistribute remaining by priority
     states.sort_by(|a, b| b.1.priority.cmp(&a.1.priority));
 
-    let mut progress = true;
-    while remaining > 0.0 && progress {
-        progress = false;
+    while remaining > 0.0 {
+        let mut progressed = false;
 
         for (_, state) in states.iter_mut() {
             let space = state.max_allowed - state.allocated;
-            if space <= 0.0 || remaining <= 0.0 {
+            if space <= 0.0 {
                 continue;
             }
 
-            let increment = remaining.min(space);
-            state.allocated += increment;
-            remaining -= increment;
-            progress = true;
+            let add = remaining.min(space);
+            state.allocated += add;
+            remaining -= add;
+            progressed = true;
+
+            if remaining <= 0.0 {
+                break;
+            }
+        }
+
+        if !progressed {
+            break;
         }
     }
 
@@ -67,6 +81,20 @@ pub fn generate_cashflow(
     }
 
     result
+}
+
+pub fn generate_cashflow(
+    monthly_income: f64,
+    profile: &CashflowProfile,
+) -> HashMap<CashflowBucket, f64> {
+    if monthly_income <= 0.0 {
+        return HashMap::new();
+    }
+
+    match profile.mode {
+        CashflowMode::FixedRatio => fixed_ratio_cashflow(monthly_income, profile),
+        CashflowMode::PriorityBased => priority_cashflow(monthly_income, profile),
+    }
 }
 
 #[cfg(test)]
@@ -94,18 +122,12 @@ mod tests {
 
         assert_eq!(sum(&result), income);
 
-        assert_eq!(
-            result.get(&CashflowBucket::Essentials).unwrap(),
-            &50_000.0
-        );
+        assert_eq!(result.get(&CashflowBucket::Essentials).unwrap(), &50_000.0);
         assert_eq!(
             result.get(&CashflowBucket::FinancialStability).unwrap(),
             &20_000.0
         );
-        assert_eq!(
-            result.get(&CashflowBucket::Lifestyle).unwrap(),
-            &30_000.0
-        );
+        assert_eq!(result.get(&CashflowBucket::Lifestyle).unwrap(), &30_000.0);
     }
 
     #[test]
@@ -121,15 +143,15 @@ mod tests {
 
         // Max caps enforced
         assert!(*essentials <= 120_000.0); // 60%
-        assert!(*stability <= 60_000.0);   // 30%
-        assert!(*lifestyle <= 60_000.0);   // 30%
+        assert!(*stability <= 60_000.0); // 30%
+        assert!(*lifestyle <= 60_000.0); // 30%
 
         assert_eq!(sum(&result), income);
     }
 
     #[test]
     fn redistributes_leftover_by_priority() {
-        let mut profile = CashflowProfile::fifty_thirty_twenty();
+        let mut profile = CashflowProfile::young_professional(); // 👈 priority-based
 
         // Artificially tighten lifestyle cap
         for rule in profile.rules.iter_mut() {
@@ -145,13 +167,9 @@ mod tests {
         let essentials = result.get(&CashflowBucket::Essentials).unwrap();
         let stability = result.get(&CashflowBucket::FinancialStability).unwrap();
 
-        // Lifestyle capped
         assert_eq!(*lifestyle, 10_000.0);
-
-        // Remaining redistributed to higher priority buckets
-        assert!(*essentials > 50_000.0);
-        assert!(*stability > 20_000.0);
-
+        assert!(*essentials > 45_000.0);
+        assert!(*stability > 25_000.0);
         assert_eq!(sum(&result), income);
     }
 
@@ -166,7 +184,7 @@ mod tests {
         let lifestyle = result.get(&CashflowBucket::Lifestyle).unwrap();
 
         assert!(*essentials >= 30_000.0); // ≥60%
-        assert!(*lifestyle <= 10_000.0);  // ≤20%
+        assert!(*lifestyle <= 10_000.0); // ≤20%
 
         assert_eq!(sum(&result), income);
     }

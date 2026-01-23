@@ -199,34 +199,37 @@ impl BudgetProfile {
 // Cashflow Side Profiles
 
 impl CashflowProfile {
-    /// Classic 50-30-20 rule
+    /// Classic 50-30-20 rule (STRICT, no redistribution)
     pub fn fifty_thirty_twenty() -> Self {
         Self {
+            mode: CashflowMode::FixedRatio,
             rules: vec![
                 CashflowRule {
                     bucket: CashflowBucket::Essentials,
                     min_percent: 50.0,
-                    max_percent: 60.0,
-                    priority: 10,
+                    max_percent: 50.0, // 🔒 fixed
+                    priority: 0,
                 },
                 CashflowRule {
                     bucket: CashflowBucket::FinancialStability,
                     min_percent: 20.0,
-                    max_percent: 30.0,
-                    priority: 9,
+                    max_percent: 20.0,
+                    priority: 0,
                 },
                 CashflowRule {
                     bucket: CashflowBucket::Lifestyle,
-                    min_percent: 20.0,
+                    min_percent: 30.0,
                     max_percent: 30.0,
-                    priority: 5,
+                    priority: 0,
                 },
             ],
         }
     }
 
+    /// Flexible, priority-based
     pub fn student() -> Self {
         Self {
+            mode: CashflowMode::PriorityBased,
             rules: vec![
                 CashflowRule {
                     bucket: CashflowBucket::Essentials,
@@ -252,6 +255,7 @@ impl CashflowProfile {
 
     pub fn family() -> Self {
         Self {
+            mode: CashflowMode::PriorityBased,
             rules: vec![
                 CashflowRule {
                     bucket: CashflowBucket::Essentials,
@@ -277,6 +281,7 @@ impl CashflowProfile {
 
     pub fn young_professional() -> Self {
         Self {
+            mode: CashflowMode::PriorityBased,
             rules: vec![
                 CashflowRule {
                     bucket: CashflowBucket::Essentials,
@@ -609,6 +614,7 @@ impl LoanPolicy {
 
 // Stats Side Profiles
 impl StatProfile {
+    /// Young professional, high-growth focused
     pub fn young_professional() -> Self {
         Self {
             metrics: vec![
@@ -620,6 +626,7 @@ impl StatProfile {
                     target: Some(22.0),
                     measurement: MeasurementType::Float,
                     weight: 0.2,
+                    history: vec![],
                 },
                 StatMetric {
                     name: "Resting Heart Rate".into(),
@@ -628,6 +635,7 @@ impl StatProfile {
                     target: Some(70.0),
                     measurement: MeasurementType::Integer,
                     weight: 0.1,
+                    history: vec![],
                 },
                 StatMetric {
                     name: "Sleep Hours".into(),
@@ -636,23 +644,26 @@ impl StatProfile {
                     target: Some(8.0),
                     measurement: MeasurementType::Float,
                     weight: 0.1,
+                    history: vec![],
                 },
                 // Finance
                 StatMetric {
                     name: "Net Worth".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: None,
+                    target: Some(50_000.0),
                     measurement: MeasurementType::Float,
                     weight: 0.3,
+                    history: vec![],
                 },
                 StatMetric {
                     name: "Emergency Fund".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: None,
+                    target: Some(15_000.0),
                     measurement: MeasurementType::Float,
                     weight: 0.2,
+                    history: vec![],
                 },
                 // Productivity
                 StatMetric {
@@ -662,14 +673,17 @@ impl StatProfile {
                     target: Some(6.0),
                     measurement: MeasurementType::Float,
                     weight: 0.1,
+                    history: vec![],
                 },
             ],
         }
     }
 
+    /// Family with dependents, balanced focus
     pub fn family_with_dependents() -> Self {
         Self {
             metrics: vec![
+                // Health
                 StatMetric {
                     name: "BMI".into(),
                     category: StatCategory::Health,
@@ -677,7 +691,9 @@ impl StatProfile {
                     target: Some(24.0),
                     measurement: MeasurementType::Float,
                     weight: 0.15,
+                    history: vec![],
                 },
+                // Finance
                 StatMetric {
                     name: "Debt-to-Income Ratio".into(),
                     category: StatCategory::Finance,
@@ -685,23 +701,27 @@ impl StatProfile {
                     target: Some(35.0),
                     measurement: MeasurementType::Percentage,
                     weight: 0.25,
+                    history: vec![],
                 },
                 StatMetric {
                     name: "Retirement Savings".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: None,
+                    target: Some(100_000.0),
                     measurement: MeasurementType::Float,
                     weight: 0.2,
+                    history: vec![],
                 },
                 StatMetric {
                     name: "Childcare Hours".into(),
                     category: StatCategory::Lifestyle,
                     value: 0.0,
-                    target: None,
+                    target: Some(40.0), // average weekly childcare target
                     measurement: MeasurementType::Float,
                     weight: 0.1,
+                    history: vec![],
                 },
+                // Productivity
                 StatMetric {
                     name: "Focus Hours".into(),
                     category: StatCategory::Productivity,
@@ -709,9 +729,130 @@ impl StatProfile {
                     target: Some(5.0),
                     measurement: MeasurementType::Float,
                     weight: 0.1,
+                    history: vec![],
+                },
+            ],
+        }
+    }
+
+    /// Retiree, income-focused
+    pub fn retiree_income_focused() -> Self {
+        Self {
+            metrics: vec![
+                // Health
+                StatMetric {
+                    name: "BMI".into(),
+                    category: StatCategory::Health,
+                    value: 0.0,
+                    target: Some(23.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                    history: vec![],
+                },
+                // Finance
+                StatMetric {
+                    name: "Income Generation".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(60_000.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.4,
+                    history: vec![],
+                },
+                StatMetric {
+                    name: "Healthcare Contingency".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(15_000.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.2,
+                    history: vec![],
+                },
+                StatMetric {
+                    name: "Legacy Planning".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(50_000.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                    history: vec![],
+                },
+                // Lifestyle
+                StatMetric {
+                    name: "Leisure Hours".into(),
+                    category: StatCategory::Lifestyle,
+                    value: 0.0,
+                    target: Some(15.0), // weekly hours
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                    history: vec![],
+                },
+            ],
+        }
+    }
+
+    /// Single parent, moderate-risk, highly tracked
+    pub fn single_parent_profile() -> Self {
+        Self {
+            metrics: vec![
+                // Health
+                StatMetric {
+                    name: "BMI".into(),
+                    category: StatCategory::Health,
+                    value: 0.0,
+                    target: Some(23.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.15,
+                    history: vec![],
+                },
+                StatMetric {
+                    name: "Resting Heart Rate".into(),
+                    category: StatCategory::Health,
+                    value: 0.0,
+                    target: Some(72.0),
+                    measurement: MeasurementType::Integer,
+                    weight: 0.1,
+                    history: vec![],
+                },
+                // Finance
+                StatMetric {
+                    name: "Debt-to-Income Ratio".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(30.0),
+                    measurement: MeasurementType::Percentage,
+                    weight: 0.25,
+                    history: vec![],
+                },
+                StatMetric {
+                    name: "Emergency Fund".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(20_000.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.2,
+                    history: vec![],
+                },
+                StatMetric {
+                    name: "Childcare Hours".into(),
+                    category: StatCategory::Lifestyle,
+                    value: 0.0,
+                    target: Some(50.0), // weekly hours covered
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                    history: vec![],
+                },
+                // Productivity
+                StatMetric {
+                    name: "Focus Hours".into(),
+                    category: StatCategory::Productivity,
+                    value: 0.0,
+                    target: Some(4.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.1,
+                    history: vec![],
                 },
             ],
         }
     }
 }
-

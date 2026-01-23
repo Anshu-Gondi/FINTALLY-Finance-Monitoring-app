@@ -14,7 +14,9 @@ pub fn compute_stat_scores(profile: &StatProfile) -> HashMap<StatCategory, f64> 
             metric.weight
         };
 
-        let entry = category_scores.entry(metric.category.clone()).or_insert(0.0);
+        let entry = category_scores
+            .entry(metric.category.clone())
+            .or_insert(0.0);
         *entry += score;
     }
 
@@ -25,11 +27,12 @@ pub fn compute_stat_scores(profile: &StatProfile) -> HashMap<StatCategory, f64> 
 }
 
 /// Generate alerts based on current value vs target & trends
+/// Generate alerts based on current value vs target & trends
 pub fn generate_alerts(profile: &StatProfile) -> Vec<StatAlert> {
     let mut alerts = Vec::new();
 
     for metric in &profile.metrics {
-        // 1️⃣ Target-based alerts
+        // 1️⃣ Target-based alerts, only if target exists
         if let Some(target) = metric.target {
             let diff_percent = ((metric.value - target) / target).abs() * 100.0;
             let level = if diff_percent > 20.0 {
@@ -53,20 +56,33 @@ pub fn generate_alerts(profile: &StatProfile) -> Vec<StatAlert> {
             }
         }
 
-        // 2️⃣ Trend-based alerts (if we have history)
+        // 2️⃣ Trend-based alerts (always check if history exists)
         if metric.history.len() >= 2 {
             let last = metric.history[metric.history.len() - 1];
             let prev = metric.history[metric.history.len() - 2];
-            let change_percent = ((last - prev) / prev.abs()).abs() * 100.0;
+
+            // Avoid division by zero
+            let change_percent = if prev.abs() > 0.0 {
+                ((last - prev) / prev.abs()).abs() * 100.0
+            } else {
+                100.0 // max warning if previous was zero
+            };
 
             if change_percent > 15.0 {
                 alerts.push(StatAlert {
                     metric_name: metric.name.clone(),
                     category: metric.category.clone(),
-                    message: format!(
-                        "{} changed by {:.1}% from last measurement",
-                        metric.name, change_percent
-                    ),
+                    message: if let Some(target) = metric.target {
+                        format!(
+                            "{} changed by {:.1}% from last measurement (target {:.1})",
+                            metric.name, change_percent, target
+                        )
+                    } else {
+                        format!(
+                            "{} changed by {:.1}% from last measurement",
+                            metric.name, change_percent
+                        )
+                    },
                     level: AlertLevel::Warning,
                 });
             }
@@ -78,16 +94,18 @@ pub fn generate_alerts(profile: &StatProfile) -> Vec<StatAlert> {
 
 #[cfg(test)]
 mod tests {
+    use crate::core::math::stats::{compute_stat_scores, generate_alerts};
     use crate::core::types::*;
-    use std::collections::HashMap;
 
     #[test]
     fn test_compute_stat_scores_young_professional() {
         let mut profile = StatProfile::young_professional();
 
         // Simulate metric values
-        profile.metrics.iter_mut().for_each(|m| {
-            match m.name.as_str() {
+        profile
+            .metrics
+            .iter_mut()
+            .for_each(|m| match m.name.as_str() {
                 "BMI" => m.value = 23.0,
                 "Resting Heart Rate" => m.value = 75.0,
                 "Sleep Hours" => m.value = 7.5,
@@ -95,8 +113,7 @@ mod tests {
                 "Emergency Fund" => m.value = 20_000.0,
                 "Focus Hours" => m.value = 5.5,
                 _ => (),
-            }
-        });
+            });
 
         let scores = compute_stat_scores(&profile);
 
@@ -116,20 +133,50 @@ mod tests {
     fn test_alerts_generation() {
         let mut profile = StatProfile::young_professional();
 
-        profile.metrics.iter_mut().for_each(|m| {
-            match m.name.as_str() {
-                "BMI" => { m.value = 30.0; m.history = vec![23.0, 25.0, 30.0]; },
-                "Sleep Hours" => { m.value = 6.0; m.history = vec![8.0, 7.5, 6.0]; },
-                "Net Worth" => { m.value = 40_000.0; m.history = vec![50_000.0, 45_000.0, 40_000.0]; },
+        // Simulate metric values and history
+        profile
+            .metrics
+            .iter_mut()
+            .for_each(|m| match m.name.as_str() {
+                "BMI" => {
+                    m.value = 30.0;
+                    m.history = vec![23.0, 25.0, 30.0]; // >20% away from target -> Critical
+                }
+                "Sleep Hours" => {
+                    m.value = 6.0;
+                    m.history = vec![8.0, 7.5, 6.0]; // 25% change -> Warning
+                }
+                "Net Worth" => {
+                    m.value = 40_000.0;
+                    m.history = vec![50_000.0, 45_000.0, 40_000.0]; // 11% change -> Warning
+                }
                 _ => (),
-            }
+            });
+
+        // Add a Custom Metric to specifically test trend-based warning
+        profile.metrics.push(StatMetric {
+            name: "Custom Metric".into(),
+            category: StatCategory::Finance,
+            value: 600.0,
+            target: None,
+            measurement: MeasurementType::Float,
+            weight: 0.1,
+            history: vec![400.0, 450.0, 600.0], // last change: 600-450=150 -> 33.3%
         });
 
         let alerts = generate_alerts(&profile);
 
-        assert!(alerts.iter().any(|a| a.metric_name == "BMI" && a.level == AlertLevel::Critical));
+        // Check target-based alerts
+        assert!(alerts
+            .iter()
+            .any(|a| a.metric_name == "BMI" && a.level == AlertLevel::Critical));
         assert!(alerts.iter().any(|a| a.metric_name == "Sleep Hours"));
         assert!(alerts.iter().any(|a| a.metric_name == "Net Worth"));
+
+        // Check trend-based alert for Custom Metric
+        assert!(alerts
+            .iter()
+            .any(|a| a.metric_name == "Custom Metric" && a.level == AlertLevel::Warning));
     }
 
     #[test]

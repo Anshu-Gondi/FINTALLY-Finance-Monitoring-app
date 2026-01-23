@@ -81,8 +81,15 @@ pub struct CashflowRule {
 }
 
 #[derive(Debug, Clone)]
+pub enum CashflowMode {
+    FixedRatio,
+    PriorityBased,
+}
+
+#[derive(Debug, Clone)]
 pub struct CashflowProfile {
     pub rules: Vec<CashflowRule>,
+    pub mode: CashflowMode,
 }
 
 // Investment Related Types and Enums
@@ -199,6 +206,32 @@ pub struct LoanPolicy {
     pub emi_policy: EmiPolicy,
     pub allow_business_loans: bool,
     pub allow_personal_loans: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum LoanPurpose {
+    Personal,
+    Business,
+    Home,
+    Education,
+}
+
+#[derive(Debug, Clone)]
+pub struct LoanRequest {
+    pub monthly_income: f64,
+    pub existing_emi: f64,
+    pub requested_emi: f64,
+    pub credit_score: u16,
+    pub purpose: LoanPurpose,
+    pub is_joint: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct LoanAssessment {
+    pub approved: bool,
+    pub max_allowed_emi: f64,
+    pub risk_score: f64,
+    pub reason: String,
 }
 
 // Stats and Measurements Related Types and Enums
