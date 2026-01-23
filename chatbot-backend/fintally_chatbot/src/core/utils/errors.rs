@@ -1,7 +1,31 @@
 use std::fmt;
 use std::error::Error;
-use crate::core::types::*;
 
+/// Core error type for the application
+#[derive(Debug)]
+pub enum AppError {
+    InvalidInput(String),
+    CalculationError(String),
+    ProfileNotFound(String),
+    AllocationError(String),
+    ExternalServiceError(String), // placeholder if you ever integrate APIs
+    Other(String),
+}
+
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
+            AppError::CalculationError(msg) => write!(f, "Calculation error: {}", msg),
+            AppError::ProfileNotFound(msg) => write!(f, "Profile not found: {}", msg),
+            AppError::AllocationError(msg) => write!(f, "Allocation error: {}", msg),
+            AppError::ExternalServiceError(msg) => write!(f, "External service error: {}", msg),
+            AppError::Other(msg) => write!(f, "Other error: {}", msg),
+        }
+    }
+}
+
+impl Error for AppError {}
 
 /// Helper macros for quickly creating errors
 #[macro_export]

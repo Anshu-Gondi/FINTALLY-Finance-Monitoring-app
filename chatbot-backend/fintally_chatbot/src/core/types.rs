@@ -305,27 +305,3 @@ pub struct UserProfileVector {
     pub user_id: String,
     pub metrics: Vec<f64>, // flattened vector of metrics
 }
-
-/*
-    Utils Types and Enums
-    includes Files: logging.rs, errors.rs
-*/
-
-// Core error type for the application
-#[derive(Debug)]
-pub enum AppError {
-    InvalidInput(String),
-    CalculationError(String),
-    ProfileNotFound(String),
-    AllocationError(String),
-    ExternalServiceError(String), // placeholder if you ever integrate APIs
-    Other(String),
-}
-
-// Logging Related Types and Enums
-#[derive(Debug)]
-pub enum LogLevel {
-    Info,
-    Warn,
-    Error,
-}

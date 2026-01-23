@@ -1,5 +1,12 @@
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::core::types::*;
+
+/// Simple log levels
+#[derive(Debug)]
+pub enum LogLevel {
+    Info,
+    Warn,
+    Error,
+}
 
 /// Internal helper to get a timestamp
 fn timestamp() -> String {
