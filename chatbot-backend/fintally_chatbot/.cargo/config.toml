@@ -1,8 +1,26 @@
+# .cargo/config.toml
+# Place this file in the root of your Rust project (next to Cargo.toml)
+
 [build]
-rustflags = ["-C", "link-args=/EHsc"]
+rustflags = [
+    # Enable exactly what your Celeron N4000 supports (from CPU-Z + Intel ARK specs)
+    "-C", "target-feature=+mmx,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+aes,+sha",
 
+    # Explicitly disable higher features → prevents crashes / illegal instructions
+    "-C", "target-feature=-avx,-avx2,-avx512f,-fma,-bmi,-bmi2,-popcnt,-lzcnt",
+
+    # Maximum optimization level (very important on slow CPU)
+    "-C", "opt-level=3",
+
+    # Optional: thin LTO can help a tiny bit on low-core CPUs
+    # "-C", "lto=thin",
+]
+
+# Windows MSVC target settings (only needed if you see linker errors)
 [target.x86_64-pc-windows-msvc]
-linker = "link.exe"
+# Usually automatic with maturin / rustup msvc toolchain
+# linker = "link.exe"   # ← uncomment only if you get "link.exe not found" errors
 
-[env]
-CXXFLAGS = "/std:c++17 /EHsc"
+# Remove or comment out old/unneeded lines
+# rustflags = ["-C", "link-args=/EHsc"]   # ← not needed for pure Rust/PyO3
+# [env] CXXFLAGS = ...                    # ← remove unless compiling C++ code

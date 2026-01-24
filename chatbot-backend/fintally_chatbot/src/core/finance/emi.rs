@@ -1,34 +1,59 @@
 // src/core/finance/emi.rs
 
 use crate::core::types::*;
+use crate::core::utils::domain_error::EmiError;
 
-pub fn calculate_emi(principal: f64, annual_rate: f64, tenure_months: u32) -> f64 {
-    if principal <= 0.0 || annual_rate <= 0.0 || tenure_months == 0 {
-        return 0.0;
+pub fn calculate_emi(
+    principal: f64,
+    annual_rate: f64,
+    tenure_months: u32,
+) -> Result<f64, EmiError> {
+    if principal <= 0.0 {
+        return Err(EmiError::InvalidPrincipal(principal));
+    }
+    if annual_rate <= 0.0 {
+        return Err(EmiError::InvalidRate(annual_rate));
+    }
+    if tenure_months == 0 {
+        return Err(EmiError::InvalidTenure(tenure_months));
     }
 
     let r = annual_rate / 12.0 / 100.0;
     let n = tenure_months as f64;
 
-    principal * r * (1.0 + r).powf(n) / ((1.0 + r).powf(n) - 1.0)
+    let emi = principal * r * (1.0 + r).powf(n) / ((1.0 + r).powf(n) - 1.0);
+
+    Ok(emi)
 }
 
-pub fn is_emi_affordable(emi: f64, monthly_income: f64, policy: &EmiPolicy) -> bool {
-    if monthly_income <= 0.0 || emi <= 0.0 {
-        return false;
+pub fn is_emi_affordable(
+    emi: f64,
+    monthly_income: f64,
+    policy: &EmiPolicy,
+) -> Result<(), EmiError> {
+    if monthly_income <= 0.0 {
+        return Err(EmiError::IncomeTooLow(monthly_income));
     }
 
     let emi_percent = (emi / monthly_income) * 100.0;
+
     if emi_percent > policy.max_emi_percent {
-        return false;
+        return Err(EmiError::EmiTooHigh {
+            emi_percent,
+            max_allowed: policy.max_emi_percent,
+        });
     }
 
     let surplus_percent = 100.0 - emi_percent;
+
     if surplus_percent < policy.min_surplus_percent {
-        return false;
+        return Err(EmiError::InsufficientSurplus {
+            surplus_percent,
+            required: policy.min_surplus_percent,
+        });
     }
 
-    true
+    Ok(())
 }
 
 #[cfg(test)]
@@ -42,7 +67,7 @@ mod tests {
         let emi = 20_000.0;
         let income = 60_000.0;
 
-        assert!(is_emi_affordable(emi, income, &policy));
+        assert!(is_emi_affordable(emi, income, &policy).is_ok());
     }
 
     #[test]
@@ -51,7 +76,8 @@ mod tests {
         let emi = 30_000.0;
         let income = 60_000.0;
 
-        assert!(!is_emi_affordable(emi, income, &policy));
+        let err = is_emi_affordable(emi, income, &policy).unwrap_err();
+        assert!(matches!(err, EmiError::EmiTooHigh { .. }));
     }
 
     #[test]
@@ -60,7 +86,8 @@ mod tests {
         let emi = 20_000.0;
         let income = 50_000.0;
 
-        assert!(!is_emi_affordable(emi, income, &policy));
+        let err = is_emi_affordable(emi, income, &policy).unwrap_err();
+        assert!(matches!(err, EmiError::EmiTooHigh { .. }));
     }
 
     #[test]
@@ -69,48 +96,51 @@ mod tests {
         let emi = 15_000.0;
         let income = 40_000.0;
 
-        assert!(!is_emi_affordable(emi, income, &policy));
+        let err = is_emi_affordable(emi, income, &policy).unwrap_err();
+        assert!(matches!(err, EmiError::EmiTooHigh { .. }));
     }
 
     #[test]
     fn calculate_emi_basic() {
-        let emi = calculate_emi(1_000_000.0, 10.0, 240);
+        let emi = calculate_emi(1_000_000.0, 10.0, 240).unwrap();
         assert!(emi > 0.0);
     }
 
     #[test]
     fn custom_emi_policy_allows_edge() {
-        // Max EMI 60%, min surplus 10%
         let policy = EmiPolicy::custom(60.0, 10.0, IncomeType::Variable, false);
 
         let income = 50_000.0;
-        let emi1 = 28_000.0; // 56% → allowed
-        let emi2 = 31_000.0; // 62% → exceeds max_emi_percent
+        let emi1 = 28_000.0; // allowed
+        let emi2 = 31_000.0; // exceeds cap
 
-        assert!(is_emi_affordable(emi1, income, &policy));
-        assert!(!is_emi_affordable(emi2, income, &policy));
+        assert!(is_emi_affordable(emi1, income, &policy).is_ok());
+
+        let err = is_emi_affordable(emi2, income, &policy).unwrap_err();
+        assert!(matches!(err, EmiError::EmiTooHigh { .. }));
     }
 
     #[test]
     fn custom_emi_policy_surplus_check() {
-        // Adjusted max EMI so EMI1 is allowed
         let policy = EmiPolicy::custom(75.0, 25.0, IncomeType::Salaried, false);
 
         let income = 40_000.0;
-        let emi1 = 28_000.0; // 70% → surplus 30% → allowed
-        let emi2 = 32_000.0; // 80% → surplus 20% → fails
+        let emi1 = 28_000.0; // allowed
+        let emi2 = 32_000.0; // surplus violation
 
-        assert!(is_emi_affordable(emi1, income, &policy));
-        assert!(!is_emi_affordable(emi2, income, &policy));
+        assert!(is_emi_affordable(emi1, income, &policy).is_ok());
+
+        let err = is_emi_affordable(emi2, income, &policy).unwrap_err();
+        assert!(matches!(err, EmiError::EmiTooHigh { .. }));
     }
 
     #[test]
     fn custom_emi_policy_joint_borrower_flag() {
         let policy = EmiPolicy::custom(45.0, 20.0, IncomeType::Salaried, true);
         let income = 60_000.0;
-        let emi = 25_000.0; // 41.6% EMI → allowed
+        let emi = 25_000.0;
 
         assert!(policy.joint_borrowers);
-        assert!(is_emi_affordable(emi, income, &policy));
+        assert!(is_emi_affordable(emi, income, &policy).is_ok());
     }
 }

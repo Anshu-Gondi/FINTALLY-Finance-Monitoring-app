@@ -1,4 +1,6 @@
 use crate::core::types::{CashflowBucket, CashflowMode, CashflowProfile};
+use crate::core::utils::domain_error::DomainError;
+use crate::core::utils::errors::AppError;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -86,15 +88,20 @@ fn priority_cashflow(
 pub fn generate_cashflow(
     monthly_income: f64,
     profile: &CashflowProfile,
-) -> HashMap<CashflowBucket, f64> {
+) -> Result<HashMap<CashflowBucket, f64>, AppError> {
     if monthly_income <= 0.0 {
-        return HashMap::new();
+        return Err(DomainError::InvalidIncome {
+            value: monthly_income,
+        }
+        .into());
     }
 
-    match profile.mode {
+    let result = match profile.mode {
         CashflowMode::FixedRatio => fixed_ratio_cashflow(monthly_income, profile),
         CashflowMode::PriorityBased => priority_cashflow(monthly_income, profile),
-    }
+    };
+
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -107,10 +114,16 @@ mod tests {
     }
 
     #[test]
-    fn zero_income_returns_empty() {
+    fn zero_income_returns_domain_error() {
         let profile = CashflowProfile::fifty_thirty_twenty();
-        let result = generate_cashflow(0.0, &profile);
-        assert!(result.is_empty());
+        let err = generate_cashflow(0.0, &profile).unwrap_err();
+
+        match err {
+            AppError::Domain(DomainError::InvalidIncome { value }) => {
+                assert_eq!(value, 0.0);
+            }
+            _ => panic!("wrong error type"),
+        }
     }
 
     #[test]
@@ -118,7 +131,7 @@ mod tests {
         let profile = CashflowProfile::fifty_thirty_twenty();
         let income = 100_000.0;
 
-        let result = generate_cashflow(income, &profile);
+        let result = generate_cashflow(income, &profile).unwrap();
 
         assert_eq!(sum(&result), income);
 
@@ -135,25 +148,23 @@ mod tests {
         let profile = CashflowProfile::fifty_thirty_twenty();
         let income = 200_000.0;
 
-        let result = generate_cashflow(income, &profile);
+        let result = generate_cashflow(income, &profile).unwrap();
 
         let essentials = result.get(&CashflowBucket::Essentials).unwrap();
         let stability = result.get(&CashflowBucket::FinancialStability).unwrap();
         let lifestyle = result.get(&CashflowBucket::Lifestyle).unwrap();
 
-        // Max caps enforced
-        assert!(*essentials <= 120_000.0); // 60%
-        assert!(*stability <= 60_000.0); // 30%
-        assert!(*lifestyle <= 60_000.0); // 30%
+        assert!(*essentials <= 120_000.0);
+        assert!(*stability <= 60_000.0);
+        assert!(*lifestyle <= 60_000.0);
 
         assert_eq!(sum(&result), income);
     }
 
     #[test]
     fn redistributes_leftover_by_priority() {
-        let mut profile = CashflowProfile::young_professional(); // 👈 priority-based
+        let mut profile = CashflowProfile::young_professional();
 
-        // Artificially tighten lifestyle cap
         for rule in profile.rules.iter_mut() {
             if rule.bucket == CashflowBucket::Lifestyle {
                 rule.max_percent = 10.0;
@@ -161,7 +172,7 @@ mod tests {
         }
 
         let income = 100_000.0;
-        let result = generate_cashflow(income, &profile);
+        let result = generate_cashflow(income, &profile).unwrap();
 
         let lifestyle = result.get(&CashflowBucket::Lifestyle).unwrap();
         let essentials = result.get(&CashflowBucket::Essentials).unwrap();
@@ -178,13 +189,13 @@ mod tests {
         let profile = CashflowProfile::student();
         let income = 50_000.0;
 
-        let result = generate_cashflow(income, &profile);
+        let result = generate_cashflow(income, &profile).unwrap();
 
         let essentials = result.get(&CashflowBucket::Essentials).unwrap();
         let lifestyle = result.get(&CashflowBucket::Lifestyle).unwrap();
 
-        assert!(*essentials >= 30_000.0); // ≥60%
-        assert!(*lifestyle <= 10_000.0); // ≤20%
+        assert!(*essentials >= 30_000.0);
+        assert!(*lifestyle <= 10_000.0);
 
         assert_eq!(sum(&result), income);
     }
@@ -194,16 +205,13 @@ mod tests {
         let profile = CashflowProfile::family();
         let income = 120_000.0;
 
-        let result = generate_cashflow(income, &profile);
+        let result = generate_cashflow(income, &profile).unwrap();
 
         let lifestyle = result.get(&CashflowBucket::Lifestyle).unwrap();
         let essentials = result.get(&CashflowBucket::Essentials).unwrap();
 
-        // Lifestyle deliberately constrained
-        assert!(*lifestyle <= 18_000.0); // ≤15%
-
-        // Essentials dominate
-        assert!(*essentials >= 78_000.0); // ≥65%
+        assert!(*lifestyle <= 18_000.0);
+        assert!(*essentials >= 78_000.0);
 
         assert_eq!(sum(&result), income);
     }
@@ -213,7 +221,7 @@ mod tests {
         let profile = CashflowProfile::young_professional();
         let income = 123_456.78;
 
-        let result = generate_cashflow(income, &profile);
+        let result = generate_cashflow(income, &profile).unwrap();
         let total: f64 = result.values().sum();
 
         assert!(total <= income + 1e-6);

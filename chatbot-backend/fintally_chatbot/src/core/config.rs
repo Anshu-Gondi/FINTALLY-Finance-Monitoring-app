@@ -1,6 +1,7 @@
 // src/core/config.rs
 
 use crate::core::types::*;
+use crate::core::utils::errors::AppError;
 
 /*
    Default Implementations and Predefined Profiles for finance configurations
@@ -883,7 +884,7 @@ impl StatProfile {
             alert_policy: AlertPolicy::strict(),
         }
     }
-    pub fn generate_alerts(&self) -> Vec<StatAlert> {
+    pub fn generate_alerts(&self) -> Result<Vec<StatAlert>, AppError> {
         crate::core::math::stats::generate_alerts(self)
     }
 }

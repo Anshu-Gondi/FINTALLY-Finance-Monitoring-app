@@ -1,10 +1,12 @@
 use std::fmt;
 use std::error::Error;
+use crate::core::utils::domain_error::{DomainError, EmiError};
 
 /// Core error type for the application
 #[derive(Debug)]
 pub enum AppError {
     InvalidInput(String),
+    Domain(DomainError),
     CalculationError(String),
     ProfileNotFound(String),
     AllocationError(String),
@@ -16,6 +18,7 @@ impl fmt::Display for AppError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AppError::InvalidInput(msg) => write!(f, "Invalid input: {}", msg),
+            AppError::Domain(domain_error) => write!(f, "Domain error: {}", domain_error),
             AppError::CalculationError(msg) => write!(f, "Calculation error: {}", msg),
             AppError::ProfileNotFound(msg) => write!(f, "Profile not found: {}", msg),
             AppError::AllocationError(msg) => write!(f, "Allocation error: {}", msg),
@@ -24,6 +27,18 @@ impl fmt::Display for AppError {
         }
     }
 }
+
+impl From<DomainError> for AppError {
+    fn from(err: DomainError) -> Self {
+        AppError::Domain(err)
+    }
+}
+impl From<EmiError> for DomainError {
+    fn from(err: EmiError) -> Self {
+        DomainError::Emi(err)
+    }
+}
+
 
 impl Error for AppError {}
 

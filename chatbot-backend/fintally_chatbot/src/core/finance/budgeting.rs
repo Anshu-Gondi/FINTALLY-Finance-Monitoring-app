@@ -1,4 +1,5 @@
-use crate::core::types::{BudgetProfile, BudgetCategory};
+use crate::core::types::{BudgetCategory, BudgetProfile};
+use crate::core::utils::errors::AppError;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -11,16 +12,41 @@ struct AllocationState {
 pub fn generate_budget(
     monthly_income: f64,
     profile: &BudgetProfile,
-) -> HashMap<BudgetCategory, f64> {
-    let mut result = HashMap::new();
-
+) -> Result<HashMap<BudgetCategory, f64>, AppError> {
     if monthly_income <= 0.0 {
-        return result;
+        return Err(AppError::InvalidInput(
+            "Monthly income must be greater than zero".into(),
+        ));
+    }
+
+    if profile.rules.is_empty() {
+        return Err(AppError::ProfileNotFound(
+            "Budget profile has no rules".into(),
+        ));
+    }
+
+    // ---------- Validate rules ----------
+    let total_min: f64 = profile.rules.iter().map(|r| r.min_percent).sum();
+
+    if total_min > 100.0 {
+        return Err(AppError::AllocationError(format!(
+            "Total minimum allocation exceeds 100% (got {:.2}%)",
+            total_min
+        )));
+    }
+
+    for rule in &profile.rules {
+        if rule.min_percent > rule.max_percent {
+            return Err(AppError::InvalidInput(format!(
+                "Min percent exceeds max percent for {:?}",
+                rule.category
+            )));
+        }
     }
 
     let mut remaining = monthly_income;
 
-    // Phase 1: allocate minimums
+    // ---------- Phase 1: allocate minimums ----------
     let mut states: Vec<(BudgetCategory, AllocationState)> = profile
         .rules
         .iter()
@@ -42,52 +68,61 @@ pub fn generate_budget(
         })
         .collect();
 
-    // Phase 2: redistribute leftover by priority
+    // ---------- Phase 2: redistribute leftover by priority ----------
     states.sort_by(|a, b| b.1.priority.cmp(&a.1.priority));
 
-    let mut progress = true;
-    while remaining > 0.0 && progress {
-        progress = false;
+    let mut progressed = true;
+    while remaining > 0.0 && progressed {
+        progressed = false;
 
         for (_, state) in states.iter_mut() {
-            if remaining <= 0.0 {
-                break;
-            }
-
-            let available_space = state.max_allowed - state.allocated;
-            if available_space <= 0.0 {
+            let space = state.max_allowed - state.allocated;
+            if space <= 0.0 {
                 continue;
             }
 
-            let increment = remaining.min(available_space);
-            state.allocated += increment;
-            remaining -= increment;
-            progress = true;
+            let add = remaining.min(space);
+            state.allocated += add;
+            remaining -= add;
+            progressed = true;
+
+            if remaining <= 0.0 {
+                break;
+            }
         }
     }
 
-    // Final output
+    // ---------- Final output ----------
+    let mut result = HashMap::new();
+    let total_allocated: f64 = states.iter().map(|(_, s)| s.allocated).sum();
+
+    if total_allocated > monthly_income + 0.01 {
+        return Err(AppError::CalculationError(
+            "Final allocation exceeds income".into(),
+        ));
+    }
+
     for (category, state) in states {
         result.insert(category, state.allocated);
     }
 
-    result
+    Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::{BudgetProfile, BudgetCategory};
+    use crate::core::types::{BudgetCategory, BudgetProfile};
 
     fn approx_eq(a: f64, b: f64) -> bool {
         (a - b).abs() < 0.0001
     }
 
     #[test]
-    fn zero_income_returns_empty_budget() {
+    fn zero_income_returns_error() {
         let profile = BudgetProfile::single_young_professional();
         let budget = generate_budget(0.0, &profile);
-        assert!(budget.is_empty());
+        assert!(budget.is_err());
     }
 
     #[test]
@@ -95,13 +130,13 @@ mod tests {
         let profile = BudgetProfile::single_young_professional();
         let income = 100_000.0;
 
-        let budget = generate_budget(income, &profile);
+        let budget = generate_budget(income, &profile).unwrap();
 
         let housing = budget.get(&BudgetCategory::Housing).unwrap();
         let savings = budget.get(&BudgetCategory::Savings).unwrap();
 
-        assert!(housing >= &(income * 0.25));
-        assert!(savings >= &(income * 0.15));
+        assert!(*housing >= income * 0.25);
+        assert!(*savings >= income * 0.15);
     }
 
     #[test]
@@ -109,13 +144,13 @@ mod tests {
         let profile = BudgetProfile::single_young_professional();
         let income = 1_000_000.0;
 
-        let budget = generate_budget(income, &profile);
+        let budget = generate_budget(income, &profile).unwrap();
 
         let housing = budget.get(&BudgetCategory::Housing).unwrap();
         let lifestyle = budget.get(&BudgetCategory::Lifestyle).unwrap();
 
-        assert!(housing <= &(income * 0.35));
-        assert!(lifestyle <= &(income * 0.15));
+        assert!(*housing <= income * 0.35);
+        assert!(*lifestyle <= income * 0.15);
     }
 
     #[test]
@@ -123,12 +158,11 @@ mod tests {
         let profile = BudgetProfile::single_young_professional();
         let income = 200_000.0;
 
-        let budget = generate_budget(income, &profile);
+        let budget = generate_budget(income, &profile).unwrap();
 
         let savings = budget.get(&BudgetCategory::Savings).unwrap();
         let lifestyle = budget.get(&BudgetCategory::Lifestyle).unwrap();
 
-        // Savings has higher priority than lifestyle
         assert!(savings > lifestyle);
     }
 
@@ -137,7 +171,7 @@ mod tests {
         let profile = BudgetProfile::single_parent();
         let income = 150_000.0;
 
-        let budget = generate_budget(income, &profile);
+        let budget = generate_budget(income, &profile).unwrap();
         let total: f64 = budget.values().sum();
 
         assert!(total <= income);
@@ -149,16 +183,11 @@ mod tests {
         let profile = BudgetProfile::single_parent();
         let income = 120_000.0;
 
-        let budget = generate_budget(income, &profile);
+        let budget = generate_budget(income, &profile).unwrap();
 
-        let emergency = budget
-            .get(&BudgetCategory::EmergencyFund)
-            .unwrap();
-        let education = budget
-            .get(&BudgetCategory::Education)
-            .unwrap();
+        let emergency = budget.get(&BudgetCategory::EmergencyFund).unwrap();
+        let education = budget.get(&BudgetCategory::Education).unwrap();
 
-        // Emergency fund has higher priority than education
         assert!(emergency >= education);
     }
 }

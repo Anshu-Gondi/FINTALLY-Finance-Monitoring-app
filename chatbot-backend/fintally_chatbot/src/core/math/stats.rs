@@ -1,12 +1,32 @@
 use crate::core::types::*;
+use crate::core::utils::errors::AppError;
 use std::collections::HashMap;
 
 /// Compute scores per category (0-100)
-pub fn compute_stat_scores(profile: &StatProfile) -> HashMap<StatCategory, f64> {
+pub fn compute_stat_scores(profile: &StatProfile) -> Result<HashMap<StatCategory, f64>, AppError> {
+    if profile.metrics.is_empty() {
+        return Err(AppError::InvalidInput(
+            "StatProfile has no metrics".into(),
+        ));
+    }
+
     let mut category_scores: HashMap<StatCategory, f64> = HashMap::new();
 
     for metric in &profile.metrics {
+        if metric.weight < 0.0 {
+            return Err(AppError::InvalidInput(format!(
+                "Metric weight cannot be negative: {}",
+                metric.name
+            )));
+        }
+
         let score = if let Some(target) = metric.target {
+            if target <= 0.0 {
+                return Err(AppError::InvalidInput(format!(
+                    "Metric target must be positive: {}",
+                    metric.name
+                )));
+            }
             let diff = (metric.value - target).abs();
             let s = (1.0 - diff / target).max(0.0); // normalized 0-1
             s * metric.weight
@@ -20,15 +40,18 @@ pub fn compute_stat_scores(profile: &StatProfile) -> HashMap<StatCategory, f64> 
         *entry += score;
     }
 
-    category_scores
+    Ok(category_scores
         .into_iter()
         .map(|(cat, val)| (cat, (val.min(1.0) * 100.0)))
-        .collect()
+        .collect())
 }
 
 /// Generate alerts based on current value vs target & trends
-/// Generate alerts based on current value vs target & trends
-pub fn generate_alerts(profile: &StatProfile) -> Vec<StatAlert> {
+pub fn generate_alerts(profile: &StatProfile) -> Result<Vec<StatAlert>, AppError> {
+    if profile.metrics.is_empty() {
+        return Err(AppError::InvalidInput("StatProfile has no metrics".into()));
+    }
+
     let policy = &profile.alert_policy;
     let mut alerts = Vec::new();
 
@@ -85,13 +108,13 @@ pub fn generate_alerts(profile: &StatProfile) -> Vec<StatAlert> {
         }
     }
 
-    alerts
+    Ok(alerts)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::core::math::stats::compute_stat_scores;
     use crate::core::types::*;
+    use super::*;
 
     #[test]
     fn test_compute_stat_scores_young_professional() {
@@ -111,7 +134,7 @@ mod tests {
                 _ => (),
             });
 
-        let scores = compute_stat_scores(&profile);
+        let scores = compute_stat_scores(&profile).unwrap();
 
         assert!(scores[&StatCategory::Health] > 0.0);
         assert!(scores[&StatCategory::Finance] > 0.0);
@@ -121,7 +144,7 @@ mod tests {
     #[test]
     fn test_zero_values_no_crash() {
         let profile = StatProfile::young_professional();
-        let scores = compute_stat_scores(&profile);
+        let scores = compute_stat_scores(&profile).unwrap();
         assert!(scores.values().all(|&v| v >= 0.0));
     }
 
@@ -158,7 +181,7 @@ mod tests {
             history: vec![400.0, 450.0, 600.0],
         });
 
-        let alerts = profile.generate_alerts();
+        let alerts = generate_alerts(&profile).unwrap();
 
         assert!(alerts
             .iter()
@@ -179,7 +202,17 @@ mod tests {
     fn test_scores_with_history() {
         let mut profile = StatProfile::young_professional();
         profile.metrics.iter_mut().for_each(|m| m.value = 22.0);
-        let scores = compute_stat_scores(&profile);
+        let scores = compute_stat_scores(&profile).unwrap();
         assert!(scores[&StatCategory::Health] > 0.0);
+    }
+
+    #[test]
+    fn test_empty_metrics_errors() {
+        let profile = StatProfile {
+            metrics: vec![],
+            alert_policy: AlertPolicy::standard(),
+        };
+        assert!(compute_stat_scores(&profile).is_err());
+        assert!(generate_alerts(&profile).is_err());
     }
 }

@@ -3,67 +3,74 @@
 use crate::core::finance::emi::is_emi_affordable;
 use crate::core::types::*;
 
-pub fn assess_loan(request: &LoanRequest, policy: &LoanPolicy) -> LoanAssessment {
-    // Guard: income
+use crate::core::utils::errors::AppError;
+use crate::core::utils::domain_error::DomainError;
+
+pub fn assess_loan_checked(
+    request: &LoanRequest,
+    policy: &LoanPolicy,
+) -> Result<LoanAssessment, AppError> {
     if request.monthly_income <= 0.0 {
-        return LoanAssessment {
-            approved: false,
-            max_allowed_emi: 0.0,
-            risk_score: 1.0,
-            reason: "Invalid monthly income".to_string(),
-        };
+        return Err(AppError::InvalidInput(
+            "Monthly income must be positive".to_string(),
+        ));
     }
 
-    // Loan purpose rules
     match request.purpose {
         LoanPurpose::Business if !policy.allow_business_loans => {
-            return LoanAssessment {
-                approved: false,
-                max_allowed_emi: 0.0,
-                risk_score: 0.9,
-                reason: "Business loans not allowed".to_string(),
-            };
+            return Err(AppError::Domain(
+                DomainError::ProfileInvariantViolated {
+                    reason: "Business loans not allowed".to_string(),
+                },
+            ));
         }
         LoanPurpose::Personal if !policy.allow_personal_loans => {
-            return LoanAssessment {
-                approved: false,
-                max_allowed_emi: 0.0,
-                risk_score: 0.9,
-                reason: "Personal loans not allowed".to_string(),
-            };
+            return Err(AppError::Domain(
+                DomainError::ProfileInvariantViolated {
+                    reason: "Personal loans not allowed".to_string(),
+                },
+            ));
         }
         _ => {}
     }
 
-    // Max EMI allowed by policy
-    let max_allowed_emi = request.monthly_income * policy.emi_policy.max_emi_percent / 100.0;
+    let available_income = request.monthly_income - request.existing_emi;
+    let max_allowed_emi =
+        available_income * policy.emi_policy.max_emi_percent / 100.0;
 
-    // Affordability check
-    if !is_emi_affordable(
+    is_emi_affordable(
         request.requested_emi,
         request.monthly_income,
         &policy.emi_policy,
-    ) {
-        return LoanAssessment {
-            approved: false,
-            max_allowed_emi,
-            risk_score: 0.7,
-            reason: "Requested EMI not affordable".to_string(),
-        };
-    }
+    )
+    .map_err(|e| AppError::from(DomainError::from(e)))?;
 
-    // Credit risk (simple baseline)
     let risk_score = match request.credit_score {
         750..=900 => 0.1,
         650..=749 => 0.3,
         _ => 0.6,
     };
 
-    LoanAssessment {
+    Ok(LoanAssessment {
         approved: true,
         max_allowed_emi,
         risk_score,
         reason: "Approved".to_string(),
+    })
+}
+
+pub fn assess_loan(
+    request: &LoanRequest,
+    policy: &LoanPolicy,
+) -> LoanAssessment {
+    match assess_loan_checked(request, policy) {
+        Ok(assessment) => assessment,
+        Err(err) => LoanAssessment {
+            approved: false,
+            max_allowed_emi: 0.0,
+            risk_score: 0.7,
+            reason: err.to_string(),
+        },
     }
 }
 

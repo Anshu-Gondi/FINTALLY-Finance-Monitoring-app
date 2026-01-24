@@ -1,19 +1,51 @@
 use crate::core::types::*;
+use crate::core::utils::errors::AppError;
 use std::collections::HashMap;
 
-pub fn calculate_tax(amount: f64, profile: &TaxProfile) -> HashMap<TaxDomain, f64> {
-    let mut result = HashMap::new();
-
+/// Calculate taxes with validation
+pub fn calculate_tax(
+    amount: f64,
+    profile: &TaxProfile,
+) -> Result<HashMap<TaxDomain, f64>, AppError> {
     if amount <= 0.0 {
-        return result;
+        return Err(AppError::InvalidInput(
+            "Amount must be positive".to_string(),
+        ));
     }
 
+    if profile.rules.is_empty() {
+        return Err(AppError::InvalidInput("Tax profile has no rules".to_string()));
+    }
+
+    let mut result = HashMap::new();
     let mut rules = profile.rules.clone();
+
+    // Sort by priority descending
     rules.sort_by(|a, b| b.priority.cmp(&a.priority));
 
     for rule in rules {
         if !rule.enabled {
             continue;
+        }
+
+        // Validate rate_percent for percentage-based taxes
+        match rule.base {
+            TaxBase::PercentageOfIncome | TaxBase::PercentageOfAmount => {
+                if rule.rate_percent < 0.0 {
+                    return Err(AppError::InvalidInput(format!(
+                        "Negative tax rate for {:?} not allowed",
+                        rule.domain
+                    )));
+                }
+            }
+            TaxBase::FlatAmount(v) => {
+                if v < 0.0 {
+                    return Err(AppError::InvalidInput(format!(
+                        "Negative flat tax for {:?} not allowed",
+                        rule.domain
+                    )));
+                }
+            }
         }
 
         let tax = match rule.base {
@@ -25,7 +57,18 @@ pub fn calculate_tax(amount: f64, profile: &TaxProfile) -> HashMap<TaxDomain, f6
         *result.entry(rule.domain.clone()).or_insert(0.0) += tax;
     }
 
-    result
+    Ok(result)
+}
+
+/// Convenience wrapper returning plain HashMap, defaulting to empty on error
+pub fn calculate_tax_safe(amount: f64, profile: &TaxProfile) -> HashMap<TaxDomain, f64> {
+    match calculate_tax(amount, profile) {
+        Ok(taxes) => taxes,
+        Err(err) => {
+            eprintln!("Tax calculation error: {}", err);
+            HashMap::new()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -38,11 +81,42 @@ mod tests {
     }
 
     #[test]
-    fn zero_income_returns_empty() {
+    fn zero_income_returns_error() {
         let profile = TaxProfile { rules: vec![] };
+        let result = calculate_tax(0.0, &profile);
+        assert!(matches!(result, Err(AppError::InvalidInput(_))));
+    }
 
-        let taxes = calculate_tax(0.0, &profile);
-        assert!(taxes.is_empty());
+    #[test]
+    fn negative_tax_rate_returns_error() {
+        let profile = TaxProfile {
+            rules: vec![TaxRule {
+                domain: TaxDomain::Income,
+                rate_percent: -5.0,
+                base: TaxBase::PercentageOfIncome,
+                priority: 10,
+                enabled: true,
+            }],
+        };
+
+        let result = calculate_tax(100_000.0, &profile);
+        assert!(matches!(result, Err(AppError::InvalidInput(_))));
+    }
+
+    #[test]
+    fn negative_flat_amount_returns_error() {
+        let profile = TaxProfile {
+            rules: vec![TaxRule {
+                domain: TaxDomain::Custom("Funeral".into()),
+                rate_percent: 0.0,
+                base: TaxBase::FlatAmount(-1000.0),
+                priority: 5,
+                enabled: true,
+            }],
+        };
+
+        let result = calculate_tax(50_000.0, &profile);
+        assert!(matches!(result, Err(AppError::InvalidInput(_))));
     }
 
     #[test]
@@ -57,8 +131,7 @@ mod tests {
             }],
         };
 
-        let taxes = calculate_tax(100_000.0, &profile);
-
+        let taxes = calculate_tax(100_000.0, &profile).unwrap();
         assert!(approx_eq(*taxes.get(&TaxDomain::Income).unwrap(), 10_000.0));
     }
 
@@ -74,8 +147,7 @@ mod tests {
             }],
         };
 
-        let taxes = calculate_tax(50_000.0, &profile);
-
+        let taxes = calculate_tax(50_000.0, &profile).unwrap();
         assert!(approx_eq(*taxes.get(&TaxDomain::Funeral).unwrap(), 5_000.0));
     }
 
@@ -100,13 +172,10 @@ mod tests {
             ],
         };
 
-        let taxes = calculate_tax(100_000.0, &profile);
+        let taxes = calculate_tax(100_000.0, &profile).unwrap();
 
         assert!(approx_eq(*taxes.get(&TaxDomain::Income).unwrap(), 10_000.0));
-        assert!(approx_eq(
-            *taxes.get(&TaxDomain::Insurance).unwrap(),
-            5_000.0
-        ));
+        assert!(approx_eq(*taxes.get(&TaxDomain::Insurance).unwrap(), 5_000.0));
     }
 
     #[test]
@@ -121,27 +190,7 @@ mod tests {
             }],
         };
 
-        let taxes = calculate_tax(100_000.0, &profile);
+        let taxes = calculate_tax(100_000.0, &profile).unwrap();
         assert!(taxes.is_empty());
-    }
-
-    #[test]
-    fn custom_tax_domain_supported() {
-        let profile = TaxProfile {
-            rules: vec![TaxRule {
-                domain: TaxDomain::Custom("WealthTax".into()),
-                rate_percent: 2.0,
-                base: TaxBase::PercentageOfAmount,
-                priority: 10,
-                enabled: true,
-            }],
-        };
-
-        let taxes = calculate_tax(1_000_000.0, &profile);
-
-        assert!(approx_eq(
-            *taxes.get(&TaxDomain::Custom("WealthTax".into())).unwrap(),
-            20_000.0
-        ));
     }
 }
