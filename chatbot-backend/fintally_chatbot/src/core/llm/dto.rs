@@ -1,5 +1,24 @@
 // src/core/llm/dto.rs
 use serde::{Deserialize, Serialize};
+use crate::core::types::*;
+
+#[derive(Debug, Deserialize)]
+pub struct EmergencyFundArgs {
+    pub monthly_expense: f64,
+    pub policy: EmergencyFundPolicy,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SavingsProjectionArgs {
+    pub months: u32,
+    pub policy: SavingsPolicy,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TaxCalculationArgs {
+    pub amount: f64,
+    pub profile: TaxProfile,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct CalculateEmiArgs {

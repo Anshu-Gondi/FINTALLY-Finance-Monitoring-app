@@ -14,19 +14,19 @@ use serde::{Deserialize, Serialize};
 
 // Savings and Finance Related Types and Enums
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct EmergencyFundPolicy {
     pub months: f64,
     pub expense_multiplier: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SavingsPolicy {
     pub monthly_contribution: f64,
     pub annual_growth_rate: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FinanceProfile {
     pub emergency_fund: EmergencyFundPolicy,
     pub savings: SavingsPolicy,
@@ -34,7 +34,7 @@ pub struct FinanceProfile {
 
 // Budgeting Related Types and Enums
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum BudgetCategory {
     Housing,
     Utilities,
@@ -52,7 +52,7 @@ pub enum BudgetCategory {
     Miscellaneous,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct BudgetRule {
     pub category: BudgetCategory,
     pub min_percent: f64, // minimum % of income
@@ -60,21 +60,21 @@ pub struct BudgetRule {
     pub priority: u8,     // higher = funded first
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct BudgetProfile {
     pub rules: Vec<BudgetRule>,
 }
 
 // Cashflow Related Types and Enums
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum CashflowBucket {
     Essentials,
     FinancialStability,
     Lifestyle,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CashflowRule {
     pub bucket: CashflowBucket,
     pub min_percent: f64,
@@ -82,13 +82,13 @@ pub struct CashflowRule {
     pub priority: u8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum CashflowMode {
     FixedRatio,
     PriorityBased,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CashflowProfile {
     pub rules: Vec<CashflowRule>,
     pub mode: CashflowMode,
@@ -96,7 +96,7 @@ pub struct CashflowProfile {
 
 // Investment Related Types and Enums
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum LifeStage {
     YoungProfessional,
     GrowingFamily,
@@ -104,14 +104,14 @@ pub enum LifeStage {
     Retiree,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum RiskTolerance {
     Low,
     Moderate,
     High,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum InvestmentGoal {
     EmergencyBuffer,
     Retirement,
@@ -123,7 +123,7 @@ pub enum InvestmentGoal {
     LegacyPlanning,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum AssetClass {
     Equity,
     Debt,
@@ -132,13 +132,13 @@ pub enum AssetClass {
     Cash,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AssetAllocation {
     pub asset: AssetClass,
     pub percent: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct InvestmentRule {
     pub goal: InvestmentGoal,
     pub min_percent: f64,
@@ -147,7 +147,7 @@ pub struct InvestmentRule {
     pub allocation: Vec<AssetAllocation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct InvestmentProfile {
     pub life_stage: LifeStage,
     pub risk_tolerance: RiskTolerance,
@@ -156,7 +156,7 @@ pub struct InvestmentProfile {
 
 // Taxation Related Types and Enums
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum TaxDomain {
     Income,
     CapitalGains,
@@ -166,14 +166,14 @@ pub enum TaxDomain {
     Custom(String), // user-defined
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum TaxBase {
     FlatAmount(f64),
     PercentageOfIncome,
     PercentageOfAmount,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TaxRule {
     pub domain: TaxDomain,
     pub rate_percent: f64, // user supplied
@@ -182,7 +182,7 @@ pub struct TaxRule {
     pub enabled: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct TaxProfile {
     pub rules: Vec<TaxRule>,
 }
@@ -239,7 +239,7 @@ pub struct LoanAssessment {
 
 // Stats, Alerts and Measurements Related Types and Enums
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, Hash)]
 pub enum StatCategory {
     Health,
     Finance,
@@ -247,7 +247,7 @@ pub enum StatCategory {
     Lifestyle,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum MeasurementType {
     Integer,
     Float,
@@ -255,7 +255,7 @@ pub enum MeasurementType {
     Score, // e.g., 300-850 credit score
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StatMetric {
     pub name: String, // e.g., "BMI", "Net Worth", "Sleep Quality"
     pub category: StatCategory,
@@ -266,20 +266,20 @@ pub struct StatMetric {
     pub history: Vec<f64>, // store past metrics for trend analysis
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StatProfile {
     pub metrics: Vec<StatMetric>,
     pub alert_policy: AlertPolicy,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub enum AlertLevel {
     Info,
     Warning,
     Critical,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StatAlert {
     pub metric_name: String,
     pub category: StatCategory,
@@ -287,7 +287,7 @@ pub struct StatAlert {
     pub level: AlertLevel,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AlertPolicy {
     pub target_warning_percent: f64,
     pub target_critical_percent: f64,
@@ -296,14 +296,14 @@ pub struct AlertPolicy {
 
 // Similarity Calculation Related Types and Enums
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum SimilarityMetric {
     Euclidean,
     Cosine,
     Pearson,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct UserProfileVector {
     pub user_id: String,
     pub metrics: Vec<f64>, // flattened vector of metrics

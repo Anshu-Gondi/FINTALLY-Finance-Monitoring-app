@@ -2,7 +2,7 @@
 
 use crate::core::llm::assistant;
 use crate::core::utils::errors::AppError;
-use serde_json::{json, Value};
+use serde_json::{ json, Value };
 use std::str::FromStr;
 
 /// Enum of tool names
@@ -10,6 +10,14 @@ use std::str::FromStr;
 pub enum ToolName {
     CalculateEmi,
     AssessLoan,
+    EmergencyFund,
+    SavingsProjection,
+    CalculateTax,
+    InvestmentPlan,
+    CashflowPlan,
+    GenerateBudget,
+    ProfileSimilarity,
+    StatAnalysis,
 }
 
 impl ToolName {
@@ -17,6 +25,14 @@ impl ToolName {
         match self {
             ToolName::CalculateEmi => "calculate_emi",
             ToolName::AssessLoan => "assess_loan",
+            ToolName::EmergencyFund => "emergency_fund",
+            ToolName::SavingsProjection => "savings_projection",
+            ToolName::CalculateTax => "calculate_tax",
+            ToolName::InvestmentPlan => "generate_investment_plan",
+            ToolName::CashflowPlan => "generate_cashflow",
+            ToolName::GenerateBudget => "generate_budget",
+            ToolName::ProfileSimilarity => "profile_similarity",
+            ToolName::StatAnalysis => "stat_analysis",
         }
     }
 }
@@ -28,6 +44,15 @@ impl FromStr for ToolName {
         match s {
             "calculate_emi" => Ok(ToolName::CalculateEmi),
             "assess_loan" => Ok(ToolName::AssessLoan),
+            "emergency_fund" => Ok(ToolName::EmergencyFund),
+            "savings_projection" => Ok(ToolName::SavingsProjection),
+            "calculate_tax" => Ok(ToolName::CalculateTax),
+            "generate_investment_plan" => Ok(ToolName::InvestmentPlan),
+            "generate_cashflow" => Ok(ToolName::CashflowPlan),
+            "generate_budget" => Ok(ToolName::GenerateBudget),
+            "profile_similarity" => Ok(ToolName::ProfileSimilarity),
+            "stat_analysis" => Ok(ToolName::StatAnalysis),
+
             _ => Err(AppError::InvalidInput(format!("Unknown tool: {}", s))),
         }
     }
@@ -36,6 +61,7 @@ impl FromStr for ToolName {
 /// Returns tool definitions for LLM function calling
 pub fn tool_definitions() -> Vec<Value> {
     vec![
+        // ================= EMI =================
         json!({
             "type": "function",
             "function": {
@@ -52,6 +78,8 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
+
+        // ================= Loan Assessment =================
         json!({
             "type": "function",
             "function": {
@@ -70,11 +98,149 @@ pub fn tool_definitions() -> Vec<Value> {
                                 "purpose": { "type": "string" },
                                 "is_joint": { "type": "boolean" }
                             },
-                            "required": ["monthly_income", "requested_emi", "credit_score", "purpose"]
+                            "required": [
+                                "monthly_income",
+                                "requested_emi",
+                                "credit_score",
+                                "purpose"
+                            ]
                         },
                         "policy": { "type": "object" }
                     },
                     "required": ["request", "policy"]
+                }
+            }
+        }),
+
+        // ================= Emergency Fund =================
+        json!({
+            "type": "function",
+            "function": {
+                "name": ToolName::EmergencyFund.as_str(),
+                "description": "Calculate recommended emergency fund based on monthly expense and policy.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "monthly_expense": { "type": "number" },
+                        "policy": { "type": "object" }
+                    },
+                    "required": ["monthly_expense", "policy"]
+                }
+            }
+        }),
+
+        // ================= Savings Projection =================
+        json!({
+            "type": "function",
+            "function": {
+                "name": ToolName::SavingsProjection.as_str(),
+                "description": "Project savings growth over a number of months.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "months": { "type": "integer" },
+                        "policy": { "type": "object" }
+                    },
+                    "required": ["months", "policy"]
+                }
+            }
+        }),
+
+        // ================= Tax Calculation =================
+        json!({
+            "type": "function",
+            "function": {
+                "name": ToolName::CalculateTax.as_str(),
+                "description": "Calculate taxes based on amount and tax profile rules.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "amount": { "type": "number" },
+                        "profile": { "type": "object" }
+                    },
+                    "required": ["amount", "profile"]
+                }
+            }
+        }),
+        // ================= Investment planner ==============
+        json!({
+            "type": "function",
+            "function": {
+                "name": ToolName::InvestmentPlan.as_str(),
+                "description": "Generate an investment allocation plan based on investable amount and investor profile.",
+                "parameters": {
+                   "type": "object",
+                    "properties": {
+                        "investable_amount": { "type": "number" },
+                        "profile": { "type": "object" }
+                    },
+                    "required": ["investable_amount", "profile"]
+                }
+            }
+        }),
+        // ================= Cashflow Tool ==================
+        json!({
+            "type": "function",
+            "function": {
+                "name": ToolName::CashflowPlan.as_str(),
+                "description": "Generate a monthly cashflow allocation based on income and cashflow profile.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "monthly_income": { "type": "number" },
+                        "profile": { "type": "object" }
+                    },
+                    "required": ["monthly_income", "profile"]
+                }
+            }
+        }),
+        // =============== generate budget =======================
+        json!({
+            "type": "function",
+            "function": {
+                "name": ToolName::GenerateBudget.as_str(),
+                "description": "Generate a monthly budget allocation based on income and budget profile rules.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "monthly_income": { "type": "number" },
+                        "profile": { "type": "object" }
+                    },
+                    "required": ["monthly_income", "profile"]
+                }
+            }
+        }),
+        // ============= Profile Similarity =======================
+        json!({
+            "type": "function",
+            "function": {
+                "name": ToolName::ProfileSimilarity.as_str(),
+                "description": "Compute similarity score between two user profiles using a selected metric.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "a": { "type": "object" },
+                        "b": { "type": "object" },
+                        "metric": {
+                            "type": "string",
+                            "enum": ["Euclidean", "Cosine", "Pearson"]
+                        }
+                    },
+                    "required": ["a", "b", "metric"]
+                }
+            }
+        }),
+        json!({
+            "type": "function",
+            "function": {
+                "name": ToolName::StatAnalysis.as_str(),
+                "description": "Analyze user stats to compute category scores and generate health/finance/productivity alerts.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "profile": { "type": "object" }
+                    },
+                    "required": ["profile"]
                 }
             }
         }),
@@ -87,6 +253,18 @@ pub async fn execute_tool_async(tool_name: &str, arguments: Value) -> Result<Val
     match tool {
         ToolName::CalculateEmi => assistant::execute_calculate_emi_async(arguments).await,
         ToolName::AssessLoan => assistant::execute_assess_loan_async(arguments).await,
+        ToolName::EmergencyFund => assistant::execute_emergency_fund_async(arguments).await,
+
+        ToolName::SavingsProjection => assistant::execute_savings_projection_async(arguments).await,
+
+        ToolName::CalculateTax => assistant::execute_calculate_tax_async(arguments).await,
+
+        ToolName::InvestmentPlan => assistant::execute_investment_plan_async(arguments).await,
+
+        ToolName::CashflowPlan => assistant::execute_cashflow_async(arguments).await,
+        ToolName::GenerateBudget => assistant::execute_generate_budget(arguments).await,
+        ToolName::ProfileSimilarity => assistant::execute_profile_similarity(arguments).await,
+        ToolName::StatAnalysis => assistant::execute_stat_analysis_async(arguments).await,
     }
 }
 
