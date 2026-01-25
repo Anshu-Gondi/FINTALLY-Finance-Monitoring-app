@@ -33,9 +33,9 @@ impl From<DomainError> for AppError {
         AppError::Domain(err)
     }
 }
-impl From<EmiError> for DomainError {
-    fn from(err: EmiError) -> Self {
-        DomainError::Emi(err)
+impl From<crate::core::utils::domain_error::EmiError> for AppError {
+    fn from(err: crate::core::utils::domain_error::EmiError) -> Self {
+        AppError::Domain(DomainError::Emi(err))
     }
 }
 

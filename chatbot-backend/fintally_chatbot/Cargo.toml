@@ -31,6 +31,10 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["fmt", "env-filter"] }  # better for debug
 signal-hook = "0.3.17"
 
+# Serialization
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+
 [profile.dev]
 incremental = true
 

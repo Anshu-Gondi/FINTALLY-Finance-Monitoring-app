@@ -1,6 +1,8 @@
 // src/core/types.rs
 
-/* Types and Enums for Financial Planning 
+use serde::{Deserialize, Serialize};
+
+/* Types and Enums for Financial Planning
     includes Files: savings.rs, budgeting.rs, cashflow.rs, investments.rs, emi.rs, loans.rs, tax.rs
     Includes:
     - Savings and Finance Related Types and Enums
@@ -174,9 +176,9 @@ pub enum TaxBase {
 #[derive(Debug, Clone)]
 pub struct TaxRule {
     pub domain: TaxDomain,
-    pub rate_percent: f64,   // user supplied
+    pub rate_percent: f64, // user supplied
     pub base: TaxBase,
-    pub priority: u8,        // order of application
+    pub priority: u8, // order of application
     pub enabled: bool,
 }
 
@@ -187,28 +189,29 @@ pub struct TaxProfile {
 
 // Emi and Loans Related Types and Enums
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum IncomeType {
     Salaried,
     SelfEmployed,
     Variable,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EmiPolicy {
-    pub max_emi_percent: f64,   // % of monthly income
+    pub max_emi_percent: f64,     // % of monthly income
     pub min_surplus_percent: f64, // income left after EMI
     pub income_type: IncomeType,
     pub joint_borrowers: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LoanPolicy {
     pub emi_policy: EmiPolicy,
     pub allow_business_loans: bool,
     pub allow_personal_loans: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum LoanPurpose {
     Personal,
     Business,
@@ -216,7 +219,7 @@ pub enum LoanPurpose {
     Education,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LoanRequest {
     pub monthly_income: f64,
     pub existing_emi: f64,
@@ -254,12 +257,12 @@ pub enum MeasurementType {
 
 #[derive(Debug, Clone)]
 pub struct StatMetric {
-    pub name: String,               // e.g., "BMI", "Net Worth", "Sleep Quality"
+    pub name: String, // e.g., "BMI", "Net Worth", "Sleep Quality"
     pub category: StatCategory,
     pub value: f64,
-    pub target: Option<f64>,        // optional ideal value
+    pub target: Option<f64>, // optional ideal value
     pub measurement: MeasurementType,
-    pub weight: f64,                // relative importance (0-1)
+    pub weight: f64,       // relative importance (0-1)
     pub history: Vec<f64>, // store past metrics for trend analysis
 }
 

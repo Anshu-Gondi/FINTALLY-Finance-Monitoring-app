@@ -2,8 +2,8 @@
 
 use crate::core::finance::emi::is_emi_affordable;
 use crate::core::types::*;
-use crate::core::utils::errors::AppError;
 use crate::core::utils::domain_error::DomainError;
+use crate::core::utils::errors::AppError;
 
 pub fn assess_loan_checked(
     request: &LoanRequest,
@@ -38,14 +38,16 @@ pub fn assess_loan_checked(
     }
 
     if effective_income <= 0.0 {
-        return Err(AppError::Domain(DomainError::InvalidIncome { value: effective_income }));
+        return Err(AppError::Domain(DomainError::InvalidIncome {
+            value: effective_income,
+        }));
     }
 
     let max_allowed_emi = effective_income * policy.emi_policy.max_emi_percent / 100.0;
 
     // Check EMI affordability using effective income
     is_emi_affordable(request.requested_emi, effective_income, &policy.emi_policy)
-        .map_err(|e| AppError::from(DomainError::from(e)))?;
+        .map_err(AppError::from)?;
 
     // Simple risk scoring based on credit score
     let risk_score = match request.credit_score {
@@ -217,7 +219,7 @@ mod tests {
 
         let request = LoanRequest {
             monthly_income: 60_000.0,
-            existing_emi: 20_000.0, // high existing EMI
+            existing_emi: 20_000.0,  // high existing EMI
             requested_emi: 25_000.0, // 25k / 40k → 62.5% > 50%
             credit_score: 720,
             purpose: LoanPurpose::Personal,
