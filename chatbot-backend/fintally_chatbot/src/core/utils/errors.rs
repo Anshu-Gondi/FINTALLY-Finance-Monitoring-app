@@ -63,3 +63,10 @@ macro_rules! allocation_error {
         $crate::core::utils::errors::AppError::AllocationError($msg.to_string())
     };
 }
+
+#[macro_export]
+macro_rules! emi_error {
+    ($err:expr) => {
+        $crate::core::utils::errors::AppError::Domain(DomainError::Emi($err))
+    };
+}

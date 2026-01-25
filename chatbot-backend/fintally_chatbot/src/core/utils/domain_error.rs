@@ -5,6 +5,7 @@ use std::fmt;
 pub enum DomainError {
     Emi(EmiError),
     InvalidIncome { value: f64 },
+    InvalidAmount { value: f64 },
     InvalidPercentage { value: f64 },
     AllocationOverflow { attempted: f64, available: f64 },
     ProfileInvariantViolated { reason: String },
@@ -18,6 +19,8 @@ pub enum EmiError {
     IncomeTooLow(f64),
     EmiTooHigh { emi_percent: f64, max_allowed: f64 },
     InsufficientSurplus { surplus_percent: f64, required: f64 },
+    InvalidEmi(f64),
+    InvalidPolicy,
 }
 
 impl fmt::Display for EmiError {
@@ -48,6 +51,8 @@ impl fmt::Display for EmiError {
                 "surplus {:.2}% is below required {:.2}%",
                 surplus_percent, required
             ),
+            EmiError::InvalidEmi(v) => write!(f, "calculated EMI is invalid: {}", v),
+            EmiError::InvalidPolicy => write!(f, "EMI policy parameters are invalid"),
         }
     }
 }
@@ -57,6 +62,7 @@ impl fmt::Display for DomainError {
         match self {
             DomainError::Emi(e) => write!(f, "EMI rule violation: {}", e),
             DomainError::InvalidIncome { value } => write!(f, "Invalid income: {}", value),
+            DomainError::InvalidAmount { value } => write!(f, "Invalid amount: {}", value),
 
             DomainError::InvalidPercentage { value } => write!(f, "Invalid percentage: {}", value),
 

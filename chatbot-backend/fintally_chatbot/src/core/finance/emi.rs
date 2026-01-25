@@ -19,9 +19,23 @@ pub fn calculate_emi(
     }
 
     let r = annual_rate / 12.0 / 100.0;
+    if r.abs() < f64::EPSILON {
+        return Err(EmiError::InvalidRate(annual_rate));
+    }
     let n = tenure_months as f64;
 
-    let emi = principal * r * (1.0 + r).powf(n) / ((1.0 + r).powf(n) - 1.0);
+    let factor = (1.0 + r).powf(n);
+    let denom = factor - 1.0;
+
+    if denom.abs() < f64::EPSILON {
+        return Err(EmiError::InvalidRate(annual_rate));
+    }
+
+    let emi = principal * r * factor / denom;
+
+    if !emi.is_finite() || emi <= 0.0 {
+        return Err(EmiError::InvalidEmi(emi));
+    }
 
     Ok(emi)
 }
@@ -31,8 +45,22 @@ pub fn is_emi_affordable(
     monthly_income: f64,
     policy: &EmiPolicy,
 ) -> Result<(), EmiError> {
+    if !emi.is_finite() || emi <= 0.0 {
+        return Err(EmiError::InvalidEmi(emi));
+    }
+
     if monthly_income <= 0.0 {
         return Err(EmiError::IncomeTooLow(monthly_income));
+    }
+
+    // Policy invariants
+    if policy.max_emi_percent <= 0.0
+        || policy.max_emi_percent > 100.0
+        || policy.min_surplus_percent < 0.0
+        || policy.min_surplus_percent > 100.0
+        || policy.max_emi_percent + policy.min_surplus_percent > 100.0
+    {
+        return Err(EmiError::InvalidPolicy);
     }
 
     let emi_percent = (emi / monthly_income) * 100.0;
@@ -142,5 +170,15 @@ mod tests {
 
         assert!(policy.joint_borrowers);
         assert!(is_emi_affordable(emi, income, &policy).is_ok());
+    }
+
+    #[test]
+    fn invalid_policy_rejection() {
+        let policy = EmiPolicy::custom(90.0, 20.0, IncomeType::Salaried, false); // 90 + 20 > 100
+        let income = 50_000.0;
+        let emi = 40_000.0;
+
+        let err = is_emi_affordable(emi, income, &policy).unwrap_err();
+        assert!(matches!(err, EmiError::InvalidPolicy));
     }
 }

@@ -3,68 +3,52 @@ use crate::core::utils::domain_error::DomainError;
 use crate::core::utils::errors::AppError;
 use std::collections::HashMap;
 
-pub fn generate_investment_plan_checked(
+pub fn generate_investment_plan_domain(
     investable_amount: f64,
     profile: &InvestmentProfile,
-) -> Result<HashMap<InvestmentGoal, f64>, AppError> {
+) -> Result<HashMap<InvestmentGoal, f64>, DomainError> {
     if investable_amount <= 0.0 {
-        return Err(AppError::InvalidInput(
-            "Investable amount must be positive".to_string(),
-        ));
+        return Err(DomainError::InvalidIncome {
+            value: investable_amount,
+        });
     }
 
     let mut result = HashMap::new();
     let mut remaining = investable_amount;
 
-    // ---------- Phase 1: HARD minimum guarantees ----------
     let mut states: Vec<(InvestmentRule, f64, f64)> = profile
         .rules
         .iter()
         .map(|rule| {
-            // Validate percentages
             if rule.min_percent < 0.0 || rule.max_percent < 0.0 {
-                return Err(AppError::Domain(DomainError::InvalidPercentage {
+                return Err(DomainError::InvalidPercentage {
                     value: rule.min_percent.max(rule.max_percent),
-                }));
+                });
             }
 
             let min = investable_amount * rule.min_percent / 100.0;
             let max = investable_amount * rule.max_percent / 100.0;
 
             if min > max {
-                return Err(AppError::Domain(DomainError::AllocationOverflow {
+                return Err(DomainError::AllocationOverflow {
                     attempted: min,
                     available: max,
-                }));
+                });
             }
 
-            // ---- Option 1: FAIL EARLY if remaining is insufficient ----
             if min > remaining {
-                return Err(AppError::Domain(DomainError::AllocationOverflow {
+                return Err(DomainError::AllocationOverflow {
                     attempted: min,
                     available: remaining,
-                }));
+                });
             }
 
-            // Allocate exactly the minimum
-            let allocated = min;
-            remaining -= allocated;
-
-            Ok::<(InvestmentRule, f64, f64), AppError>((rule.clone(), allocated, max))
+            remaining -= min;
+            Ok((rule.clone(), min, max))
         })
-        .collect::<Result<Vec<_>, AppError>>()?;
+        .collect::<Result<_, DomainError>>()?;
 
-    // ---------- Option 1: Check if total minimum exceeds investable amount ----------
-    let total_min: f64 = states.iter().map(|(_, allocated, _)| *allocated).sum();
-    if total_min > investable_amount {
-        return Err(AppError::Domain(DomainError::AllocationOverflow {
-            attempted: total_min,
-            available: investable_amount,
-        }));
-    }
-
-    // ---------- Phase 2: Redistribute leftover by priority ----------
-    states.sort_by(|a, b| b.0.priority.cmp(&a.0.priority)); // higher priority first
+    states.sort_by(|a, b| b.0.priority.cmp(&a.0.priority));
 
     let mut progress = true;
     while remaining > 0.0 && progress {
@@ -87,20 +71,26 @@ pub fn generate_investment_plan_checked(
         }
     }
 
-    // If leftover funds cannot be distributed → allocation impossible
     if remaining > 0.0 {
-        return Err(AppError::Domain(DomainError::AllocationOverflow {
+        return Err(DomainError::AllocationOverflow {
             attempted: investable_amount,
             available: investable_amount - remaining,
-        }));
+        });
     }
 
-    // ---------- Final output ----------
     for (rule, allocated, _) in states {
         result.insert(rule.goal, allocated);
     }
 
     Ok(result)
+}
+
+/// Wrapper converting DomainError to AppError
+pub fn generate_investment_plan_checked(
+    investable_amount: f64,
+    profile: &InvestmentProfile,
+) -> Result<HashMap<InvestmentGoal, f64>, AppError> {
+    generate_investment_plan_domain(investable_amount, profile).map_err(AppError::from)
 }
 
 /// Convenience wrapper returning plain HashMap, defaulting to empty on error
@@ -129,19 +119,22 @@ mod tests {
     #[test]
     fn zero_investment_returns_error() {
         let profile = InvestmentProfile::young_professional_high_growth();
-        let result = generate_investment_plan_checked(0.0, &profile);
-        assert!(matches!(result, Err(AppError::InvalidInput(_))));
+        let result = generate_investment_plan_domain(0.0, &profile);
+
+        assert!(matches!(
+            result,
+            Err(DomainError::InvalidIncome { value }) if value == 0.0
+        ));
     }
 
     #[test]
     fn negative_rule_percent_triggers_error() {
         let mut profile = InvestmentProfile::young_professional_high_growth();
-        profile.rules[0].min_percent = -10.0; // invalid
-        let result = generate_investment_plan_checked(50_000.0, &profile);
-        assert!(matches!(
-            result,
-            Err(AppError::Domain(DomainError::InvalidPercentage { .. }))
-        ));
+        profile.rules[0].min_percent = -10.0;
+
+        let result = generate_investment_plan_domain(50_000.0, &profile);
+
+        assert!(matches!(result, Err(DomainError::InvalidPercentage { .. })));
     }
 
     #[test]
@@ -149,10 +142,10 @@ mod tests {
         let mut profile = InvestmentProfile::young_professional_high_growth();
         profile.rules[0].min_percent = 50.0;
         profile.rules[0].max_percent = 20.0; // min > max
-        let result = generate_investment_plan_checked(50_000.0, &profile);
+        let result = generate_investment_plan_domain(50_000.0, &profile);
         assert!(matches!(
             result,
-            Err(AppError::Domain(DomainError::AllocationOverflow { .. }))
+            Err(DomainError::AllocationOverflow { .. })
         ));
     }
 
@@ -184,12 +177,12 @@ mod tests {
         );
 
         // Generate plan → must return AllocationOverflow
-        let result = generate_investment_plan_checked(investable_amount, &profile);
+        let result = generate_investment_plan_domain(investable_amount, &profile);
 
         assert!(
             matches!(
                 result,
-                Err(AppError::Domain(DomainError::AllocationOverflow { .. }))
+                Err(DomainError::AllocationOverflow { .. })
             ),
             "Expected AllocationOverflow, got: {:?}",
             result
@@ -202,10 +195,12 @@ mod tests {
         for rule in profile.rules.iter_mut() {
             rule.max_percent = rule.min_percent;
         }
-        let result = generate_investment_plan_checked(100_000.0, &profile);
+
+        let result = generate_investment_plan_domain(100_000.0, &profile);
+
         assert!(matches!(
             result,
-            Err(AppError::Domain(DomainError::AllocationOverflow { .. }))
+            Err(DomainError::AllocationOverflow { .. })
         ));
     }
 
