@@ -4,6 +4,7 @@ use crate::core::utils::domain_error::DomainError;
 
 /// Core error type for the application
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum AppError {
     InvalidInput(String),
     Domain(DomainError),
