@@ -110,7 +110,6 @@ pub fn generate_investment_plan(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::*;
 
     fn approx_eq(a: f64, b: f64) -> bool {
         (a - b).abs() < 0.01

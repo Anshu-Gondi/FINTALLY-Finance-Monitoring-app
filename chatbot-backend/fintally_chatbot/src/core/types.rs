@@ -266,6 +266,15 @@ pub struct StatMetric {
     pub history: Vec<f64>, // store past metrics for trend analysis
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
+pub enum StatProfileVariant {
+    YoungProfessional,
+    FamilyWithDependents,
+    RetireeIncomeFocused,
+    SingleParent,
+}
+
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StatProfile {
     pub metrics: Vec<StatMetric>,

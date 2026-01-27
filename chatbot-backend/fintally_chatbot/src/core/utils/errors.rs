@@ -1,6 +1,6 @@
 use std::fmt;
 use std::error::Error;
-use crate::core::utils::domain_error::{DomainError, EmiError};
+use crate::core::utils::domain_error::DomainError;
 
 /// Core error type for the application
 #[derive(Debug)]

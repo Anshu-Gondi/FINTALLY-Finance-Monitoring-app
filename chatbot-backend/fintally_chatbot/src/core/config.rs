@@ -72,6 +72,19 @@ impl FinanceProfile {
             },
         }
     }
+
+    pub fn variants() -> &'static [&'static str] {
+        &["millionaire", "conservative", "default"]
+    }
+
+    pub fn from_name(name: &str) -> Result<Self, AppError> {
+        match name {
+            "millionaire" => Ok(Self::millionaire()),
+            "conservative" => Ok(Self::conservative()),
+            "default" => Ok(Self::default()),
+            _ => Err(AppError::InvalidInput(format!("Unknown finance profile '{}'", name))),
+        }
+    }
 }
 
 // Budget Side Profiles
@@ -109,7 +122,7 @@ impl BudgetProfile {
                     min_percent: 5.0,
                     max_percent: 15.0,
                     priority: 4,
-                },
+                }
             ],
         }
     }
@@ -146,7 +159,7 @@ impl BudgetProfile {
                     min_percent: 10.0,
                     max_percent: 20.0,
                     priority: 10,
-                },
+                }
             ],
         }
     }
@@ -183,7 +196,7 @@ impl BudgetProfile {
                     min_percent: 5.0,
                     max_percent: 15.0,
                     priority: 7,
-                },
+                }
             ],
         }
     }
@@ -193,6 +206,19 @@ impl BudgetProfile {
             if rule.category == BudgetCategory::Transportation {
                 rule.max_percent += 5.0;
             }
+        }
+    }
+
+    pub fn variants() -> &'static [&'static str] {
+        &["single_young_professional", "single_parent", "couple_with_dependents"]
+    }
+
+    pub fn from_name(name: &str) -> Result<Self, AppError> {
+        match name {
+            "single_young_professional" => Ok(Self::single_young_professional()),
+            "single_parent" => Ok(Self::single_parent()),
+            "couple_with_dependents" => Ok(Self::couple_with_dependents()),
+            _ => Err(AppError::InvalidInput(format!("Unknown budget profile '{}'", name))),
         }
     }
 }
@@ -222,7 +248,7 @@ impl CashflowProfile {
                     min_percent: 30.0,
                     max_percent: 30.0,
                     priority: 0,
-                },
+                }
             ],
         }
     }
@@ -249,7 +275,7 @@ impl CashflowProfile {
                     min_percent: 10.0,
                     max_percent: 20.0,
                     priority: 4,
-                },
+                }
             ],
         }
     }
@@ -275,7 +301,7 @@ impl CashflowProfile {
                     min_percent: 5.0,
                     max_percent: 15.0,
                     priority: 3,
-                },
+                }
             ],
         }
     }
@@ -301,8 +327,22 @@ impl CashflowProfile {
                     min_percent: 15.0,
                     max_percent: 25.0,
                     priority: 6,
-                },
+                }
             ],
+        }
+    }
+
+    pub fn variants() -> &'static [&'static str] {
+        &["fifty_thirty_twenty", "student", "family", "young_professional"]
+    }
+
+    pub fn from_name(name: &str) -> Result<Self, AppError> {
+        match name {
+            "fifty_thirty_twenty" => Ok(Self::fifty_thirty_twenty()),
+            "student" => Ok(Self::student()),
+            "family" => Ok(Self::family()),
+            "young_professional" => Ok(Self::young_professional()),
+            _ => Err(AppError::InvalidInput(format!("Unknown cashflow profile '{}'", name))),
         }
     }
 }
@@ -338,7 +378,7 @@ impl InvestmentProfile {
                         AssetAllocation {
                             asset: AssetClass::Debt,
                             percent: 20.0,
-                        },
+                        }
                     ],
                 },
                 InvestmentRule {
@@ -354,9 +394,9 @@ impl InvestmentProfile {
                         AssetAllocation {
                             asset: AssetClass::Debt,
                             percent: 30.0,
-                        },
+                        }
                     ],
-                },
+                }
             ],
         }
     }
@@ -379,7 +419,7 @@ impl InvestmentProfile {
                         AssetAllocation {
                             asset: AssetClass::Debt,
                             percent: 40.0,
-                        },
+                        }
                     ],
                 },
                 InvestmentRule {
@@ -395,7 +435,7 @@ impl InvestmentProfile {
                         AssetAllocation {
                             asset: AssetClass::Cash,
                             percent: 30.0,
-                        },
+                        }
                     ],
                 },
                 InvestmentRule {
@@ -411,9 +451,9 @@ impl InvestmentProfile {
                         AssetAllocation {
                             asset: AssetClass::Debt,
                             percent: 40.0,
-                        },
+                        }
                     ],
-                },
+                }
             ],
         }
     }
@@ -436,7 +476,7 @@ impl InvestmentProfile {
                         AssetAllocation {
                             asset: AssetClass::RealAssets,
                             percent: 30.0,
-                        },
+                        }
                     ],
                 },
                 InvestmentRule {
@@ -462,10 +502,23 @@ impl InvestmentProfile {
                         AssetAllocation {
                             asset: AssetClass::Debt,
                             percent: 50.0,
-                        },
+                        }
                     ],
-                },
+                }
             ],
+        }
+    }
+
+    pub fn variants() -> &'static [&'static str] {
+        &["young_professional_high_growth", "growing_family_balanced", "retiree_income_focused"]
+    }
+
+    pub fn from_name(name: &str) -> Result<Self, AppError> {
+        match name {
+            "young_professional_high_growth" => { Ok(Self::young_professional_high_growth()) }
+            "growing_family_balanced" => Ok(Self::growing_family_balanced()),
+            "retiree_income_focused" => Ok(Self::retiree_income_focused()),
+            _ => Err(AppError::InvalidInput(format!("Unknown investment profile '{}'", name))),
         }
     }
 }
@@ -511,6 +564,21 @@ impl TaxProfile {
 
     pub fn custom(rules: Vec<TaxRule>) -> Self {
         Self { rules }
+    }
+
+    pub fn variants() -> &'static [&'static str] {
+        &["simple_income_tax", "investment_tax", "insurance_tax", "custom"]
+    }
+
+    pub fn from_name(name: &str, rate: Option<f64>) -> Result<Self, AppError> {
+        match name {
+            "simple_income_tax" => Ok(Self::simple_income_tax(rate.unwrap_or(10.0))),
+            "investment_tax" => Ok(Self::investment_tax(rate.unwrap_or(15.0))),
+            "insurance_tax" => Ok(Self::insurance_tax(rate.unwrap_or(5.0))),
+            "custom" =>
+                Err(AppError::InvalidInput("Custom tax profile requires explicit rules".into())),
+            _ => Err(AppError::InvalidInput(format!("Unknown tax profile '{}'", name))),
+        }
     }
 }
 
@@ -566,13 +634,28 @@ impl EmiPolicy {
         max_emi_percent: f64,
         min_surplus_percent: f64,
         income_type: IncomeType,
-        joint_borrowers: bool,
+        joint_borrowers: bool
     ) -> Self {
         Self {
             max_emi_percent,
             min_surplus_percent,
             income_type,
             joint_borrowers,
+        }
+    }
+
+    pub fn variants() -> &'static [&'static str] {
+        &["salaried", "self_employed", "high_income", "low_income", "joint_borrowers"]
+    }
+
+    pub fn from_name(name: &str) -> Result<Self, AppError> {
+        match name {
+            "salaried" => Ok(Self::salaried()),
+            "self_employed" => Ok(Self::self_employed()),
+            "high_income" => Ok(Self::high_income()),
+            "low_income" => Ok(Self::low_income()),
+            "joint_borrowers" => Ok(Self::joint_borrowers()),
+            _ => Err(AppError::InvalidInput(format!("Unknown EMI policy '{}'", name))),
         }
     }
 }
@@ -623,12 +706,27 @@ impl LoanPolicy {
     pub fn custom(
         emi_policy: EmiPolicy,
         allow_business_loans: bool,
-        allow_personal_loans: bool,
+        allow_personal_loans: bool
     ) -> Self {
         Self {
             emi_policy,
             allow_business_loans,
             allow_personal_loans,
+        }
+    }
+
+    pub fn variants() -> &'static [&'static str] {
+        &["salaried", "self_employed", "high_income", "low_income", "joint_borrowers"]
+    }
+
+    pub fn from_name(name: &str) -> Result<Self, AppError> {
+        match name {
+            "salaried" => Ok(Self::salaried()),
+            "self_employed" => Ok(Self::self_employed()),
+            "high_income" => Ok(Self::high_income()),
+            "low_income" => Ok(Self::low_income()),
+            "joint_borrowers" => Ok(Self::joint_borrowers()),
+            _ => Err(AppError::InvalidInput(format!("Unknown loan policy '{}'", name))),
         }
     }
 }
@@ -640,148 +738,125 @@ impl LoanPolicy {
 // Stats Side Profiles
 impl StatProfile {
     /// Young professional, high-growth focused
-    pub fn young_professional() -> Self {
+    pub fn young_professional_with_finance(tax: &TaxProfile, loan_policy: &LoanPolicy) -> Self {
+        let max_emi_target = loan_policy.emi_policy.max_emi_percent;
+
         Self {
             metrics: vec![
-                // Health
+                // ─── Health ─────────────────────
                 StatMetric {
                     name: "BMI".into(),
                     category: StatCategory::Health,
                     value: 0.0,
                     target: Some(22.0),
                     measurement: MeasurementType::Float,
-                    weight: 0.2,
+                    weight: 0.15,
                     history: vec![],
                 },
-                StatMetric {
-                    name: "Resting Heart Rate".into(),
-                    category: StatCategory::Health,
-                    value: 0.0,
-                    target: Some(70.0),
-                    measurement: MeasurementType::Integer,
-                    weight: 0.1,
-                    history: vec![],
-                },
-                StatMetric {
-                    name: "Sleep Hours".into(),
-                    category: StatCategory::Health,
-                    value: 0.0,
-                    target: Some(8.0),
-                    measurement: MeasurementType::Float,
-                    weight: 0.1,
-                    history: vec![],
-                },
-                // Finance
+
+                // ─── Finance (POLICY DRIVEN) ─────
                 StatMetric {
                     name: "Net Worth".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
                     target: Some(50_000.0),
                     measurement: MeasurementType::Float,
-                    weight: 0.3,
+                    weight: 0.25,
                     history: vec![],
                 },
                 StatMetric {
-                    name: "Emergency Fund".into(),
+                    name: "Emergency Fund (Months)".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: Some(15_000.0),
+                    target: Some(6.0),
                     measurement: MeasurementType::Float,
+                    weight: 0.15,
+                    history: vec![],
+                },
+                StatMetric {
+                    name: "EMI Load %".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(max_emi_target),
+                    measurement: MeasurementType::Percentage,
                     weight: 0.2,
                     history: vec![],
                 },
-                // Productivity
+                StatMetric {
+                    name: "Effective Tax Rate".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(
+                        tax.rules
+                            .iter()
+                            .map(|r| r.rate_percent)
+                            .sum::<f64>()
+                    ),
+                    measurement: MeasurementType::Percentage,
+                    weight: 0.1,
+                    history: vec![],
+                },
+
+                // ─── Productivity ───────────────
                 StatMetric {
                     name: "Focus Hours".into(),
                     category: StatCategory::Productivity,
                     value: 0.0,
                     target: Some(6.0),
                     measurement: MeasurementType::Float,
-                    weight: 0.1,
+                    weight: 0.15,
                     history: vec![],
-                },
+                }
             ],
             alert_policy: AlertPolicy::standard(),
         }
     }
 
     /// Family with dependents, balanced focus
-    pub fn family_with_dependents() -> Self {
+    pub fn family_with_dependents_with_finance(loan_policy: &LoanPolicy) -> Self {
         Self {
             metrics: vec![
-                // Health
-                StatMetric {
-                    name: "BMI".into(),
-                    category: StatCategory::Health,
-                    value: 0.0,
-                    target: Some(24.0),
-                    measurement: MeasurementType::Float,
-                    weight: 0.15,
-                    history: vec![],
-                },
-                // Finance
                 StatMetric {
                     name: "Debt-to-Income Ratio".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: Some(35.0),
+                    target: Some(100.0 - loan_policy.emi_policy.min_surplus_percent),
                     measurement: MeasurementType::Percentage,
-                    weight: 0.25,
+                    weight: 0.3,
                     history: vec![],
                 },
                 StatMetric {
                     name: "Retirement Savings".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: Some(100_000.0),
+                    target: Some(150_000.0),
+                    measurement: MeasurementType::Float,
+                    weight: 0.25,
+                    history: vec![],
+                },
+                StatMetric {
+                    name: "Emergency Fund".into(),
+                    category: StatCategory::Finance,
+                    value: 0.0,
+                    target: Some(9.0), // months
                     measurement: MeasurementType::Float,
                     weight: 0.2,
                     history: vec![],
-                },
-                StatMetric {
-                    name: "Childcare Hours".into(),
-                    category: StatCategory::Lifestyle,
-                    value: 0.0,
-                    target: Some(40.0), // average weekly childcare target
-                    measurement: MeasurementType::Float,
-                    weight: 0.1,
-                    history: vec![],
-                },
-                // Productivity
-                StatMetric {
-                    name: "Focus Hours".into(),
-                    category: StatCategory::Productivity,
-                    value: 0.0,
-                    target: Some(5.0),
-                    measurement: MeasurementType::Float,
-                    weight: 0.1,
-                    history: vec![],
-                },
+                }
             ],
             alert_policy: AlertPolicy::standard(),
         }
     }
 
     /// Retiree, income-focused
-    pub fn retiree_income_focused() -> Self {
+    pub fn retiree_income_focused_with_tax(tax: &TaxProfile) -> Self {
         Self {
             metrics: vec![
-                // Health
                 StatMetric {
-                    name: "BMI".into(),
-                    category: StatCategory::Health,
-                    value: 0.0,
-                    target: Some(23.0),
-                    measurement: MeasurementType::Float,
-                    weight: 0.1,
-                    history: vec![],
-                },
-                // Finance
-                StatMetric {
-                    name: "Income Generation".into(),
+                    name: "Post-Tax Monthly Income".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: Some(60_000.0),
+                    target: Some(50_000.0),
                     measurement: MeasurementType::Float,
                     weight: 0.4,
                     history: vec![],
@@ -790,30 +865,25 @@ impl StatProfile {
                     name: "Healthcare Contingency".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: Some(15_000.0),
+                    target: Some(20_000.0),
                     measurement: MeasurementType::Float,
-                    weight: 0.2,
+                    weight: 0.25,
                     history: vec![],
                 },
                 StatMetric {
-                    name: "Legacy Planning".into(),
+                    name: "Tax Leakage %".into(),
                     category: StatCategory::Finance,
                     value: 0.0,
-                    target: Some(50_000.0),
-                    measurement: MeasurementType::Float,
-                    weight: 0.1,
+                    target: Some(
+                        tax.rules
+                            .iter()
+                            .map(|r| r.rate_percent)
+                            .sum()
+                    ),
+                    measurement: MeasurementType::Percentage,
+                    weight: 0.15,
                     history: vec![],
-                },
-                // Lifestyle
-                StatMetric {
-                    name: "Leisure Hours".into(),
-                    category: StatCategory::Lifestyle,
-                    value: 0.0,
-                    target: Some(15.0), // weekly hours
-                    measurement: MeasurementType::Float,
-                    weight: 0.1,
-                    history: vec![],
-                },
+                }
             ],
             alert_policy: AlertPolicy::relaxed(),
         }
@@ -879,13 +949,75 @@ impl StatProfile {
                     measurement: MeasurementType::Float,
                     weight: 0.1,
                     history: vec![],
-                },
+                }
             ],
             alert_policy: AlertPolicy::strict(),
         }
     }
     pub fn generate_alerts(&self) -> Result<Vec<StatAlert>, AppError> {
         crate::core::math::stats::generate_alerts(self)
+    }
+
+    pub fn variant(
+        variant: StatProfileVariant,
+        tax: Option<&TaxProfile>,
+        loan_policy: Option<&LoanPolicy>
+    ) -> Result<Self, AppError> {
+        match variant {
+            StatProfileVariant::YoungProfessional => {
+                let tax = tax.ok_or(
+                    AppError::InvalidInput("TaxProfile required for YoungProfessional".into())
+                )?;
+                let loan = loan_policy.ok_or(
+                    AppError::InvalidInput("LoanPolicy required for YoungProfessional".into())
+                )?;
+
+                Ok(Self::young_professional_with_finance(tax, loan))
+            }
+
+            StatProfileVariant::FamilyWithDependents => {
+                let loan = loan_policy.ok_or(
+                    AppError::InvalidInput("LoanPolicy required for FamilyWithDependents".into())
+                )?;
+
+                Ok(Self::family_with_dependents_with_finance(loan))
+            }
+
+            StatProfileVariant::RetireeIncomeFocused => {
+                let tax = tax.ok_or(
+                    AppError::InvalidInput("TaxProfile required for RetireeIncomeFocused".into())
+                )?;
+
+                Ok(Self::retiree_income_focused_with_tax(tax))
+            }
+
+            StatProfileVariant::SingleParent => { Ok(Self::single_parent_profile()) }
+        }
+    }
+
+    /// String-based resolver (LLM / API / JSON / DB safe)
+    pub fn from_name(
+        name: &str,
+        tax: Option<&TaxProfile>,
+        loan_policy: Option<&LoanPolicy>
+    ) -> Result<Self, AppError> {
+        let variant = match name.to_lowercase().as_str() {
+            "young_professional" | "young-professional" | "young" => {
+                StatProfileVariant::YoungProfessional
+            }
+            "family" | "family_with_dependents" | "dependents" => {
+                StatProfileVariant::FamilyWithDependents
+            }
+            "retiree" | "retiree_income_focused" => { StatProfileVariant::RetireeIncomeFocused }
+            "single_parent" | "single-parent" => { StatProfileVariant::SingleParent }
+            _ => {
+                return Err(
+                    AppError::InvalidInput(format!("Unknown StatProfile variant: {}", name))
+                );
+            }
+        };
+
+        Self::variant(variant, tax, loan_policy)
     }
 }
 
@@ -923,7 +1055,7 @@ impl AlertPolicy {
     pub fn custom(
         target_warning_percent: f64,
         target_critical_percent: f64,
-        trend_warning_percent: f64,
+        trend_warning_percent: f64
     ) -> Self {
         Self {
             target_warning_percent,

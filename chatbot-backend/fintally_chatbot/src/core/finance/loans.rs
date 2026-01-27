@@ -79,7 +79,6 @@ pub fn assess_loan(request: &LoanRequest, policy: &LoanPolicy) -> LoanAssessment
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::*;
 
     #[test]
     fn salaried_personal_loan_approved() {
