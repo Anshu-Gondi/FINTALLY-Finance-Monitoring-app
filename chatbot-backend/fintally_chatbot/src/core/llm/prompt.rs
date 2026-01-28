@@ -1,4 +1,3 @@
-use serde_json::Value;
 use crate::core::utils::errors::AppError;
 
 /// Prompt builder for LLM requests

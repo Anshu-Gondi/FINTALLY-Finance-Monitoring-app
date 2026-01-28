@@ -1,4 +1,4 @@
-use crate::core::llm::engine::LlmEngine;
+use crate::core::llm::engine::{LlmEngine, CancelableStream};
 use crate::core::llm::prompt::Prompt;
 use crate::core::utils::errors::AppError;
 
@@ -21,16 +21,29 @@ impl LLM {
         }
     }
 
-    pub fn generate_text(
+    // Non-streaming
+    pub async fn generate_text(
         &self,
         prompt_text: &str,
         context: Option<&str>,
     ) -> Result<String, AppError> {
         let full_prompt = Prompt::build(prompt_text, context)?;
-        self.engine.generate(&full_prompt, self.max_tokens)
+        self.engine.generate(&full_prompt, self.max_tokens).await
     }
 
-    pub fn embed_text(&self, text: &str) -> Result<Vec<f32>, AppError> {
-        self.engine.embed(text)
+    // 🔥 Streaming
+    pub async fn stream_text(
+        &self,
+        prompt_text: &str,
+        context: Option<&str>,
+    ) -> Result<CancelableStream, AppError> {
+        let full_prompt = Prompt::build(prompt_text, context)?;
+        self.engine
+            .stream_generate(&full_prompt, self.max_tokens)
+            .await
+    }
+
+    pub async fn embed_text(&self, text: &str) -> Result<Vec<f32>, AppError> {
+        self.engine.embed(text).await
     }
 }

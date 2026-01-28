@@ -40,6 +40,12 @@ impl From<crate::core::utils::domain_error::EmiError> for AppError {
     }
 }
 
+impl From<pyo3::PyErr> for AppError {
+    fn from(err: pyo3::PyErr) -> Self {
+        AppError::Other(err.to_string())
+    }
+}
+
 
 impl Error for AppError {}
 
