@@ -28,3 +28,78 @@ impl Prompt {
         Ok(full_prompt)
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::utils::errors::AppError;
+
+    #[test]
+    fn empty_prompt_is_rejected() {
+        let result = Prompt::build("", None);
+
+        match result {
+            Err(AppError::InvalidInput(msg)) => {
+                assert!(msg.contains("Prompt cannot be empty"));
+            }
+            _ => panic!("Empty prompt should return InvalidInput error"),
+        }
+    }
+
+    #[test]
+    fn whitespace_only_prompt_is_rejected() {
+        let result = Prompt::build("   \n\t  ", None);
+
+        assert!(matches!(
+            result,
+            Err(AppError::InvalidInput(_))
+        ));
+    }
+
+    #[test]
+    fn numeric_or_calculation_prompt_is_rejected() {
+        let result = Prompt::build("calculate my emi", None);
+
+        match result {
+            Err(AppError::InvalidInput(msg)) => {
+                assert!(msg.contains("Planner tools"));
+            }
+            _ => panic!("Calculation prompt should be rejected"),
+        }
+    }
+
+    #[test]
+    fn simple_prompt_without_context_passes() {
+        let prompt = "Explain Rust ownership";
+
+        let result = Prompt::build(prompt, None).unwrap();
+
+        assert_eq!(result, prompt);
+    }
+
+    #[test]
+    fn prompt_with_context_is_combined_correctly() {
+        let context = "You are a financial assistant.";
+        let prompt = "Explain budgeting basics.";
+
+        let result = Prompt::build(prompt, Some(context)).unwrap();
+
+        assert_eq!(
+            result,
+            "You are a financial assistant.\n\nExplain budgeting basics."
+        );
+    }
+
+    #[test]
+    fn context_only_does_not_bypass_empty_prompt_check() {
+        let context = "System context";
+
+        let result = Prompt::build("", Some(context));
+
+        assert!(matches!(
+            result,
+            Err(AppError::InvalidInput(_))
+        ));
+    }
+}
