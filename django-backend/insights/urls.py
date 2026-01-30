@@ -1,13 +1,13 @@
+# insights/urls.py
 from django.urls import path
-from . import views
+from django.views.decorators.csrf import csrf_exempt
+from .schema import schema
+from .context import CustomGraphQLView
 
 urlpatterns = [
-    path("daily", views.daily_summary),
-    path("weekly", views.weekly_summary),
-    path("monthly", views.monthly_summary),
-    path("categories", views.category_summary),
-    path("lifetime", views.lifetime_analysis),
-    path("max", views.max_transaction),
-    path("min", views.min_transaction),
-    path("trends", views.trend_summary),
+    path(
+        "graphql/",
+        csrf_exempt(CustomGraphQLView.as_view(schema=schema)),
+        name="graphql",
+    ),
 ]

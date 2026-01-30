@@ -8,7 +8,7 @@ repository = "https://github.com/yourusername/fintally"  # ← add if public
 readme = "README.md"
 
 [lib]
-name = "fintally_chatbot"
+name = "_native"
 crate-type = ["cdylib"]  # for PyO3 Python module
 
 [dependencies]
@@ -27,9 +27,8 @@ signal-hook = "0.3.17"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 
-# Async trait
+# Async
 async-trait = "0.1"
-
 futures-core = "0.3"
 futures-util = "0.3"
 futures-executor = "0.3"

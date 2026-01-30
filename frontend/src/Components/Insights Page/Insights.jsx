@@ -21,10 +21,9 @@ import "./Insights.css";
 import Navbar from "../../Shared Components/Navbar/Navbar";
 import Footer from "../../Shared Components/Footer/Footer";
 
-const API_URL = import.meta.env.VITE_API_URL;
 const COLORS = ["#00d1b2", "#ff3860", "#ffdd57", "#3273dc", "#b86bff", "#ff8c00"];
 
-// Utility to debounce rapid calls
+// Debounce utility
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -32,6 +31,21 @@ function useDebounce(value, delay) {
     return () => clearTimeout(handler);
   }, [value, delay]);
   return debounced;
+}
+
+// GraphQL helper
+async function fetchGraphQL(query, variables = {}, token) {
+  const res = await fetch(`${import.meta.env.VITE_DJANGO_URL}/graphql/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  const json = await res.json();
+  if (json.errors) throw new Error(json.errors[0].message);
+  return json.data;
 }
 
 function InsightsPage() {
@@ -62,41 +76,72 @@ function InsightsPage() {
     localStorage.setItem("insightsTrend", trendMode);
   }, [mode, startDate, endDate, type, keyword, trendMode]);
 
-  // Fetch bar & category data
+  // Fetch GraphQL Insights
   useEffect(() => {
-    const fetchInsights = async () => {
-      if (!token) return setError("Authorization token missing. Please login again.");
-      if (startDate && endDate && startDate > endDate) return setError("Start date cannot be after end date.");
+    if (!token) return setError("Authorization token missing. Please login again.");
+    if (startDate && endDate && startDate > endDate) return setError("Start date cannot be after end date.");
 
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const queryParams = new URLSearchParams();
-        if (startDate) queryParams.append("start", startDate.toISOString());
-        if (endDate) queryParams.append("end", endDate.toISOString());
-        if (type !== "all") queryParams.append("type", type);
-        if (debouncedKeyword) queryParams.append("keyword", debouncedKeyword);
+        let query = "";
+        let variables = {};
+
+        if (mode === "max" || mode === "min") {
+          query = `
+            query {
+              minMaxTransaction {
+                data {
+                  period
+                  income
+                  expense
+                  total
+                }
+              }
+            }
+          `;
+        } else if (mode === "daily" || mode === "weekly" || mode === "monthly" || mode === "lifetime") {
+          query = `
+            query PeriodSummary($range: String, $bucketDays: Int) {
+              ${mode === "daily" ? "dailySummary(interval: $bucketDays)" : mode === "lifetime" ? "lifetimeAnalysis" : "periodSummary(range: $range, bucketDays: $bucketDays)"} {
+                data { period income expense total }
+              }
+            }
+          `;
+          if (mode === "daily") variables.bucketDays = 1;
+          else if (mode === "weekly") variables.range = "weekly";
+          else if (mode === "monthly") variables.range = "monthly";
+        }
+
+        // Category query
+        const categoryQuery = `
+          query CategorySummary($start: String, $end: String, $type: String, $keyword: String, $limit: Int) {
+            categorySummary(start: $start, end: $end, type: $type, keyword: $keyword, limit: $limit) {
+              data { category total count }
+            }
+          }
+        `;
+        variables = { ...variables, start: startDate?.toISOString(), end: endDate?.toISOString(), type, keyword: debouncedKeyword };
 
         const [barRes, categoryRes] = await Promise.all([
-          fetch(`${API_URL}/insights/${mode}?${queryParams}`, {
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/insights/categories?${queryParams}`, {
-            credentials: "include",
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          fetchGraphQL(query, variables, token),
+          fetchGraphQL(categoryQuery, variables, token),
         ]);
 
-        if (!barRes.ok) throw new Error("Failed to load main chart data.");
-        if (!categoryRes.ok) throw new Error("Failed to load category data.");
+        // Bar data
+        let barResult = [];
+        if (mode === "max" || mode === "min") {
+          barResult = barRes.minMaxTransaction.data;
+          if (mode === "min") barResult = barResult.filter(d => d.total === Math.min(...barResult.map(x => x.total)));
+          else if (mode === "max") barResult = barResult.filter(d => d.total === Math.max(...barResult.map(x => x.total)));
+        } else if (mode === "daily") barResult = barRes.dailySummary.data;
+        else if (mode === "weekly" || mode === "monthly") barResult = barRes.periodSummary.data;
+        else if (mode === "lifetime") barResult = barRes.lifetimeAnalysis.data;
 
-        const barJson = await barRes.json();
-        const categoryJson = await categoryRes.json();
-
-        setBarData(barJson.length ? barJson : []);
-        setCategoryData(categoryJson.data?.length ? categoryJson.data : []);
+        setBarData(barResult || []);
+        setCategoryData(categoryRes.categorySummary.data || []);
       } catch (err) {
         console.error(err);
         setError(err.message || "Failed to fetch insights.");
@@ -105,29 +150,34 @@ function InsightsPage() {
       }
     };
 
-    fetchInsights();
+    fetchData();
   }, [mode, startDate, endDate, type, debouncedKeyword, token]);
 
-  // Fetch trend chart
+  // Fetch trend data
   useEffect(() => {
-    const fetchTrendData = async () => {
-      if (!token) return;
-      setLoadingTrend(true);
+    if (!token) return;
+    setLoadingTrend(true);
+
+    const fetchTrend = async () => {
       try {
-        const res = await fetch(`${API_URL}/insights/trends?range=${trendMode}`, {
-          credentials: "include",
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Trend data fetch failed");
-        const json = await res.json();
-        setTrendData(json.data?.length ? json.data : []);
+        const query = `
+          query TrendSummary($range: String!) {
+            trendSummary(range: $range) {
+              data { period income expense total }
+            }
+          }
+        `;
+        const variables = { range: trendMode };
+        const res = await fetchGraphQL(query, variables, token);
+        setTrendData(res.trendSummary.data || []);
       } catch (err) {
-        console.error("Trend error:", err);
+        console.error("Trend fetch error:", err);
       } finally {
         setLoadingTrend(false);
       }
     };
-    fetchTrendData();
+
+    fetchTrend();
   }, [trendMode, token]);
 
   return (
@@ -137,14 +187,15 @@ function InsightsPage() {
         <div className="container">
           <h1 className="title has-text-white">Financial Insights</h1>
 
+          {/* Filters Box */}
           <div className="box">
-            <h2 className="subtitle has-text-white has-text-light mb-3">Controls & Filters</h2>
+            <h2 className="subtitle has-text-white mb-3">Controls & Filters</h2>
             <div className="columns is-multiline is-variable is-1">
               {/* View Mode */}
               <div className="column is-3">
                 <label className="label has-text-light">View Mode</label>
                 <div className="select is-fullwidth">
-                  <select value={mode} onChange={(e) => setMode(e.target.value)}>
+                  <select value={mode} onChange={e => setMode(e.target.value)}>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
@@ -155,27 +206,26 @@ function InsightsPage() {
                 </div>
               </div>
 
-              {/* Start Date */}
+              {/* Start & End Date */}
               <div className="column is-3">
                 <label className="label has-text-light">Start Date</label>
                 <Flatpickr
                   options={{ dateFormat: "Y-m-d" }}
-                  placeholder="Start Date"
                   value={startDate}
                   onChange={([date]) => setStartDate(date)}
                   className="input"
+                  placeholder="Start Date"
                 />
               </div>
 
-              {/* End Date */}
               <div className="column is-3">
                 <label className="label has-text-light">End Date</label>
                 <Flatpickr
                   options={{ dateFormat: "Y-m-d" }}
-                  placeholder="End Date"
                   value={endDate}
                   onChange={([date]) => setEndDate(date)}
                   className="input"
+                  placeholder="End Date"
                 />
               </div>
 
@@ -183,7 +233,7 @@ function InsightsPage() {
               <div className="column is-3">
                 <label className="label has-text-light">Type</label>
                 <div className="select is-fullwidth">
-                  <select value={type} onChange={(e) => setType(e.target.value)}>
+                  <select value={type} onChange={e => setType(e.target.value)}>
                     <option value="all">All</option>
                     <option value="income">Income</option>
                     <option value="expense">Expense</option>
@@ -195,11 +245,11 @@ function InsightsPage() {
               <div className="column is-6">
                 <label className="label has-text-light">Search</label>
                 <input
-                  className="input"
                   type="text"
+                  className="input"
                   placeholder="Keyword..."
                   value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
+                  onChange={e => setKeyword(e.target.value)}
                 />
               </div>
 
@@ -214,7 +264,6 @@ function InsightsPage() {
             </div>
           </div>
 
-          {/* Global Loading & Errors */}
           {loading && <progress className="progress is-small is-info" max="100">Loading…</progress>}
           {error && <div className="notification is-danger">{error}</div>}
 
@@ -223,9 +272,7 @@ function InsightsPage() {
             <div className="column is-12">
               <div className="box">
                 <h2 className="subtitle has-text-white">Bar Chart (Grouped Totals)</h2>
-                {loading ? (
-                  <progress className="progress is-small is-info" max="100">Loading…</progress>
-                ) : barData.length ? (
+                {barData.length ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={barData}>
                       <CartesianGrid strokeDasharray="3 3" />

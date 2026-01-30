@@ -33,7 +33,7 @@ from dotenv import load_dotenv
 load_dotenv()  # ⬅️ Load .env file
 
 MONGO_URL = os.getenv("MONGO_URL") 
-
+JWT_SECRET = os.getenv("JWT_SECRET", "secret123")
 
 # Application definition
 
@@ -44,18 +44,38 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'insights'
+    'insights',
+    "strawberry.django",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Allow your frontend origin
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Allow credentials if using cookies / auth
+CORS_ALLOW_CREDENTIALS = True
+
+# Optional: allow all methods & headers
+CORS_ALLOW_HEADERS = ["*"]
+CORS_ALLOW_METHODS = ["*"]
 
 ROOT_URLCONF = 'finanical_insights.urls'
 
