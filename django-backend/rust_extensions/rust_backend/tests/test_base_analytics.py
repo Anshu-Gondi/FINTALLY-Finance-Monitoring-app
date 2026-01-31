@@ -96,3 +96,4 @@ if __name__ == "__main__":
     test_aggregate_trend_monthly()
     test_aggregate_trend_weekly()
     print("\n🎉 All Rust-Python integration tests passed successfully.\n")
+

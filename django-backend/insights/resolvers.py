@@ -15,7 +15,7 @@ from rust_backend import (
     aggregate_by_day,
     aggregate_by_month,
     aggregate_trend,
-    find_min_max,  
+    find_min_max,
 )
 
 from .auth import get_current_user
@@ -42,6 +42,8 @@ transactions = db.transactions
 # ------------------------------------------------------------------
 # QUERY ROOT
 # ------------------------------------------------------------------
+
+
 @strawberry.type
 class Query:
 
@@ -54,7 +56,8 @@ class Query:
         start = datetime(now.year, now.month, now.day, tzinfo=UTC)
 
         cursor = transactions.find(
-            {"userId": ObjectId(user_id), "datetime": {"$gte": start, "$lte": now}},
+            {"userId": ObjectId(user_id), "datetime": {
+                "$gte": start, "$lte": now}},
             {"datetime": 1, "price": 1},
         )
 
@@ -66,7 +69,8 @@ class Query:
         result = aggregate_by_interval(ts, prices, interval)
 
         return AnalyticsResult(
-            data=[AnalyticsPoint(period=p, income=i, expense=e, total=t) for p, i, e, t in result]
+            data=[AnalyticsPoint(period=p, income=i, expense=e, total=t)
+                  for p, i, e, t in result]
         )
 
     # -------------------- PERIOD SUMMARY (weekly/monthly) --------------------
@@ -83,7 +87,8 @@ class Query:
             raise ValueError("Invalid range")
 
         cursor = transactions.find(
-            {"userId": ObjectId(user_id), "datetime": {"$gte": start, "$lte": now}},
+            {"userId": ObjectId(user_id), "datetime": {
+                "$gte": start, "$lte": now}},
             {"datetime": 1, "price": 1},
         )
 
@@ -95,7 +100,8 @@ class Query:
         result = aggregate_by_day(dates, prices, bucket_days)
 
         return AnalyticsResult(
-            data=[AnalyticsPoint(period=p, income=i, expense=e, total=t) for p, i, e, t in result]
+            data=[AnalyticsPoint(period=p, income=i, expense=e, total=t)
+                  for p, i, e, t in result]
         )
 
     # -------------------- LIFETIME --------------------
@@ -103,7 +109,8 @@ class Query:
     def lifetime_analysis(self, info: Info) -> AnalyticsResult:
         user_id = get_current_user(info)
 
-        cursor = transactions.find({"userId": ObjectId(user_id)}, {"datetime": 1, "price": 1})
+        cursor = transactions.find({"userId": ObjectId(user_id)}, {
+                                   "datetime": 1, "price": 1})
 
         dates, prices = [], []
         for doc in cursor:
@@ -113,7 +120,8 @@ class Query:
         result = aggregate_by_month(dates, prices)
 
         return AnalyticsResult(
-            data=[AnalyticsPoint(period=p, income=i, expense=e, total=t) for p, i, e, t in result]
+            data=[AnalyticsPoint(period=p, income=i, expense=e, total=t)
+                  for p, i, e, t in result]
         )
 
     # -------------------- CATEGORY --------------------
@@ -133,7 +141,8 @@ class Query:
         if start and end:
             s, e = parse_date(start), parse_date(end)
             if s and e:
-                match["datetime"] = {"$gte": s.replace(tzinfo=UTC), "$lte": e.replace(tzinfo=UTC)}
+                match["datetime"] = {"$gte": s.replace(
+                    tzinfo=UTC), "$lte": e.replace(tzinfo=UTC)}
 
         if keyword:
             match["description"] = {"$regex": keyword, "$options": "i"}
@@ -156,9 +165,12 @@ class Query:
         truncated = limit is not None and total_categories > limit
 
         return CategoryResult(
-            data=[CategoryPoint(category=c, total=t, count=n) for c, t, n in result],
-            meta=AnalyticsMeta(truncated=truncated, limit_applied=limit is not None, row_count=total_categories),
-            warnings=[Warning(code=WarningCode.LIMIT_EXCEEDED, message=f"Top {limit} categories returned")] if truncated else None,
+            data=[CategoryPoint(category=c, total=t, count=n)
+                  for c, t, n in result],
+            meta=AnalyticsMeta(
+                truncated=truncated, limit_applied=limit is not None, row_count=total_categories),
+            warnings=[Warning(code=WarningCode.LIMIT_EXCEEDED,
+                              message=f"Top {limit} categories returned")] if truncated else None,
         )
 
     # -------------------- TRENDS --------------------
@@ -175,7 +187,8 @@ class Query:
             raise ValueError("Invalid range")
 
         cursor = transactions.find(
-            {"userId": ObjectId(user_id), "datetime": {"$gte": start, "$lte": now}},
+            {"userId": ObjectId(user_id), "datetime": {
+                "$gte": start, "$lte": now}},
             {"datetime": 1, "price": 1},
         )
 
@@ -187,33 +200,58 @@ class Query:
         result = aggregate_trend(dates, prices, mode)
 
         return AnalyticsResult(
-            data=[AnalyticsPoint(period=p, income=i, expense=e, total=t) for p, i, e, t in result]
+            data=[AnalyticsPoint(period=p, income=i, expense=e, total=t)
+                  for p, i, e, t in result]
         )
 
     # -------------------- MAX / MIN TRANSACTIONS --------------------
     @strawberry.field
     def min_max_transaction(self, info: Info) -> AnalyticsResult:
         """
-        Returns the single transaction with min and max price for the current user.
+        Returns the min and max transactions for the current user.
         """
         user_id = get_current_user(info)
 
-        cursor = transactions.find({"userId": ObjectId(user_id)}, {"datetime": 1, "price": 1})
-        dates, prices = [], []
+        cursor = transactions.find(
+            {"userId": ObjectId(user_id)},
+            {"datetime": 1, "price": 1},
+        )
+
+        dates: list[str] = []
+        prices: list[float] = []
+
         for doc in cursor:
             dates.append(serialize_datetime(doc["datetime"]))
             prices.append(float(doc["price"]))
 
-        max_val, min_val = find_min_max(prices)
+        if not dates or not prices:
+            return AnalyticsResult(data=[])
 
-        # Find indices of min/max to get their dates
-        max_idx = prices.index(max_val) if max_val is not None else None
-        min_idx = prices.index(min_val) if min_val is not None else None
+        # ✅ CORRECT CALL
+        min_result, max_result = find_min_max(dates, prices)
 
         data = []
-        if max_idx is not None:
-            data.append(AnalyticsPoint(period=dates[max_idx], income=max_val if max_val > 0 else 0, expense=-max_val if max_val < 0 else 0, total=max_val))
-        if min_idx is not None and min_idx != max_idx:
-            data.append(AnalyticsPoint(period=dates[min_idx], income=min_val if min_val > 0 else 0, expense=-min_val if min_val < 0 else 0, total=min_val))
+
+        if max_result is not None:
+            max_date, max_val = max_result
+            data.append(
+                AnalyticsPoint(
+                    period=max_date,
+                    income=max_val if max_val > 0 else 0,
+                    expense=-max_val if max_val < 0 else 0,
+                    total=max_val,
+                )
+            )
+
+        if min_result is not None:
+            min_date, min_val = min_result
+            data.append(
+                AnalyticsPoint(
+                    period=min_date,
+                    income=min_val if min_val > 0 else 0,
+                    expense=-min_val if min_val < 0 else 0,
+                    total=min_val,
+                )
+            )
 
         return AnalyticsResult(data=data)

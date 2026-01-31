@@ -78,8 +78,15 @@ function InsightsPage() {
 
   // Fetch GraphQL Insights
   useEffect(() => {
-    if (!token) return setError("Authorization token missing. Please login again.");
-    if (startDate && endDate && startDate > endDate) return setError("Start date cannot be after end date.");
+    if (!token) {
+      setError("Authorization token missing. Please login again.");
+      return;
+    }
+
+    if (startDate && endDate && startDate > endDate) {
+      setError("Start date cannot be after end date.");
+      return;
+    }
 
     const fetchData = async () => {
       setLoading(true);
@@ -89,59 +96,109 @@ function InsightsPage() {
         let query = "";
         let variables = {};
 
-        if (mode === "max" || mode === "min") {
+        // ---------------- BAR DATA QUERY ----------------
+        if (mode === "daily") {
           query = `
-            query {
-              minMaxTransaction {
-                data {
-                  period
-                  income
-                  expense
-                  total
-                }
-              }
-            }
-          `;
-        } else if (mode === "daily" || mode === "weekly" || mode === "monthly" || mode === "lifetime") {
-          query = `
-            query PeriodSummary($range: String, $bucketDays: Int) {
-              ${mode === "daily" ? "dailySummary(interval: $bucketDays)" : mode === "lifetime" ? "lifetimeAnalysis" : "periodSummary(range: $range, bucketDays: $bucketDays)"} {
-                data { period income expense total }
-              }
-            }
-          `;
-          if (mode === "daily") variables.bucketDays = 1;
-          else if (mode === "weekly") variables.range = "weekly";
-          else if (mode === "monthly") variables.range = "monthly";
-        }
-
-        // Category query
-        const categoryQuery = `
-          query CategorySummary($start: String, $end: String, $type: String, $keyword: String, $limit: Int) {
-            categorySummary(start: $start, end: $end, type: $type, keyword: $keyword, limit: $limit) {
-              data { category total count }
+          query DailySummary($bucketDays: Int!) {
+            dailySummary(interval: $bucketDays) {
+              data { period income expense total }
             }
           }
         `;
-        variables = { ...variables, start: startDate?.toISOString(), end: endDate?.toISOString(), type, keyword: debouncedKeyword };
+          variables.bucketDays = 1;
+
+        } else if (mode === "weekly") {
+          query = `
+          query WeeklySummary($range: String!) {
+            periodSummary(range: $range) {
+              data { period income expense total }
+            }
+          }
+        `;
+          variables.range = "weekly";
+
+        } else if (mode === "monthly") {
+          query = `
+          query MonthlySummary($range: String!) {
+            periodSummary(range: $range) {
+              data { period income expense total }
+            }
+          }
+        `;
+          variables.range = "monthly";
+
+        } else if (mode === "lifetime") {
+          query = `
+          query LifetimeAnalysis {
+            lifetimeAnalysis {
+              data { period income expense total }
+            }
+          }
+        `;
+
+        } else if (mode === "max" || mode === "min") {
+          query = `
+          query {
+            minMaxTransaction {
+              data { period income expense total }
+            }
+          }
+        `;
+        }
+
+        // ---------------- CATEGORY QUERY ----------------
+        const categoryQuery = `
+        query CategorySummary(
+          $start: String,
+          $end: String,
+          $type: String,
+          $keyword: String,
+          $limit: Int
+        ) {
+          categorySummary(
+            start: $start,
+            end: $end,
+            type: $type,
+            keyword: $keyword,
+            limit: $limit
+          ) {
+            data { category total count }
+          }
+        }
+      `;
+
+        const categoryVars = {
+          start: startDate?.toISOString(),
+          end: endDate?.toISOString(),
+          type,
+          keyword: debouncedKeyword,
+        };
 
         const [barRes, categoryRes] = await Promise.all([
           fetchGraphQL(query, variables, token),
-          fetchGraphQL(categoryQuery, variables, token),
+          fetchGraphQL(categoryQuery, categoryVars, token),
         ]);
 
-        // Bar data
+        // ---------------- NORMALIZE BAR DATA ----------------
         let barResult = [];
-        if (mode === "max" || mode === "min") {
-          barResult = barRes.minMaxTransaction.data;
-          if (mode === "min") barResult = barResult.filter(d => d.total === Math.min(...barResult.map(x => x.total)));
-          else if (mode === "max") barResult = barResult.filter(d => d.total === Math.max(...barResult.map(x => x.total)));
-        } else if (mode === "daily") barResult = barRes.dailySummary.data;
+
+        if (mode === "daily") barResult = barRes.dailySummary.data;
         else if (mode === "weekly" || mode === "monthly") barResult = barRes.periodSummary.data;
         else if (mode === "lifetime") barResult = barRes.lifetimeAnalysis.data;
+        else if (mode === "max" || mode === "min") {
+          const data = barRes.minMaxTransaction.data || [];
+          if (data.length) {
+            const extreme =
+              mode === "min"
+                ? Math.min(...data.map(d => d.total))
+                : Math.max(...data.map(d => d.total));
+            barResult = data.filter(d => d.total === extreme);
+          }
+        }
 
         setBarData(barResult || []);
         setCategoryData(categoryRes.categorySummary.data || []);
+
       } catch (err) {
         console.error(err);
         setError(err.message || "Failed to fetch insights.");
