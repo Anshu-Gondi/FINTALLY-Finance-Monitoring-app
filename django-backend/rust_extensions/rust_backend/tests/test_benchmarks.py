@@ -46,17 +46,38 @@ def test_cashflow_forecast():
     assert dates == sorted(dates)
 
 def test_predict_budget_breach():
-    dates = ["2024-01-01T00:00:00Z", "2024-01-05T00:00:00Z", "2024-01-10T00:00:00Z"]
-    prices = [-5000, -7000, -6000]
+    dates = [
+        "2024-01-01T00:00:00Z",
+        "2024-01-05T00:00:00Z",
+        "2024-01-10T00:00:00Z",
+    ]
+    prices = [-5_000, -7_000, -6_000]
 
-    will_breach, projected, days_left = rust_backend.predict_budget_breach(
-        dates, prices, budget_amount=15_000,
+    prob, expected, p50_days = rust_backend.predict_budget_breach(
+        dates=dates,
+        prices=prices,
+        budget_amount=15_000,
         start_date="2024-01-01T00:00:00Z",
-        end_date="2024-02-01T00:00:00Z"
+        end_date="2024-02-01T00:00:00Z",
+        simulations=2_000,
     )
 
-    assert isinstance(will_breach, bool)
-    assert isinstance(projected, float)
+    # ---- Type checks ----
+    assert isinstance(prob, float)
+    assert isinstance(expected, float)
+    assert p50_days is None or isinstance(p50_days, int)
+
+    # ---- Probability sanity ----
+    assert 0.0 <= prob <= 1.0
+
+    # ---- Financial sanity ----
+    historical_spend = sum(abs(p) for p in prices)
+    assert expected >= historical_spend * 0.8  # allow variance
+
+    # ---- Risk logic ----
+    if prob > 0.8:
+        assert p50_days is not None
+        assert p50_days >= 0
 
 def test_detect_recurring_anomalies():
     dates = ["2024-01-01T00:00:00Z", "2024-01-31T00:00:00Z", "2024-03-10T00:00:00Z"]

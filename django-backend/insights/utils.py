@@ -15,3 +15,18 @@ def parse_date(date_str):
         return datetime.fromisoformat(date_str)
     except:
         return None
+
+def get_active_budget(user_id: str):
+    now = datetime.utcnow().replace(tzinfo=UTC)
+
+    return budgets.find_one(
+        {
+            "userId": ObjectId(user_id),
+            "startDate": {"$lte": now},
+            "$or": [
+                {"endDate": None},
+                {"endDate": {"$gte": now}},
+            ],
+        },
+        sort=[("startDate", -1)],
+    )

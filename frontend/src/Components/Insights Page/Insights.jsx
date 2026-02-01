@@ -23,18 +23,20 @@ import Footer from "../../Shared Components/Footer/Footer";
 
 const COLORS = ["#00d1b2", "#ff3860", "#ffdd57", "#3273dc", "#b86bff", "#ff8c00"];
 
-// Debounce utility
-function useDebounce(value, delay) {
+/* ---------------------------------------------------
+   Utils
+--------------------------------------------------- */
+
+function useDebounce(value, delay = 500) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
-    const handler = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(handler);
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
   }, [value, delay]);
   return debounced;
 }
 
-// GraphQL helper
-async function fetchGraphQL(query, variables = {}, token) {
+async function fetchGraphQL(query, variables, token) {
   const res = await fetch(`${import.meta.env.VITE_DJANGO_URL}/graphql/`, {
     method: "POST",
     headers: {
@@ -43,199 +45,259 @@ async function fetchGraphQL(query, variables = {}, token) {
     },
     body: JSON.stringify({ query, variables }),
   });
+
   const json = await res.json();
   if (json.errors) throw new Error(json.errors[0].message);
   return json.data;
 }
 
-function InsightsPage() {
+/* ---------------------------------------------------
+   Component
+--------------------------------------------------- */
+
+export default function InsightsPage() {
+  const token = localStorage.getItem("token");
+
+  /* ---------- UI State ---------- */
+  const [mode, setMode] = useState(localStorage.getItem("insightsMode") || "monthly");
+  const [trendMode, setTrendMode] = useState(localStorage.getItem("insightsTrend") || "6months");
+  const [type, setType] = useState(localStorage.getItem("insightsType") || "all");
+
+  const [startDate, setStartDate] = useState(
+    localStorage.getItem("insightsStart")
+      ? new Date(localStorage.getItem("insightsStart"))
+      : null
+  );
+  const [endDate, setEndDate] = useState(
+    localStorage.getItem("insightsEnd")
+      ? new Date(localStorage.getItem("insightsEnd"))
+      : null
+  );
+
+  const [keyword, setKeyword] = useState(localStorage.getItem("insightsKeyword") || "");
+  const debouncedKeyword = useDebounce(keyword);
+
+  /* ---------- Data State ---------- */
   const [barData, setBarData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
   const [trendData, setTrendData] = useState([]);
-  const [mode, setMode] = useState(localStorage.getItem("insightsMode") || "monthly");
-  const [startDate, setStartDate] = useState(localStorage.getItem("insightsStart") ? new Date(localStorage.getItem("insightsStart")) : null);
-  const [endDate, setEndDate] = useState(localStorage.getItem("insightsEnd") ? new Date(localStorage.getItem("insightsEnd")) : null);
-  const [type, setType] = useState(localStorage.getItem("insightsType") || "all");
-  const [keyword, setKeyword] = useState(localStorage.getItem("insightsKeyword") || "");
-  const debouncedKeyword = useDebounce(keyword, 500);
-  const [trendMode, setTrendMode] = useState(localStorage.getItem("insightsTrend") || "6months");
 
+  const [budgetRisk, setBudgetRisk] = useState(null);
+  const [emiRisk, setEmiRisk] = useState(null);
+  const [cashflowForecast, setCashflowForecast] = useState([]);
+  const [anomalies, setAnomalies] = useState([]);
+
+  /* ---------- Loading / Error ---------- */
   const [loading, setLoading] = useState(false);
   const [loadingTrend, setLoadingTrend] = useState(false);
+  const [loadingAdvanced, setLoadingAdvanced] = useState(false);
   const [error, setError] = useState(null);
 
-  const token = localStorage.getItem("token");
-
-  // Persist filter state
+  /* ---------- Persist UI ---------- */
   useEffect(() => {
     localStorage.setItem("insightsMode", mode);
-    localStorage.setItem("insightsStart", startDate ? startDate.toISOString() : "");
-    localStorage.setItem("insightsEnd", endDate ? endDate.toISOString() : "");
+    localStorage.setItem("insightsTrend", trendMode);
     localStorage.setItem("insightsType", type);
     localStorage.setItem("insightsKeyword", keyword);
-    localStorage.setItem("insightsTrend", trendMode);
-  }, [mode, startDate, endDate, type, keyword, trendMode]);
+    localStorage.setItem("insightsStart", startDate?.toISOString() || "");
+    localStorage.setItem("insightsEnd", endDate?.toISOString() || "");
+  }, [mode, trendMode, type, keyword, startDate, endDate]);
 
-  // Fetch GraphQL Insights
+  /* ---------------------------------------------------
+     BAR + CATEGORY DATA
+  --------------------------------------------------- */
   useEffect(() => {
     if (!token) {
-      setError("Authorization token missing. Please login again.");
+      setError("Missing auth token");
       return;
     }
 
     if (startDate && endDate && startDate > endDate) {
-      setError("Start date cannot be after end date.");
+      setError("Start date cannot be after end date");
       return;
     }
 
-    const fetchData = async () => {
+    const run = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        let query = "";
-        let variables = {};
+        let barQuery = "";
+        let barVars = {};
 
-        // ---------------- BAR DATA QUERY ----------------
         if (mode === "daily") {
-          query = `
-          query DailySummary($bucketDays: Int!) {
-            dailySummary(interval: $bucketDays) {
-              data { period income expense total }
+          barQuery = `
+            query ($interval: Int!) {
+              dailySummary(interval: $interval) {
+                data { period income expense total }
+              }
             }
-          }
-        `;
-          variables.bucketDays = 1;
-
-        } else if (mode === "weekly") {
-          query = `
-          query WeeklySummary($range: String!) {
-            periodSummary(range: $range) {
-              data { period income expense total }
-            }
-          }
-        `;
-          variables.range = "weekly";
-
-        } else if (mode === "monthly") {
-          query = `
-          query MonthlySummary($range: String!) {
-            periodSummary(range: $range) {
-              data { period income expense total }
-            }
-          }
-        `;
-          variables.range = "monthly";
-
-        } else if (mode === "lifetime") {
-          query = `
-          query LifetimeAnalysis {
-            lifetimeAnalysis {
-              data { period income expense total }
-            }
-          }
-        `;
-
-        } else if (mode === "max" || mode === "min") {
-          query = `
-          query {
-            minMaxTransaction {
-              data { period income expense total }
-            }
-          }
-        `;
+          `;
+          barVars.interval = 1;
         }
 
-        // ---------------- CATEGORY QUERY ----------------
+        if (mode === "weekly" || mode === "monthly") {
+          barQuery = `
+            query ($range: String!) {
+              periodSummary(range: $range) {
+                data { period income expense total }
+              }
+            }
+          `;
+          barVars.range = mode;
+        }
+
+        if (mode === "lifetime") {
+          barQuery = `
+            query {
+              lifetimeAnalysis {
+                data { period income expense total }
+              }
+            }
+          `;
+        }
+
+        if (mode === "max" || mode === "min") {
+          barQuery = `
+            query {
+              minMaxTransaction {
+                data { period income expense total }
+              }
+            }
+          `;
+        }
+
         const categoryQuery = `
-        query CategorySummary(
-          $start: String,
-          $end: String,
-          $type: String,
-          $keyword: String,
-          $limit: Int
-        ) {
-          categorySummary(
-            start: $start,
-            end: $end,
-            type: $type,
-            keyword: $keyword,
-            limit: $limit
-          ) {
-            data { category total count }
+          query ($start: String, $end: String, $type: String, $keyword: String) {
+            categorySummary(
+              start: $start
+              end: $end
+              type: $type
+              keyword: $keyword
+            ) {
+              data { category total count }
+            }
           }
-        }
-      `;
+        `;
 
-        const categoryVars = {
-          start: startDate?.toISOString(),
-          end: endDate?.toISOString(),
-          type,
-          keyword: debouncedKeyword,
-        };
-
-        const [barRes, categoryRes] = await Promise.all([
-          fetchGraphQL(query, variables, token),
-          fetchGraphQL(categoryQuery, categoryVars, token),
+        const [barRes, catRes] = await Promise.all([
+          fetchGraphQL(barQuery, barVars, token),
+          fetchGraphQL(
+            categoryQuery,
+            {
+              start: startDate?.toISOString(),
+              end: endDate?.toISOString(),
+              type,
+              keyword: debouncedKeyword || null,
+            },
+            token
+          ),
         ]);
 
-        // ---------------- NORMALIZE BAR DATA ----------------
-        let barResult = [];
-
-        if (mode === "daily") barResult = barRes.dailySummary.data;
-        else if (mode === "weekly" || mode === "monthly") barResult = barRes.periodSummary.data;
-        else if (mode === "lifetime") barResult = barRes.lifetimeAnalysis.data;
-        else if (mode === "max" || mode === "min") {
-          const data = barRes.minMaxTransaction.data || [];
-          if (data.length) {
-            const extreme =
-              mode === "min"
-                ? Math.min(...data.map(d => d.total))
-                : Math.max(...data.map(d => d.total));
-            barResult = data.filter(d => d.total === extreme);
-          }
+        let bars = [];
+        if (mode === "daily") bars = barRes.dailySummary.data;
+        if (mode === "weekly" || mode === "monthly") bars = barRes.periodSummary.data;
+        if (mode === "lifetime") bars = barRes.lifetimeAnalysis.data;
+        if (mode === "max" || mode === "min") {
+          const all = barRes.minMaxTransaction.data || [];
+          bars = mode === "max" ? all.filter(x => x.total > 0) : all.filter(x => x.total < 0);
         }
 
-        setBarData(barResult || []);
-        setCategoryData(categoryRes.categorySummary.data || []);
+        setBarData(bars || []);
+        setCategoryData(catRes.categorySummary.data || []);
 
-      } catch (err) {
-        console.error(err);
-        setError(err.message || "Failed to fetch insights.");
+      } catch (e) {
+        console.error(e);
+        setError(e.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    run();
   }, [mode, startDate, endDate, type, debouncedKeyword, token]);
 
-  // Fetch trend data
+  /* ---------------------------------------------------
+     TREND DATA
+  --------------------------------------------------- */
   useEffect(() => {
     if (!token) return;
+
     setLoadingTrend(true);
 
-    const fetchTrend = async () => {
-      try {
-        const query = `
-          query TrendSummary($range: String!) {
-            trendSummary(range: $range) {
-              data { period income expense total }
-            }
-          }
-        `;
-        const variables = { range: trendMode };
-        const res = await fetchGraphQL(query, variables, token);
-        setTrendData(res.trendSummary.data || []);
-      } catch (err) {
-        console.error("Trend fetch error:", err);
-      } finally {
-        setLoadingTrend(false);
+    fetchGraphQL(
+      `
+      query ($range: String!) {
+        trendSummary(range: $range) {
+          data { period income expense total }
+        }
       }
-    };
-
-    fetchTrend();
+      `,
+      { range: trendMode },
+      token
+    )
+      .then(res => setTrendData(res.trendSummary.data || []))
+      .catch(console.error)
+      .finally(() => setLoadingTrend(false));
   }, [trendMode, token]);
+
+  /* ---------------------------------------------------
+     ADVANCED ANALYTICS
+  --------------------------------------------------- */
+  useEffect(() => {
+    if (!token) return;
+
+    setLoadingAdvanced(true);
+
+    fetchGraphQL(
+      `
+      query ($budget: Float!, $end: String!) {
+        budgetBreachPrediction(
+          budgetAmount: $budget
+          endDate: $end
+        ) {
+          breachProbability
+          expectedSpend
+          p95DaysToBreach
+        }
+
+        emiPressure {
+          monthlyEmi
+          survivabilityScore
+          riskLevel
+        }
+
+        cashflowForecast(horizons: [30, 60, 90]) {
+          points {
+            horizonDays
+            expectedBalance
+          }
+        }
+
+        recurringAnomalies {
+          description
+          severity
+          deviationPercent
+        }
+      }
+      `,
+      {
+        budget: 15000,
+        end: new Date().toISOString().slice(0, 10),
+      },
+      token
+    )
+      .then(res => {
+        setBudgetRisk(res.budgetBreachPrediction);
+        setEmiRisk(res.emiPressure);
+        setCashflowForecast(res.cashflowForecast.points || []);
+        setAnomalies(res.recurringAnomalies || []);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingAdvanced(false));
+  }, [token]);
+
+
 
   return (
     <>
@@ -393,6 +455,116 @@ function InsightsPage() {
                 )}
               </div>
             </div>
+            
+            {/* Advanced Analytics Sections */}
+            
+            <div className="column is-12">
+              <div className="box">
+                <h2 className="subtitle has-text-white">
+                  Budget Risk (Monte Carlo)
+                </h2>
+
+                {budgetRisk ? (
+                  <div className="content has-text-white">
+                    <p>
+                      <strong>Probability of Breach:</strong>{" "}
+                      {(budgetRisk.breachProbability * 100).toFixed(1)}%
+                    </p>
+                    <p>
+                      <strong>Expected Spend:</strong> ₹{budgetRisk.expectedSpend.toFixed(0)}
+                    </p>
+                    <p>
+                      <strong>P95 Days to Breach:</strong>{" "}
+                      {budgetRisk.p95DaysToBreach ?? "Safe"}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="has-text-grey">
+                    {loadingAdvanced ? "Running simulations…" : "No data"}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="column is-12">
+              <div className="box">
+                <h2 className="subtitle has-text-white">EMI Pressure</h2>
+
+                {emiRisk ? (
+                  <div className="columns has-text-white">
+                    <div className="column">
+                      <p><strong>Monthly EMI:</strong> ₹{emiRisk.monthlyEmi.toFixed(0)}</p>
+                    </div>
+                    <div className="column">
+                      <p><strong>Survivability Score:</strong> {emiRisk.survivabilityScore.toFixed(1)}</p>
+                      <p>
+                        <strong>Risk Level:</strong>{" "}
+                        <span className={`tag is-${emiRisk.riskLevel === "HIGH" ? "danger" : emiRisk.riskLevel === "MEDIUM" ? "warning" : "success"}`}>
+                          {emiRisk.riskLevel}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="has-text-grey">No EMI data</p>
+                )}
+              </div>
+            </div>
+
+            <div className="column is-12">
+              <div className="box">
+                <h2 className="subtitle has-text-white">Cashflow Forecast</h2>
+
+                {cashflowForecast.length ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={cashflowForecast}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="horizonDays" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="expectedBalance"
+                        stroke="#3273dc"
+                        name="Expected Balance"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="has-text-grey">Forecast unavailable</p>
+                )}
+              </div>
+            </div>
+
+            <div className="column is-12">
+              <div className="box">
+                <h2 className="subtitle has-text-white">Recurring Anomalies</h2>
+
+                {anomalies.length ? (
+                  <table className="table is-fullwidth is-striped is-dark">
+                    <thead>
+                      <tr>
+                        <th>Description</th>
+                        <th>Deviation %</th>
+                        <th>Severity</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {anomalies.map((a, i) => (
+                        <tr key={i}>
+                          <td>{a.description}</td>
+                          <td>{a.deviationPercent.toFixed(1)}%</td>
+                          <td>{a.severity.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="has-text-grey">No anomalies detected 🎯</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -400,5 +572,3 @@ function InsightsPage() {
     </>
   );
 }
-
-export default InsightsPage;

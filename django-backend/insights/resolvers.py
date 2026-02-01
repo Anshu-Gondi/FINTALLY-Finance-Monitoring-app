@@ -3,7 +3,7 @@ from strawberry.types import Info
 
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from typing import Optional
+from typing import List, Optional
 from bson import ObjectId
 from pymongo import MongoClient
 import os
@@ -16,15 +16,27 @@ from rust_backend import (
     aggregate_by_month,
     aggregate_trend,
     find_min_max,
+
+    # advanced analytics
+    predict_budget_breach,          # Monte Carlo
+    emi_survivability_score,
+    emi_monthly_pressure,
+    cashflow_forecast,
+    detect_recurring_anomalies,
 )
 
 from .auth import get_current_user
 from .models import (
     AnalyticsPoint,
+    BudgetBreachResult,
+    CashflowForecastPoint,
+    CashflowForecastResult,
     CategoryPoint,
     AnalyticsMeta,
     AnalyticsResult,
     CategoryResult,
+    EmiPressureResult,
+    RecurringAnomaly,
     Warning,
     WarningCode,
 )
@@ -38,6 +50,23 @@ UTC = pytz.UTC
 client = MongoClient(os.getenv("MONGO_URL"))
 db = client["test"]
 transactions = db.transactions
+budgets = db.budgets
+
+def get_active_budget(user_id: str):
+    now = datetime.utcnow().replace(tzinfo=UTC)
+
+    return budgets.find_one(
+        {
+            "userId": ObjectId(user_id),
+            "startDate": {"$lte": now},
+            "$or": [
+                {"endDate": None},
+                {"endDate": {"$gte": now}},
+            ],
+        },
+        sort=[("startDate", -1)],
+    )
+
 
 # ------------------------------------------------------------------
 # QUERY ROOT
@@ -255,3 +284,151 @@ class Query:
             )
 
         return AnalyticsResult(data=data)
+
+    # -------------------- EMI PRESSURE --------------------
+    @strawberry.field
+    def emi_pressure(self, info: Info) -> EmiPressureResult:
+        user_id = get_current_user(info)
+
+        cursor = transactions.find(
+            {"userId": ObjectId(user_id), "isEmi": True},
+            {"datetime": 1, "price": 1, "interestRate": 1, "tenureMonths": 1},
+        )
+
+        dates, principals, rates, tenures = [], [], [], []
+        for d in cursor:
+            dates.append(serialize_datetime(d["datetime"]))
+            principals.append(abs(float(d["price"])))
+            rates.append(float(d.get("interestRate", 12.0)))
+            tenures.append(int(d.get("tenureMonths", 12)))
+
+        monthly = emi_monthly_pressure(dates, principals, rates, tenures)
+        total_emi = sum(v for _, v in monthly)
+
+        income_cursor = transactions.find(
+            {"userId": ObjectId(user_id), "price": {"$gt": 0}},
+            {"price": 1},
+        )
+        monthly_income = sum(float(d["price"]) for d in income_cursor)
+
+        score, label = emi_survivability_score(monthly_income, total_emi)
+
+        return EmiPressureResult(
+            monthly_emi=total_emi,
+            survivability_score=score,
+            risk_level=label,
+        )
+
+    # -------------------- CASHFLOW FORECAST --------------------
+    @strawberry.field
+    def cashflow_forecast(
+        self,
+        info: Info,
+        horizons: List[int] = [30, 60, 90],
+    ) -> CashflowForecastResult:
+        user_id = get_current_user(info)
+
+        cursor = transactions.find(
+            {"userId": ObjectId(user_id)},
+            {"datetime": 1, "price": 1},
+        )
+
+        dates, prices = [], []
+        for d in cursor:
+            dates.append(serialize_datetime(d["datetime"]))
+            prices.append(float(d["price"]))
+
+        forecast = cashflow_forecast(dates, prices, horizons)
+
+        return CashflowForecastResult(
+            points=[
+                CashflowForecastPoint(
+                    horizon_days=h,
+                    expected_balance=b,
+                )
+                for h, b in forecast
+            ]
+        )
+
+    # -------------------- BUDGET BREACH --------------------
+    @strawberry.field
+    def budget_breach_prediction(
+        self,
+        info: Info,
+        end_date: str,
+        simulations: int = 2_000,
+    ) -> BudgetBreachResult:
+        user_id = get_current_user(info)
+
+        # 1️⃣ Load active budget
+        budget = get_active_budget(user_id)
+        if not budget:
+            raise ValueError("No active budget found")
+
+        budget_amount = float(budget["amount"])
+        budget_start = budget["startDate"].replace(tzinfo=UTC)
+
+        # 2️⃣ Parse end date
+        end = parse_date(end_date)
+        if not end:
+            raise ValueError("Invalid end_date")
+
+        end = end.replace(tzinfo=UTC)
+
+        horizon_days = max((end - budget_start).days, 1)
+
+        # 3️⃣ Fetch ONLY budget-period transactions
+        cursor = transactions.find(
+            {
+                "userId": ObjectId(user_id),
+                "datetime": {"$gte": budget_start, "$lte": end},
+            },
+            {"datetime": 1, "price": 1},
+        )
+
+        dates, prices = [], []
+        for d in cursor:
+            dates.append(serialize_datetime(d["datetime"]))
+            prices.append(float(d["price"]))
+
+        # 4️⃣ Call NEW Rust signature
+        prob, expected, p50 = predict_budget_breach(
+            dates=dates,
+            prices=prices,
+            budget_amount=budget_amount,
+            horizon_days=horizon_days,
+            simulations=simulations,
+        )
+
+        return BudgetBreachResult(
+            breach_probability=prob,
+            expected_spend=expected,
+            p50_days_to_breach=p50,
+        )
+
+    # -------------------- RECURRING ANOMALIES --------------------
+    @strawberry.field
+    def recurring_anomalies(self, info: Info) -> List[RecurringAnomaly]:
+        user_id = get_current_user(info)
+
+        cursor = transactions.find(
+            {"userId": ObjectId(user_id)},
+            {"description": 1, "price": 1, "datetime": 1},
+        )
+
+        descs, prices, dates = [], [], []
+        for d in cursor:
+            descs.append(d.get("description", ""))
+            prices.append(float(d["price"]))
+            dates.append(serialize_datetime(d["datetime"]))
+
+        anomalies = detect_recurring_anomalies(descs, prices, dates)
+
+        return [
+            RecurringAnomaly(
+                description=desc,
+                severity=sev,
+                deviation_percent=dev,
+            )
+            for desc, sev, dev in anomalies
+        ]

@@ -84,25 +84,30 @@ fn aggregate_by_category(
     Ok(formatted)
 }
 
-/// Aggregates income/expense totals by date (low-memory + optional day-buckets)
 #[pyfunction]
 fn aggregate_by_day(
     dates: Vec<String>,
     prices: Vec<f64>,
-    bucket_days: Option<u32> // group by every N days if provided
+    bucket_days: Option<u32>
 ) -> PyResult<Vec<(String, f64, f64, f64)>> {
-    use chrono::{ NaiveDate, TimeZone, Utc };
+    use chrono::{ DateTime, NaiveDateTime, Utc };
+    use std::collections::HashMap;
 
-    let mut map: HashMap<NaiveDate, (f64, f64)> = HashMap::new();
+    let mut map: HashMap<chrono::NaiveDate, (f64, f64)> = HashMap::new();
 
     for (ds, price) in dates.iter().zip(prices.iter()) {
-        if
-            let Ok(dt) = Utc.datetime_from_str(ds, "%Y-%m-%d %H:%M:%S%.f UTC").or_else(|_|
-                ds.parse::<chrono::DateTime<Utc>>()
-            )
-        {
+        let dt_utc = DateTime::parse_from_rfc3339(ds)
+            .map(|dt| dt.with_timezone(&Utc))
+            .or_else(|_| {
+                NaiveDateTime::parse_from_str(ds, "%Y-%m-%d %H:%M:%S%.f UTC").map(|naive|
+                    DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc)
+                )
+            });
+
+        if let Ok(dt) = dt_utc {
             let date = dt.date_naive();
             let entry = map.entry(date).or_insert((0.0, 0.0));
+
             if *price > 0.0 {
                 entry.0 += price;
             } else {
@@ -111,10 +116,10 @@ fn aggregate_by_day(
         }
     }
 
-    // Optional grouping by every N days
-    let mut grouped: HashMap<u32, (f64, f64)> = HashMap::new();
+    // ---- Optional grouping ----
     if let Some(n) = bucket_days {
-        // Map dates into day-number buckets (e.g., every 2 days)
+        let mut grouped: HashMap<u32, (f64, f64)> = HashMap::new();
+
         let mut dates_sorted: Vec<_> = map.keys().cloned().collect();
         dates_sorted.sort();
 
@@ -126,26 +131,27 @@ fn aggregate_by_day(
             entry.1 += exp;
         }
 
-        let mut out: Vec<(String, f64, f64, f64)> = grouped
+        let mut out: Vec<_> = grouped
             .into_iter()
-            .map(|(i, (inc, exp))| (format!("Group {}", i + 1), inc, exp.abs(), inc + exp.abs()))
+            .map(|(i, (inc, exp))| {
+                (format!("Group {}", i + 1), inc, exp.abs(), inc + exp.abs())
+            })
             .collect();
 
         out.sort_by(|a, b| a.0.cmp(&b.0));
         Ok(out)
     } else {
-        // Default: group by each calendar day
         let mut dates_sorted: Vec<_> = map.into_iter().collect();
         dates_sorted.sort_by_key(|(d, _)| *d);
 
-        let result: Vec<(String, f64, f64, f64)> = dates_sorted
-            .into_iter()
-            .map(|(d, (inc, exp))| {
-                (d.format("%Y-%m-%d").to_string(), inc, exp.abs(), inc + exp.abs())
-            })
-            .collect();
-
-        Ok(result)
+        Ok(
+            dates_sorted
+                .into_iter()
+                .map(|(d, (inc, exp))| {
+                    (d.format("%Y-%m-%d").to_string(), inc, exp.abs(), inc + exp.abs())
+                })
+                .collect()
+        )
     }
 }
 
@@ -193,7 +199,6 @@ fn find_min_max(
     dates: Vec<String>,
     prices: Vec<f64>
 ) -> PyResult<(Option<(String, f64)>, Option<(String, f64)>)> {
-    use chrono::{ DateTime, Utc };
     if dates.is_empty() || prices.is_empty() {
         return Ok((None, None));
     }
@@ -409,7 +414,10 @@ fn detect_anomalies(
     };
 
     // Compute MAD
-    let mut deviations: Vec<f64> = prices.iter().map(|x| (x - median).abs()).collect();
+    let mut deviations: Vec<f64> = prices
+        .iter()
+        .map(|x| (x - median).abs())
+        .collect();
     deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let mid_dev = deviations.len() / 2;
     let mad = if deviations.len() % 2 == 0 {
@@ -426,65 +434,107 @@ fn detect_anomalies(
     // Thresholding
     let anomalies: Vec<f64> = prices
         .into_iter()
-        .filter(|x| ((x - median).abs() / mad) > threshold)
+        .filter(|x| (x - median).abs() / mad > threshold)
         .collect();
 
     Ok(anomalies)
 }
 
-/// Predicts if a budget will be breached before end date
+/// Predicts budget breach using Monte-Carlo simulation
 #[pyfunction]
 fn predict_budget_breach(
     dates: Vec<String>,
     prices: Vec<f64>,
     budget_amount: f64,
-    start_date: String,
-    end_date: String
-) -> PyResult<(bool, f64, Option<u32>)> {
-    use chrono::{ DateTime, Utc };
+    horizon_days: u32,
+    simulations: Option<usize>,
+) -> PyResult<(f64, f64, Option<u32>)> {
+    use chrono::{DateTime, NaiveDate, Utc};
     use pyo3::exceptions::PyValueError;
+    use rand_distr::{Distribution, Normal};
+    use rand::thread_rng;
+    use std::collections::HashMap;
 
-    let mut total_spent = 0.0;
-    let mut first: Option<DateTime<Utc>> = None;
-    let mut last: Option<DateTime<Utc>> = None;
+    let sims = simulations.unwrap_or(10_000).max(1);
+    let horizon_days = horizon_days.max(1) as usize;
+
+    // --------------------------------------------------
+    // 1️⃣ Aggregate expense per day (CRITICAL FIX)
+    // --------------------------------------------------
+    let mut daily_map: HashMap<NaiveDate, f64> = HashMap::new();
 
     for (ds, price) in dates.iter().zip(prices.iter()) {
         if *price >= 0.0 {
-            continue;
+            continue; // only expenses
         }
 
-        let dt = ds
-            .parse::<DateTime<Utc>>()
+        let dt: DateTime<Utc> = ds
+            .parse()
             .map_err(|e| PyValueError::new_err(format!("Invalid date: {}", e)))?;
 
-        total_spent += price.abs();
-        first = Some(first.map_or(dt, |f| f.min(dt)));
-        last = Some(last.map_or(dt, |l| l.max(dt)));
+        let day = dt.date_naive();
+        *daily_map.entry(day).or_insert(0.0) += price.abs();
     }
 
-    let (Some(first), Some(last)) = (first, last) else {
-        return Ok((false, 0.0, None));
-    };
+    if daily_map.is_empty() {
+        return Ok((0.0, 0.0, None));
+    }
 
-    let days_used = (last - first).num_days().max(1) as f64;
-    let daily_burn = total_spent / days_used;
+    let daily_expenses: Vec<f64> = daily_map.values().copied().collect();
 
-    let end = end_date
-        .parse::<DateTime<Utc>>()
-        .map_err(|e| PyValueError::new_err(format!("Invalid end_date: {}", e)))?;
+    // --------------------------------------------------
+    // 2️⃣ Estimate distribution
+    // --------------------------------------------------
+    let mean = daily_expenses.iter().sum::<f64>() / daily_expenses.len() as f64;
 
-    let remaining_days = (end - Utc::now()).num_days().max(0) as f64;
+    let variance = daily_expenses
+        .iter()
+        .map(|x| (x - mean).powi(2))
+        .sum::<f64>() / daily_expenses.len() as f64;
 
-    let projected_total = total_spent + daily_burn * remaining_days;
-    let will_breach = projected_total > budget_amount;
+    let std_dev = variance.sqrt().max(1.0);
 
-    let days_until_breach = if will_breach && daily_burn > 0.0 {
-        Some(((budget_amount - total_spent) / daily_burn).max(0.0) as u32)
-    } else {
-        None
-    };
+    let dist = Normal::new(mean, std_dev)
+        .map_err(|_| PyValueError::new_err("Invalid normal distribution"))?;
 
-    Ok((will_breach, projected_total, days_until_breach))
+    // --------------------------------------------------
+    // 3️⃣ Monte Carlo simulation
+    // --------------------------------------------------
+    let mut rng = thread_rng();
+    let mut breach_count = 0usize;
+    let mut projected_sum = 0.0;
+    let mut breach_days = Vec::new();
+
+    for _ in 0..sims {
+        let mut spent = 0.0;
+        let mut breached_at: Option<u32> = None;
+
+        for day in 0..horizon_days {
+            let daily = dist.sample(&mut rng).max(0.0);
+            spent += daily;
+
+            if spent > budget_amount && breached_at.is_none() {
+                breached_at = Some(day as u32);
+            }
+        }
+
+        projected_sum += spent;
+
+        if spent > budget_amount {
+            breach_count += 1;
+            if let Some(d) = breached_at {
+                breach_days.push(d);
+            }
+        }
+    }
+
+    let probability = breach_count as f64 / sims as f64;
+    let expected_spend = projected_sum / sims as f64;
+
+    breach_days.sort_unstable();
+    let p50_days = breach_days.get(breach_days.len() / 2).copied();
+
+    Ok((probability, expected_spend, p50_days))
 }
 
 /// Forecasts cashflow for next N days using recurring transactions
@@ -572,7 +622,7 @@ fn detect_recurring_anomalies(
     expected_frequency_days: u32,
     tolerance_pct: f64 // e.g. 0.2 = 20%
 ) -> PyResult<Vec<(String, String)>> {
-    use chrono::{ DateTime, Duration, Utc };
+    use chrono::{ DateTime, Utc };
 
     let mut anomalies = vec![];
     let mut prev_date: Option<DateTime<Utc>> = None;
