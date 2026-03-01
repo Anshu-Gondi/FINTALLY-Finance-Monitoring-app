@@ -1,51 +1,32 @@
-# FINTALLY Finance Monitoring App
+# FINTALLY - Finance Monitoring App
 
-## Project Overview
-FINTALLY is a finance monitoring application that helps users keep track of their financial activities. With intuitive dashboards and insightful reports, users can easily visualize their spending habits and investment growth.
+## Overview
+FINTALLY is an application designed to help users monitor their financial activities effectively. This application is built with both C++ and Rust components to maximize performance and reliability.
 
-## Architecture
-The application is built using a microservices architecture to ensure scalability and maintainability. Each service is responsible for a specific functionality, communicating through RESTful APIs.
+## Components
 
-## Technology Stack
-- **Frontend:** React.js
-- **Backend:** Node.js, Express.js
-- **Database:** MongoDB
-- **Cloud:** AWS
-- **Deployment:** Docker, Kubernetes
+### C++ Components
+- **Core Logic:** The core logic of the application is implemented in C++. This includes data processing, calculations, and the primary algorithms for tracking financial transactions.
+- **Performance Optimization:** C++ is used for its performance benefits, ensuring that the application's core remains responsive even under load.
 
-## Features
-- User authentication and authorization
-- Dashboard visualization
-- Transaction tracking
-- Budgeting tools
-- Reporting and analytics
+### Rust Components
+- **File Handling:** Rust handles file I/O operations, providing safety guarantees against data races and improving overall stability.
+- **Integration with APIs:** Rust is used to integrate with third-party APIs securely, enhancing the security and efficiency of network communications.
 
-## Installation Instructions
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Anshu-Gondi/FINTALLY-Finance-Monitoring-app.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd FINTALLY-Finance-Monitoring-app
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Start the application:
-   ```bash
-   npm start
-   ```
+## Setup Instructions
+1. Clone the repository using: `git clone https://github.com/Anshu-Gondi/FINTALLY-Finance-Monitoring-app.git`
+2. Ensure you have the required dependencies installed:
+   - C++ Compiler (g++, clang, etc.)
+   - Rust toolchain
+3. Build the application:
+   - For C++: Navigate to the C++ directory and run `make`
+   - For Rust: Navigate to the Rust directory and run `cargo build`
 
-## Project Structure
-```
-FINTALLY-Finance-Monitoring-app/
-├── client/            # Frontend code
-├── server/            # Backend code
-├── docker/            # Docker configurations
-└── README.md         # Project documentation
-```
+## Usage
+After building the application, run the executable files from the C++ and Rust directories to start monitoring your finances in real-time.
+
+## Contribution
+Contributions are welcome! Please create a pull request for any enhancements or bug fixes.
 
 ## License
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See the LICENSE file for more details.
