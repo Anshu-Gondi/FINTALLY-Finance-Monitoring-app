@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+from fastapi_cache.decorator import cache
 from typing import List, Optional
 
 from dependencies.auth import get_current_user
@@ -16,17 +17,23 @@ from schemas.analytics import (
     CashflowForecastPoint,
     CashflowForecastResult,
     BudgetBreachResult,
+    IncomeStabilityResult,
+    NetWorthResult,
     RecurringAnomaly,
     RecurringImpactResult,
+    SavingsOptimizationResult,
     TransactionAnomaly,
     TransactionAnomalyResult,
 )
 
 from services.analytics_service import (
     daily_summary,
+    income_stability_analysis,
+    net_worth_analysis_service,
     period_summary,
     lifetime_analysis,
     category_summary,
+    savings_optimization_analysis,
     trend_summary,
     min_max_transaction,
     emi_pressure,
@@ -45,6 +52,7 @@ router = APIRouter()
 
 # ---------------- DAILY SUMMARY ----------------
 @router.get("/daily-summary", response_model=AnalyticsResult)
+@cache(expire=300)
 def get_daily_summary(
     interval: int = 1,
     user_id: str = Depends(get_current_user),
@@ -60,6 +68,7 @@ def get_daily_summary(
 
 # ---------------- PERIOD SUMMARY ----------------
 @router.get("/period-summary", response_model=AnalyticsResult)
+@cache(expire=300)
 def get_period_summary(
     range: str = "weekly",
     bucket_days: Optional[int] = None,
@@ -76,6 +85,7 @@ def get_period_summary(
 
 # ---------------- LIFETIME ----------------
 @router.get("/lifetime-analysis", response_model=AnalyticsResult)
+@cache(expire=300)
 def get_lifetime_analysis(
     user_id: str = Depends(get_current_user),
 ):
@@ -90,6 +100,7 @@ def get_lifetime_analysis(
 
 # ---------------- CATEGORY SUMMARY ----------------
 @router.get("/category-summary", response_model=CategoryResult)
+@cache(expire=300)
 def get_category_summary(
     start: Optional[str] = None,
     end: Optional[str] = None,
@@ -109,6 +120,7 @@ def get_category_summary(
 
 # ---------------- TREND SUMMARY ----------------
 @router.get("/trend-summary", response_model=AnalyticsResult)
+@cache(expire=300)
 def get_trend_summary(
     range: str = "6months",
     user_id: str = Depends(get_current_user),
@@ -124,6 +136,7 @@ def get_trend_summary(
 
 # ---------------- MIN MAX TRANSACTION ----------------
 @router.get("/min-max-transaction", response_model=AnalyticsResult)
+@cache(expire=300)
 def get_min_max_transaction(
     user_id: str = Depends(get_current_user),
 ):
@@ -159,6 +172,7 @@ def get_min_max_transaction(
 
 # ---------------- EMI PRESSURE ----------------
 @router.get("/emi-pressure", response_model=EmiPressureResult)
+@cache(expire=300)
 def get_emi_pressure(
     user_id: str = Depends(get_current_user),
 ):
@@ -174,6 +188,7 @@ def get_emi_pressure(
 
 # ---------------- CASHFLOW FORECAST ----------------
 @router.get("/cashflow-forecast", response_model=CashflowForecastResult)
+@cache(expire=300)
 def get_cashflow_forecast(
     horizons: List[int] = Query([30, 60, 90]),
     user_id: str = Depends(get_current_user),
@@ -194,9 +209,10 @@ def get_cashflow_forecast(
 
 # ---------------- BUDGET BREACH ----------------
 @router.get("/budget-breach", response_model=BudgetBreachResult)
+@cache(expire=300)
 def get_budget_breach(
     end_date: str,
-    simulations: int = 2000,
+    simulations: int = Query(2000, ge=100, le=10000),
     user_id: str = Depends(get_current_user),
 ):
 
@@ -213,6 +229,7 @@ def get_budget_breach(
 
 # ---------------- RECURRING ANOMALIES ----------------
 @router.get("/recurring-anomalies", response_model=List[RecurringAnomaly])
+@cache(expire=300)
 def get_recurring_anomalies(
     user_id: str = Depends(get_current_user),
 ):
@@ -230,8 +247,9 @@ def get_recurring_anomalies(
     
 # ---------------- TRANSACTION ANOMALIES ----------------
 @router.get("/anomalies", response_model=TransactionAnomalyResult)
+@cache(expire=300)
 def get_anomalies(
-    threshold: float = 2.5,
+    threshold: float = Query(2.5, ge=1.0, le=10.0),
     user_id: str = Depends(get_current_user),
 ):
 
@@ -252,6 +270,7 @@ def get_anomalies(
 
 # ---------------- CATEGORY DRIFT ----------------
 @router.get("/category-drift", response_model=CategoryDriftResult)
+@cache(expire=300)
 def get_category_drift(
     user_id: str = Depends(get_current_user),
 ):
@@ -270,6 +289,7 @@ def get_category_drift(
 
 # ---------------- RECURRING IMPACT ----------------
 @router.get("/recurring-impact", response_model=RecurringImpactResult)
+@cache(expire=300)
 def get_recurring_impact(
     user_id: str = Depends(get_current_user),
 ):
@@ -283,6 +303,7 @@ def get_recurring_impact(
     
 # ---------------- BUDGET UTILIZATION ----------------
 @router.get("/budget-utilization", response_model=BudgetUtilizationResult)
+@cache(expire=300)
 def get_budget_utilization(
     user_id: str = Depends(get_current_user),
 ):
@@ -298,6 +319,7 @@ def get_budget_utilization(
 
 # ---------------- BURN RATE ----------------
 @router.get("/burn-rate", response_model=BurnRateResult)
+@cache(expire=300)
 def get_burn_rate(
     user_id: str = Depends(get_current_user),
 ):
@@ -308,4 +330,47 @@ def get_burn_rate(
         daily_burn_rate=burn_rate,
         days_until_exhaustion=days_left,
         days_elapsed=days_elapsed
+    )
+
+# ---------------- INCOME STABILITY ----------------
+@router.get("/income-stability", response_model=IncomeStabilityResult)
+@cache(expire=300)
+def get_income_stability(
+    user_id: str = Depends(get_current_user),
+):
+
+    volatility, predictability = income_stability_analysis(user_id)
+
+    return IncomeStabilityResult(
+        income_volatility=volatility,
+        salary_predictability_score=predictability,
+    )
+
+# ---------------- SAVINGS OPTIMIZATION ----------------
+@router.get("/savings-optimization", response_model=SavingsOptimizationResult)
+@cache(expire=300)
+def get_savings_optimization(
+    user_id: str = Depends(get_current_user),
+):
+
+    rate, score = savings_optimization_analysis(user_id)
+
+    return SavingsOptimizationResult(
+        saving_rate_percent=rate,
+        financial_health_score=score,
+    )
+    
+# ---------------- NET WORTH ANALYSIS ----------------
+@router.get("/net-worth", response_model=NetWorthResult)
+@cache(expire=300)
+def get_net_worth(
+    user_id: str = Depends(get_current_user),
+):
+
+    assets, liabilities, net = net_worth_analysis_service(user_id)
+
+    return NetWorthResult(
+        total_assets=assets,
+        total_liabilities=liabilities,
+        net_worth=net,
     )

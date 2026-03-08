@@ -107,3 +107,18 @@ class RecurringAnomaly(BaseModel):
     description: str
     severity: float
     deviation_percent: float
+    
+class IncomeStabilityResult(BaseModel):
+    income_volatility: float
+    salary_predictability_score: float
+
+
+class SavingsOptimizationResult(BaseModel):
+    saving_rate_percent: float
+    financial_health_score: float
+
+
+class NetWorthResult(BaseModel):
+    total_assets: float
+    total_liabilities: float
+    net_worth: float

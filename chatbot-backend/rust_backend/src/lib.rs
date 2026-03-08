@@ -447,11 +447,11 @@ fn predict_budget_breach(
     prices: Vec<f64>,
     budget_amount: f64,
     horizon_days: u32,
-    simulations: Option<usize>,
+    simulations: Option<usize>
 ) -> PyResult<(f64, f64, Option<u32>)> {
-    use chrono::{DateTime, NaiveDate, Utc};
+    use chrono::{ DateTime, NaiveDate, Utc };
     use pyo3::exceptions::PyValueError;
-    use rand_distr::{Distribution, Normal};
+    use rand_distr::{ Distribution, Normal };
     use rand::thread_rng;
     use std::collections::HashMap;
 
@@ -485,17 +485,19 @@ fn predict_budget_breach(
     // --------------------------------------------------
     // 2️⃣ Estimate distribution
     // --------------------------------------------------
-    let mean = daily_expenses.iter().sum::<f64>() / daily_expenses.len() as f64;
+    let mean = daily_expenses.iter().sum::<f64>() / (daily_expenses.len() as f64);
 
-    let variance = daily_expenses
-        .iter()
-        .map(|x| (x - mean).powi(2))
-        .sum::<f64>() / daily_expenses.len() as f64;
+    let variance =
+        daily_expenses
+            .iter()
+            .map(|x| (x - mean).powi(2))
+            .sum::<f64>() / (daily_expenses.len() as f64);
 
     let std_dev = variance.sqrt().max(1.0);
 
-    let dist = Normal::new(mean, std_dev)
-        .map_err(|_| PyValueError::new_err("Invalid normal distribution"))?;
+    let dist = Normal::new(mean, std_dev).map_err(|_|
+        PyValueError::new_err("Invalid normal distribution")
+    )?;
 
     // --------------------------------------------------
     // 3️⃣ Monte Carlo simulation
@@ -528,8 +530,8 @@ fn predict_budget_breach(
         }
     }
 
-    let probability = breach_count as f64 / sims as f64;
-    let expected_spend = projected_sum / sims as f64;
+    let probability = (breach_count as f64) / (sims as f64);
+    let expected_spend = projected_sum / (sims as f64);
 
     breach_days.sort_unstable();
     let p50_days = breach_days.get(breach_days.len() / 2).copied();
@@ -652,6 +654,66 @@ fn detect_recurring_anomalies(
     Ok(anomalies)
 }
 
+// Calculates income stability and predictability score (0-100)
+#[pyfunction]
+fn income_stability(incomes: Vec<f64>) -> PyResult<(f64, f64)> {
+    if incomes.is_empty() {
+        return Ok((0.0, 0.0));
+    }
+
+    let mean = incomes.iter().sum::<f64>() / (incomes.len() as f64);
+
+    let variance =
+        incomes
+            .iter()
+            .map(|x| (x - mean).powi(2))
+            .sum::<f64>() / (incomes.len() as f64);
+
+    let std_dev = variance.sqrt();
+
+    // volatility ratio
+    let volatility = if mean > 0.0 { std_dev / mean } else { 0.0 };
+
+    // predictability score (0-100)
+    let predictability = (1.0 - volatility).max(0.0) * 100.0;
+
+    Ok((volatility, predictability))
+}
+
+/// Computes savings rate and a simple financial health score (0-100)
+#[pyfunction]
+fn savings_metrics(income: f64, expenses: f64) -> PyResult<(f64, f64)> {
+    if income <= 0.0 {
+        return Ok((0.0, 0.0));
+    }
+
+    let savings = income - expenses;
+    let saving_rate = savings / income;
+
+    let score = if saving_rate >= 0.3 {
+        95.0
+    } else if saving_rate >= 0.2 {
+        80.0
+    } else if saving_rate >= 0.1 {
+        60.0
+    } else {
+        30.0
+    };
+
+    Ok((saving_rate * 100.0, score))
+}
+
+/// Computes net worth and asset-liability ratio
+#[pyfunction]
+fn net_worth_analysis(assets: Vec<f64>, liabilities: Vec<f64>) -> PyResult<(f64, f64, f64)> {
+    let total_assets: f64 = assets.iter().sum();
+    let total_liabilities: f64 = liabilities.iter().sum();
+
+    let net_worth = total_assets - total_liabilities;
+
+    Ok((total_assets, total_liabilities, net_worth))
+}
+
 #[pymodule]
 fn rust_backend(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(aggregate_by_interval, m)?)?;
@@ -670,5 +732,8 @@ fn rust_backend(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(predict_budget_breach, m)?)?;
     m.add_function(wrap_pyfunction!(emi_survivability_score, m)?)?;
     m.add_function(wrap_pyfunction!(detect_recurring_anomalies, m)?)?;
+    m.add_function(wrap_pyfunction!(income_stability, m)?)?;
+    m.add_function(wrap_pyfunction!(savings_metrics, m)?)?;
+    m.add_function(wrap_pyfunction!(net_worth_analysis, m)?)?;
     Ok(())
 }

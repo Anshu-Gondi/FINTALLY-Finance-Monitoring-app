@@ -22,6 +22,9 @@ from rust_backend import (
     recurring_impact,
     budget_utilization,
     budget_burn_rate,
+    income_stability,
+    savings_metrics,
+    net_worth_analysis,
 )
 
 UTC = timezone.utc
@@ -397,3 +400,60 @@ def burn_rate_analysis(user_id: str):
     )
 
     return burn_rate, days_left, days_elapsed
+
+# ---------------- INCOME STABILITY ----------------
+def income_stability_analysis(user_id: str):
+
+    cursor = transactions.find(
+        {"userId": ObjectId(user_id), "price": {"$gt": 0}},
+        {"price": 1},
+    )
+
+    incomes = []
+
+    for d in cursor:
+        incomes.append(float(d["price"]))
+
+    return income_stability(incomes)
+
+# ---------------- SAVINGS OPTIMIZATION ----------------
+def savings_optimization_analysis(user_id: str):
+
+    cursor = transactions.find(
+        {"userId": ObjectId(user_id)},
+        {"price": 1},
+    )
+
+    income = 0.0
+    expenses = 0.0
+
+    for d in cursor:
+        price = float(d["price"])
+
+        if price > 0:
+            income += price
+        else:
+            expenses += abs(price)
+
+    return savings_metrics(income, expenses)
+
+# ---------------- NET WORTH ANALYSIS ----------------
+def net_worth_analysis_service(user_id: str):
+
+    cursor = transactions.find(
+        {"userId": ObjectId(user_id)},
+        {"price": 1},
+    )
+
+    assets = []
+    liabilities = []
+
+    for d in cursor:
+        price = float(d["price"])
+
+        if price > 0:
+            assets.append(price)
+        else:
+            liabilities.append(abs(price))
+
+    return net_worth_analysis(assets, liabilities)
