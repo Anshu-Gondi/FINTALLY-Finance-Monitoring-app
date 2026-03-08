@@ -33,3 +33,13 @@ class ChatHistory:
 
     async def close(self):
         self.client.close()
+        
+import os
+from pymongo import MongoClient
+
+client = MongoClient(os.getenv("MONGO_URL"))
+
+db = client["test"]
+
+transactions = db.transactions
+budgets = db.budgets
