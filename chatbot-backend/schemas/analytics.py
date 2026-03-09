@@ -122,3 +122,26 @@ class NetWorthResult(BaseModel):
     total_assets: float
     total_liabilities: float
     net_worth: float
+
+class FinancialHealthScoreResult(BaseModel):
+    score: float
+    savings_rate: float
+    income_stability: float
+    burn_rate: float
+    risk_level: str
+
+
+class SpendingPatternPoint(BaseModel):
+    category: str
+    percent: float
+
+
+class SpendingPatternResult(BaseModel):
+    patterns: List[SpendingPatternPoint]
+
+
+class GoalProjectionResult(BaseModel):
+    current_savings: float
+    monthly_savings: float
+    target_amount: float
+    months_to_goal: float

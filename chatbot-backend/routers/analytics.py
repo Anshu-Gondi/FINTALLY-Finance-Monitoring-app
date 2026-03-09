@@ -24,16 +24,23 @@ from schemas.analytics import (
     SavingsOptimizationResult,
     TransactionAnomaly,
     TransactionAnomalyResult,
+    FinancialHealthScoreResult,
+    SpendingPatternResult,
+    SpendingPatternPoint,
+    GoalProjectionResult,
 )
 
 from services.analytics_service import (
     daily_summary,
+    financial_health_score,
+    goal_projection,
     income_stability_analysis,
     net_worth_analysis_service,
     period_summary,
     lifetime_analysis,
     category_summary,
     savings_optimization_analysis,
+    spending_patterns,
     trend_summary,
     min_max_transaction,
     emi_pressure,
@@ -177,10 +184,12 @@ def get_emi_pressure(
     user_id: str = Depends(get_current_user),
 ):
 
-    monthly_emi, score, label = emi_pressure(user_id)
+    monthly_emi, emi_ratio, score, label = emi_pressure(user_id)
+
 
     return EmiPressureResult(
         monthly_emi=monthly_emi,
+        emi_ratio=emi_ratio,
         survivability_score=score,
         risk_level=label,
     )
@@ -244,8 +253,10 @@ def get_recurring_anomalies(
         )
         for d, s, p in result
     ]
-    
+
 # ---------------- TRANSACTION ANOMALIES ----------------
+
+
 @router.get("/anomalies", response_model=TransactionAnomalyResult)
 @cache(expire=300)
 def get_anomalies(
@@ -269,6 +280,8 @@ def get_anomalies(
     )
 
 # ---------------- CATEGORY DRIFT ----------------
+
+
 @router.get("/category-drift", response_model=CategoryDriftResult)
 @cache(expire=300)
 def get_category_drift(
@@ -288,6 +301,8 @@ def get_category_drift(
     )
 
 # ---------------- RECURRING IMPACT ----------------
+
+
 @router.get("/recurring-impact", response_model=RecurringImpactResult)
 @cache(expire=300)
 def get_recurring_impact(
@@ -300,8 +315,10 @@ def get_recurring_impact(
         monthly_recurring_cost=monthly,
         yearly_projection=yearly
     )
-    
+
 # ---------------- BUDGET UTILIZATION ----------------
+
+
 @router.get("/budget-utilization", response_model=BudgetUtilizationResult)
 @cache(expire=300)
 def get_budget_utilization(
@@ -318,6 +335,8 @@ def get_budget_utilization(
     )
 
 # ---------------- BURN RATE ----------------
+
+
 @router.get("/burn-rate", response_model=BurnRateResult)
 @cache(expire=300)
 def get_burn_rate(
@@ -333,6 +352,8 @@ def get_burn_rate(
     )
 
 # ---------------- INCOME STABILITY ----------------
+
+
 @router.get("/income-stability", response_model=IncomeStabilityResult)
 @cache(expire=300)
 def get_income_stability(
@@ -347,6 +368,8 @@ def get_income_stability(
     )
 
 # ---------------- SAVINGS OPTIMIZATION ----------------
+
+
 @router.get("/savings-optimization", response_model=SavingsOptimizationResult)
 @cache(expire=300)
 def get_savings_optimization(
@@ -359,8 +382,10 @@ def get_savings_optimization(
         saving_rate_percent=rate,
         financial_health_score=score,
     )
-    
+
 # ---------------- NET WORTH ANALYSIS ----------------
+
+
 @router.get("/net-worth", response_model=NetWorthResult)
 @cache(expire=300)
 def get_net_worth(
@@ -373,4 +398,61 @@ def get_net_worth(
         total_assets=assets,
         total_liabilities=liabilities,
         net_worth=net,
+    )
+
+# ---------------- FINANCIAL HEALTH SCORE ----------------
+
+
+@router.get("/financial-health-score", response_model=FinancialHealthScoreResult)
+@cache(expire=300)
+def get_financial_health_score(
+    user_id: str = Depends(get_current_user),
+):
+
+    score, savings_rate, stability, burn_rate, risk = financial_health_score(
+        user_id)
+
+    return FinancialHealthScoreResult(
+        score=score,
+        savings_rate=savings_rate,
+        income_stability=stability,
+        burn_rate=burn_rate,
+        risk_level=risk,
+    )
+
+# ---------------- SPENDING PATTERNS ----------------
+
+
+@router.get("/spending-patterns", response_model=SpendingPatternResult)
+@cache(expire=300)
+def get_spending_patterns(
+    user_id: str = Depends(get_current_user),
+):
+
+    result = spending_patterns(user_id)
+
+    return SpendingPatternResult(
+        patterns=[
+            SpendingPatternPoint(category=c, percent=p)
+            for c, p in result
+        ]
+    )
+
+# ---------------- GOAL PROJECTION ----------------
+
+
+@router.get("/goal-projection", response_model=GoalProjectionResult)
+@cache(expire=300)
+def get_goal_projection(
+    target_amount: float = Query(..., gt=0),
+    user_id: str = Depends(get_current_user),
+):
+
+    current, monthly, target, months = goal_projection(user_id, target_amount)
+
+    return GoalProjectionResult(
+        current_savings=current,
+        monthly_savings=monthly,
+        target_amount=target,
+        months_to_goal=months,
     )
