@@ -32,7 +32,7 @@ UTC = timezone.utc
 # ---------------- DAILY SUMMARY ----------------
 
 
-def daily_summary(user_id: str, interval: int):
+async def daily_summary(user_id: str, interval: int):
 
     now = datetime.utcnow().replace(tzinfo=UTC)
     start = datetime(now.year, now.month, now.day, tzinfo=UTC)
@@ -46,7 +46,7 @@ def daily_summary(user_id: str, interval: int):
     ts = []
     prices = []
 
-    for doc in cursor:
+    async for doc in cursor:
         ts.append(serialize_datetime(doc["datetime"]))
         prices.append(float(doc["price"]))
 
@@ -54,7 +54,7 @@ def daily_summary(user_id: str, interval: int):
 
 
 # ---------------- PERIOD SUMMARY ----------------
-def period_summary(user_id: str, range: str, bucket_days):
+async def period_summary(user_id: str, range: str, bucket_days):
 
     now = datetime.utcnow().replace(tzinfo=UTC)
 
@@ -73,7 +73,7 @@ def period_summary(user_id: str, range: str, bucket_days):
 
     dates, prices = [], []
 
-    for doc in cursor:
+    async for doc in cursor:
         dates.append(serialize_datetime(doc["datetime"]))
         prices.append(float(doc["price"]))
 
@@ -81,7 +81,7 @@ def period_summary(user_id: str, range: str, bucket_days):
 
 
 # ---------------- LIFETIME ----------------
-def lifetime_analysis(user_id: str):
+async def lifetime_analysis(user_id: str):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -90,7 +90,7 @@ def lifetime_analysis(user_id: str):
 
     dates, prices = [], []
 
-    for doc in cursor:
+    async for doc in cursor:
         dates.append(serialize_datetime(doc["datetime"]))
         prices.append(float(doc["price"]))
 
@@ -98,7 +98,7 @@ def lifetime_analysis(user_id: str):
 
 
 # ---------------- CATEGORY ----------------
-def category_summary(user_id, start, end, type, keyword, limit):
+async def category_summary(user_id, start, end, type, keyword, limit):
 
     match = {"userId": ObjectId(user_id)}
 
@@ -120,7 +120,7 @@ def category_summary(user_id, start, end, type, keyword, limit):
 
     categories, prices = [], []
 
-    for doc in cursor:
+    async for doc in cursor:
         categories.append(doc.get("category", "Uncategorized"))
         prices.append(float(doc["price"]))
 
@@ -128,7 +128,7 @@ def category_summary(user_id, start, end, type, keyword, limit):
 
 
 # ---------------- TREND ----------------
-def trend_summary(user_id: str, range: str):
+async def trend_summary(user_id: str, range: str):
 
     now = datetime.utcnow().replace(tzinfo=UTC)
 
@@ -149,7 +149,7 @@ def trend_summary(user_id: str, range: str):
 
     dates, prices = [], []
 
-    for doc in cursor:
+    async for doc in cursor:
         dates.append(serialize_datetime(doc["datetime"]))
         prices.append(float(doc["price"]))
 
@@ -157,7 +157,7 @@ def trend_summary(user_id: str, range: str):
 
 
 # ---------------- MIN MAX ----------------
-def min_max_transaction(user_id: str):
+async def min_max_transaction(user_id: str):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -166,7 +166,7 @@ def min_max_transaction(user_id: str):
 
     dates, prices = [], []
 
-    for doc in cursor:
+    async for doc in cursor:
         dates.append(serialize_datetime(doc["datetime"]))
         prices.append(float(doc["price"]))
 
@@ -177,7 +177,7 @@ def min_max_transaction(user_id: str):
 
 
 # ---------------- EMI PRESSURE ----------------
-def emi_pressure(user_id):
+async def emi_pressure(user_id):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id), "emiMeta": {"$exists": True}},
@@ -186,7 +186,7 @@ def emi_pressure(user_id):
 
     dates, principals, rates, tenures = [], [], [], []
 
-    for d in cursor:
+    async for d in cursor:
         emi = d.get("emiMeta", {})
 
         dates.append(serialize_datetime(d["datetime"]))
@@ -203,7 +203,10 @@ def emi_pressure(user_id):
         {"price": 1},
     )
 
-    monthly_income = sum(float(d["price"]) for d in income_cursor)
+    monthly_income = 0
+
+    async for d in income_cursor:
+        monthly_income += float(d["price"])
 
     score, label = emi_survivability_score(monthly_income, total_emi)
 
@@ -213,7 +216,7 @@ def emi_pressure(user_id):
 
 
 # ---------------- CASHFLOW FORECAST ----------------
-def cashflow_forecast(user_id, horizons):
+async def cashflow_forecast(user_id, horizons):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -222,7 +225,7 @@ def cashflow_forecast(user_id, horizons):
 
     dates, prices, freqs = [], [], []
 
-    for d in cursor:
+    async for d in cursor:
         dates.append(serialize_datetime(d["datetime"]))
         prices.append(float(d["price"]))
         freqs.append(d.get("recurringFrequency", "none"))
@@ -231,7 +234,7 @@ def cashflow_forecast(user_id, horizons):
 
 
 # ---------------- BUDGET BREACH ----------------
-def budget_breach_prediction(user_id, end_date, simulations):
+async def budget_breach_prediction(user_id, end_date, simulations):
 
     budget = get_active_budget(user_id)
 
@@ -258,7 +261,7 @@ def budget_breach_prediction(user_id, end_date, simulations):
 
     dates, prices = [], []
 
-    for d in cursor:
+    async for d in cursor:
         dates.append(serialize_datetime(d["datetime"]))
         prices.append(float(d["price"]))
 
@@ -272,7 +275,7 @@ def budget_breach_prediction(user_id, end_date, simulations):
 
 
 # ---------------- ANOMALIES ----------------
-def recurring_anomalies(user_id):
+async def recurring_anomalies(user_id):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -281,7 +284,7 @@ def recurring_anomalies(user_id):
 
     descs, prices, dates = [], [], []
 
-    for d in cursor:
+    async for d in cursor:
         descs.append(d.get("description", ""))
         prices.append(float(d["price"]))
         dates.append(serialize_datetime(d["datetime"]))
@@ -291,7 +294,7 @@ def recurring_anomalies(user_id):
 # ---------------- TRANSACTION ANOMALIES ----------------
 
 
-def anomalies(user_id: str, threshold: float):
+async def anomalies(user_id: str, threshold: float):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -300,7 +303,7 @@ def anomalies(user_id: str, threshold: float):
 
     dates, prices = [], []
 
-    for d in cursor:
+    async for d in cursor:
         dates.append(serialize_datetime(d["datetime"]))
         prices.append(float(d["price"]))
 
@@ -308,7 +311,7 @@ def anomalies(user_id: str, threshold: float):
 
 
 # ---------------- CATEGORY DRIFT ----------------
-def category_drift_analysis(user_id: str):
+async def category_drift_analysis(user_id: str):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -319,9 +322,8 @@ def category_drift_analysis(user_id: str):
     curr = {}
 
     now = datetime.utcnow().replace(tzinfo=UTC)
-    current_month = now.month
 
-    for d in cursor:
+    async for d in cursor:
 
         cat = d.get("category", "Uncategorized")
         price = abs(float(d["price"]))
@@ -336,7 +338,7 @@ def category_drift_analysis(user_id: str):
 
 
 # ---------------- RECURRING IMPACT ----------------
-def recurring_impact_analysis(user_id: str):
+async def recurring_impact_analysis(user_id: str):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id), "isRecurring": True},
@@ -346,7 +348,7 @@ def recurring_impact_analysis(user_id: str):
     prices = []
     freqs = []
 
-    for d in cursor:
+    async for d in cursor:
         prices.append(float(d["price"]))
         freqs.append(d.get("recurringFrequency", "Monthly"))
 
@@ -354,7 +356,7 @@ def recurring_impact_analysis(user_id: str):
 
 
 # ---------------- BUDGET UTILIZATION ----------------
-def budget_utilization_analysis(user_id: str):
+async def budget_utilization_analysis(user_id: str):
 
     budget = get_active_budget(user_id)
 
@@ -370,7 +372,7 @@ def budget_utilization_analysis(user_id: str):
 
     prices = []
 
-    for d in cursor:
+    async for d in cursor:
         price = float(d["price"])
         if price < 0:
             prices.append(price)
@@ -381,7 +383,7 @@ def budget_utilization_analysis(user_id: str):
 
 
 # ---------------- BURN RATE ----------------
-def burn_rate_analysis(user_id: str):
+async def burn_rate_analysis(user_id: str):
 
     budget = get_active_budget(user_id)
 
@@ -401,7 +403,7 @@ def burn_rate_analysis(user_id: str):
 
     prices = []
 
-    for d in cursor:
+    async for d in cursor:
         prices.append(float(d["price"]))
 
     spent, remaining, _ = budget_utilization(amount, prices)
@@ -419,7 +421,7 @@ def burn_rate_analysis(user_id: str):
 # ---------------- INCOME STABILITY ----------------
 
 
-def income_stability_analysis(user_id: str):
+async def income_stability_analysis(user_id: str):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id), "price": {"$gt": 0}},
@@ -428,7 +430,7 @@ def income_stability_analysis(user_id: str):
 
     incomes = []
 
-    for d in cursor:
+    async for d in cursor:
         incomes.append(float(d["price"]))
 
     return income_stability(incomes)
@@ -436,7 +438,7 @@ def income_stability_analysis(user_id: str):
 # ---------------- SAVINGS OPTIMIZATION ----------------
 
 
-def savings_optimization_analysis(user_id: str):
+async def savings_optimization_analysis(user_id: str):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -446,7 +448,7 @@ def savings_optimization_analysis(user_id: str):
     income = 0.0
     expenses = 0.0
 
-    for d in cursor:
+    async for d in cursor:
         price = float(d["price"])
 
         if price > 0:
@@ -459,7 +461,7 @@ def savings_optimization_analysis(user_id: str):
 # ---------------- NET WORTH ANALYSIS ----------------
 
 
-def net_worth_analysis_service(user_id: str):
+async def net_worth_analysis_service(user_id: str):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -469,7 +471,7 @@ def net_worth_analysis_service(user_id: str):
     assets = []
     liabilities = []
 
-    for d in cursor:
+    async for d in cursor:
         price = float(d["price"])
 
         if price > 0:
@@ -482,11 +484,11 @@ def net_worth_analysis_service(user_id: str):
 # ---------------- FINANCIAL HEALTH SCORE ----------------
 
 
-def financial_health_score(user_id):
+async def financial_health_score(user_id):
 
-    savings_rate, _ = savings_optimization_analysis(user_id)
-    volatility, predictability = income_stability_analysis(user_id)
-    burn_rate, days_left, _ = burn_rate_analysis(user_id)
+    savings_rate, _ = await savings_optimization_analysis(user_id)
+    volatility, predictability = await income_stability_analysis(user_id)
+    burn_rate, days_left, _ = await burn_rate_analysis(user_id)
 
     # --- NORMALIZATION ---
     volatility_score = max(0, 100 - (volatility * 100))
@@ -511,11 +513,11 @@ def financial_health_score(user_id):
 # ---------------- SPENDING PATTERNS ----------------
 
 
-def spending_patterns(user_id):
+async def spending_patterns(user_id):
 
     result = category_summary(user_id, None, None, "expense", None, None)
 
-    total = sum(t for _, t, _ in result)
+    total = sum(abs(t) for _, t, _ in result)
 
     patterns = []
 
@@ -528,7 +530,7 @@ def spending_patterns(user_id):
 # ---------------- GOAL PROJECTION ----------------
 
 
-def goal_projection(user_id, target_amount):
+async def goal_projection(user_id, target_amount):
 
     cursor = transactions.find(
         {"userId": ObjectId(user_id)},
@@ -538,7 +540,7 @@ def goal_projection(user_id, target_amount):
     income = 0.0
     expenses = 0.0
 
-    for d in cursor:
+    async for d in cursor:
         price = float(d["price"])
 
         if price > 0:
@@ -548,7 +550,7 @@ def goal_projection(user_id, target_amount):
 
     monthly_savings = max(income - expenses, 0)
 
-    assets, liabilities, net = net_worth_analysis_service(user_id)
+    assets, liabilities, net = await net_worth_analysis_service(user_id)
 
     if monthly_savings <= 0:
         months = -1

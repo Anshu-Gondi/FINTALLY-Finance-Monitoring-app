@@ -60,12 +60,12 @@ router = APIRouter()
 # ---------------- DAILY SUMMARY ----------------
 @router.get("/daily-summary", response_model=AnalyticsResult)
 @cache(expire=300)
-def get_daily_summary(
+async def get_daily_summary(
     interval: int = 1,
     user_id: str = Depends(get_current_user),
 ):
 
-    result = daily_summary(user_id, interval)
+    result = await daily_summary(user_id, interval)
 
     return AnalyticsResult(
         data=[AnalyticsPoint(period=p, income=i, expense=e, total=t)
@@ -76,13 +76,13 @@ def get_daily_summary(
 # ---------------- PERIOD SUMMARY ----------------
 @router.get("/period-summary", response_model=AnalyticsResult)
 @cache(expire=300)
-def get_period_summary(
+async def get_period_summary(
     range: str = "weekly",
     bucket_days: Optional[int] = None,
     user_id: str = Depends(get_current_user),
 ):
 
-    result = period_summary(user_id, range, bucket_days)
+    result = await period_summary(user_id, range, bucket_days)
 
     return AnalyticsResult(
         data=[AnalyticsPoint(period=p, income=i, expense=e, total=t)
@@ -93,11 +93,11 @@ def get_period_summary(
 # ---------------- LIFETIME ----------------
 @router.get("/lifetime-analysis", response_model=AnalyticsResult)
 @cache(expire=300)
-def get_lifetime_analysis(
+async def get_lifetime_analysis(
     user_id: str = Depends(get_current_user),
 ):
 
-    result = lifetime_analysis(user_id)
+    result = await lifetime_analysis(user_id)
 
     return AnalyticsResult(
         data=[AnalyticsPoint(period=p, income=i, expense=e, total=t)
@@ -108,7 +108,7 @@ def get_lifetime_analysis(
 # ---------------- CATEGORY SUMMARY ----------------
 @router.get("/category-summary", response_model=CategoryResult)
 @cache(expire=300)
-def get_category_summary(
+async def get_category_summary(
     start: Optional[str] = None,
     end: Optional[str] = None,
     type: str = "all",
@@ -117,7 +117,7 @@ def get_category_summary(
     user_id: str = Depends(get_current_user),
 ):
 
-    result = category_summary(user_id, start, end, type, keyword, limit)
+    result = await category_summary(user_id, start, end, type, keyword, limit)
 
     return CategoryResult(
         data=[CategoryPoint(category=c, total=t, count=n)
@@ -128,12 +128,12 @@ def get_category_summary(
 # ---------------- TREND SUMMARY ----------------
 @router.get("/trend-summary", response_model=AnalyticsResult)
 @cache(expire=300)
-def get_trend_summary(
+async def get_trend_summary(
     range: str = "6months",
     user_id: str = Depends(get_current_user),
 ):
 
-    result = trend_summary(user_id, range)
+    result = await trend_summary(user_id, range)
 
     return AnalyticsResult(
         data=[AnalyticsPoint(period=p, income=i, expense=e, total=t)
@@ -144,11 +144,11 @@ def get_trend_summary(
 # ---------------- MIN MAX TRANSACTION ----------------
 @router.get("/min-max-transaction", response_model=AnalyticsResult)
 @cache(expire=300)
-def get_min_max_transaction(
+async def get_min_max_transaction(
     user_id: str = Depends(get_current_user),
 ):
 
-    min_result, max_result = min_max_transaction(user_id)
+    min_result, max_result = await min_max_transaction(user_id)
 
     data = []
 
@@ -180,11 +180,11 @@ def get_min_max_transaction(
 # ---------------- EMI PRESSURE ----------------
 @router.get("/emi-pressure", response_model=EmiPressureResult)
 @cache(expire=300)
-def get_emi_pressure(
+async def get_emi_pressure(
     user_id: str = Depends(get_current_user),
 ):
 
-    monthly_emi, emi_ratio, score, label = emi_pressure(user_id)
+    monthly_emi, emi_ratio, score, label = await emi_pressure(user_id)
 
 
     return EmiPressureResult(
@@ -198,12 +198,12 @@ def get_emi_pressure(
 # ---------------- CASHFLOW FORECAST ----------------
 @router.get("/cashflow-forecast", response_model=CashflowForecastResult)
 @cache(expire=300)
-def get_cashflow_forecast(
+async def get_cashflow_forecast(
     horizons: List[int] = Query([30, 60, 90]),
     user_id: str = Depends(get_current_user),
 ):
 
-    result = cashflow_forecast(user_id, horizons)
+    result = await cashflow_forecast(user_id, horizons)
 
     return CashflowForecastResult(
         points=[
@@ -219,13 +219,13 @@ def get_cashflow_forecast(
 # ---------------- BUDGET BREACH ----------------
 @router.get("/budget-breach", response_model=BudgetBreachResult)
 @cache(expire=300)
-def get_budget_breach(
+async def get_budget_breach(
     end_date: str,
     simulations: int = Query(2000, ge=100, le=10000),
     user_id: str = Depends(get_current_user),
 ):
 
-    prob, expected, p50 = budget_breach_prediction(
+    prob, expected, p50 = await budget_breach_prediction(
         user_id, end_date, simulations
     )
 
@@ -239,11 +239,11 @@ def get_budget_breach(
 # ---------------- RECURRING ANOMALIES ----------------
 @router.get("/recurring-anomalies", response_model=List[RecurringAnomaly])
 @cache(expire=300)
-def get_recurring_anomalies(
+async def get_recurring_anomalies(
     user_id: str = Depends(get_current_user),
 ):
 
-    result = recurring_anomalies(user_id)
+    result = await recurring_anomalies(user_id)
 
     return [
         RecurringAnomaly(
@@ -259,12 +259,12 @@ def get_recurring_anomalies(
 
 @router.get("/anomalies", response_model=TransactionAnomalyResult)
 @cache(expire=300)
-def get_anomalies(
+async def get_anomalies(
     threshold: float = Query(2.5, ge=1.0, le=10.0),
     user_id: str = Depends(get_current_user),
 ):
 
-    result = anomalies(user_id, threshold)
+    result = await anomalies(user_id, threshold)
 
     return TransactionAnomalyResult(
         threshold=threshold,
@@ -284,11 +284,11 @@ def get_anomalies(
 
 @router.get("/category-drift", response_model=CategoryDriftResult)
 @cache(expire=300)
-def get_category_drift(
+async def get_category_drift(
     user_id: str = Depends(get_current_user),
 ):
 
-    result = category_drift_analysis(user_id)
+    result = await category_drift_analysis(user_id)
 
     return CategoryDriftResult(
         category_drift=[
@@ -305,11 +305,11 @@ def get_category_drift(
 
 @router.get("/recurring-impact", response_model=RecurringImpactResult)
 @cache(expire=300)
-def get_recurring_impact(
+async def get_recurring_impact(
     user_id: str = Depends(get_current_user),
 ):
 
-    monthly, yearly = recurring_impact_analysis(user_id)
+    monthly, yearly = await recurring_impact_analysis(user_id)
 
     return RecurringImpactResult(
         monthly_recurring_cost=monthly,
@@ -321,11 +321,11 @@ def get_recurring_impact(
 
 @router.get("/budget-utilization", response_model=BudgetUtilizationResult)
 @cache(expire=300)
-def get_budget_utilization(
+async def get_budget_utilization(
     user_id: str = Depends(get_current_user),
 ):
 
-    spent, remaining, percent, amount = budget_utilization_analysis(user_id)
+    spent, remaining, percent, amount = await budget_utilization_analysis(user_id)
 
     return BudgetUtilizationResult(
         budget_amount=amount,
@@ -339,11 +339,11 @@ def get_budget_utilization(
 
 @router.get("/burn-rate", response_model=BurnRateResult)
 @cache(expire=300)
-def get_burn_rate(
+async def get_burn_rate(
     user_id: str = Depends(get_current_user),
 ):
 
-    burn_rate, days_left, days_elapsed = burn_rate_analysis(user_id)
+    burn_rate, days_left, days_elapsed = await burn_rate_analysis(user_id)
 
     return BurnRateResult(
         daily_burn_rate=burn_rate,
@@ -356,11 +356,11 @@ def get_burn_rate(
 
 @router.get("/income-stability", response_model=IncomeStabilityResult)
 @cache(expire=300)
-def get_income_stability(
+async def get_income_stability(
     user_id: str = Depends(get_current_user),
 ):
 
-    volatility, predictability = income_stability_analysis(user_id)
+    volatility, predictability = await income_stability_analysis(user_id)
 
     return IncomeStabilityResult(
         income_volatility=volatility,
@@ -372,11 +372,11 @@ def get_income_stability(
 
 @router.get("/savings-optimization", response_model=SavingsOptimizationResult)
 @cache(expire=300)
-def get_savings_optimization(
+async def get_savings_optimization(
     user_id: str = Depends(get_current_user),
 ):
 
-    rate, score = savings_optimization_analysis(user_id)
+    rate, score = await savings_optimization_analysis(user_id)
 
     return SavingsOptimizationResult(
         saving_rate_percent=rate,
@@ -388,11 +388,11 @@ def get_savings_optimization(
 
 @router.get("/net-worth", response_model=NetWorthResult)
 @cache(expire=300)
-def get_net_worth(
+async def get_net_worth(
     user_id: str = Depends(get_current_user),
 ):
 
-    assets, liabilities, net = net_worth_analysis_service(user_id)
+    assets, liabilities, net = await net_worth_analysis_service(user_id)
 
     return NetWorthResult(
         total_assets=assets,
@@ -405,11 +405,11 @@ def get_net_worth(
 
 @router.get("/financial-health-score", response_model=FinancialHealthScoreResult)
 @cache(expire=300)
-def get_financial_health_score(
+async def get_financial_health_score(
     user_id: str = Depends(get_current_user),
 ):
 
-    score, savings_rate, stability, burn_rate, risk = financial_health_score(
+    score, savings_rate, stability, burn_rate, risk = await financial_health_score(
         user_id)
 
     return FinancialHealthScoreResult(
@@ -425,11 +425,11 @@ def get_financial_health_score(
 
 @router.get("/spending-patterns", response_model=SpendingPatternResult)
 @cache(expire=300)
-def get_spending_patterns(
+async def get_spending_patterns(
     user_id: str = Depends(get_current_user),
 ):
 
-    result = spending_patterns(user_id)
+    result = await spending_patterns(user_id)
 
     return SpendingPatternResult(
         patterns=[
@@ -443,12 +443,12 @@ def get_spending_patterns(
 
 @router.get("/goal-projection", response_model=GoalProjectionResult)
 @cache(expire=300)
-def get_goal_projection(
+async def get_goal_projection(
     target_amount: float = Query(..., gt=0),
     user_id: str = Depends(get_current_user),
 ):
 
-    current, monthly, target, months = goal_projection(user_id, target_amount)
+    current, monthly, target, months = await goal_projection(user_id, target_amount)
 
     return GoalProjectionResult(
         current_savings=current,
