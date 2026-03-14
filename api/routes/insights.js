@@ -40,12 +40,6 @@ router.get("/insights/trends", authMiddleware, async (req, res) => {
   await getAnalyticsData(`/trend-summary?range=${range}`, req, res);
 });
 
-router.get("/insights/trends", authMiddleware, async (req, res) => {
-  const range = req.query.range || "6months";
-
-  await getAnalyticsData(`/trend-summary?range=${range}`, req, res);
-});
-
 router.get("/insights/lifetime", authMiddleware, async (req, res) => {
   await getAnalyticsData("/lifetime-analysis", req, res);
 });
@@ -72,12 +66,6 @@ router.get("/insights/cashflow", authMiddleware, async (req, res) => {
   const horizons = req.query.horizons || "30,60,90";
 
   await getAnalyticsData(`/cashflow-forecast?horizons=${horizons}`, req, res);
-});
-
-router.get("/insights/budget-breach", authMiddleware, async (req, res) => {
-  const { end_date } = req.query;
-
-  await getAnalyticsData(`/budget-breach?end_date=${end_date}`, req, res);
 });
 
 router.get("/insights/budget-breach", authMiddleware, async (req, res) => {
