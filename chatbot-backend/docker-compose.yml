@@ -1,0 +1,12 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./llm_models:/app/llm_models   # mount models, don't bake into image
+      - ./uploads:/app/uploads
+    restart: unless-stopped

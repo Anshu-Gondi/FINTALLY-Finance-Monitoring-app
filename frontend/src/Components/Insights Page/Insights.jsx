@@ -56,7 +56,7 @@ export default function InsightsPage() {
           {errorBar && <div className="notification is-danger">{errorBar}</div>}
 
           {/* Charts & Analytics */}
-          <BarChartBlock data={barData} />
+          <BarChartBlock data={barData} loading={loadingBar} />
           <PieChartBlock data={categoryData} />
           <TrendChartBlock trendMode={trendMode} token={token} />
 

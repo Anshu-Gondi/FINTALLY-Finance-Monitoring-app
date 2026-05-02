@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from bson import ObjectId
+from services.db import budgets
 
 UTC = timezone.utc
 
@@ -11,16 +12,17 @@ def serialize_datetime(dt: datetime) -> str:
 
 
 def parse_date(date_str: str):
+    if not date_str:
+        return None
     try:
-        return datetime.fromisoformat(date_str)
+        return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
     except Exception:
         return None
 
 
-def get_active_budget(budgets, user_id: str):
+async def get_active_budget(user_id: str):
     now = datetime.utcnow().replace(tzinfo=UTC)
-
-    return budgets.find_one(
+    return await budgets.find_one(
         {
             "userId": ObjectId(user_id),
             "startDate": {"$lte": now},

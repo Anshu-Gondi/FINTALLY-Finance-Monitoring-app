@@ -1,0 +1,14 @@
+# fintally_chatbot/pyproject.toml
+[build-system]
+requires      = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name        = "fintally-chatbot"
+version     = "0.1.0"
+description = "LLM chatbot extension for FinTally"
+requires-python = ">=3.10"
+
+[tool.maturin]
+python-source = "."
+module-name   = "fintally_chatbot._native"

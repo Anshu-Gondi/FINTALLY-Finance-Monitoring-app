@@ -1,0 +1,59 @@
+# requirements.in  — SOURCE OF TRUTH, edit this, never requirements.txt
+
+# --- Web / API ---
+fastapi
+uvicorn[standard]
+pydantic[email]
+python-dotenv
+python-multipart
+starlette
+
+# --- Database ---
+motor
+pymongo
+
+# --- Auth ---
+bcrypt
+PyJWT
+cryptography
+
+# --- Scheduling ---
+APScheduler
+pendulum
+
+# --- HTTP / Google ---
+requests
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
+requests-oauthlib
+
+# --- PDF / Docs ---
+PyMuPDF
+reportlab
+beautifulsoup4
+
+# --- ML / Embeddings ---
+scikit-learn
+scipy
+numpy==1.26.4        # pin: llama_cpp_python wheel requires <2.0
+sentence-transformers
+transformers
+tokenizers
+safetensors
+huggingface-hub
+
+# --- Torch (CPU or CUDA — pick one, see notes) ---
+torch
+
+# --- LLaMA (CPU build) ---
+--extra-index-url https://abetlen.github.io/llama-cpp-python/whl/CPU
+llama-cpp-python
+
+# --- Build (needed at image build time, not runtime) ---
+maturin
+
+# --- Test ---
+pytest
+pytest-asyncio
+pytest-timeout

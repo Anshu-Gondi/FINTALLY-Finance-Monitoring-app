@@ -9,7 +9,7 @@ export default function FiltersPanel({
 }) {
   return (
     <div className="box">
-      <h2 className="subtitle has-text-white mb-3">Controls & Filters</h2>
+      <h2 className="subtitle has-text-black mb-3">Controls & Filters</h2>
       <div className="columns is-multiline is-variable is-1">
         {/* View Mode */}
         <div className="column is-3">

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["maturin>=1.5"]
+build-backend = "maturin"
+
+[project]
+name = "fintally-finance"
+version = "1.0.0"
+description = "High-performance finance calculations for FinTally"
+requires-python = ">=3.10"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+module-name = "fintally_finance"

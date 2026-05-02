@@ -1,39 +1,43 @@
+/**
+ * useAdvancedAnalytics.js
+ * Fetches budget breach, EMI pressure, cashflow forecast, and anomalies
+ * using analyticsApi — no raw fetch calls.
+ */
 import { useState, useEffect } from "react";
+import { analyticsApi } from "../../../services/api";
 
-export default function useAdvancedAnalytics(token) {
+export default function useAdvancedAnalytics() {
   const [budgetRisk, setBudgetRisk] = useState(null);
   const [emiRisk, setEmiRisk] = useState(null);
-  const [cashflowForecast, setCashflowForecast] = useState([]);
+  const [cashflowForecast, setCashflowForecast] = useState(null);
   const [anomalies, setAnomalies] = useState([]);
   const [loadingAdvanced, setLoadingAdvanced] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
-
+    let cancelled = false;
     setLoadingAdvanced(true);
 
-    const fetchAdvanced = async () => {
-      try {
-        const [resBudget, resEMI, resCashflow, resAnomalies] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/insights/budget-breach?end_date=${new Date().toISOString().slice(0,10)}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-          fetch(`${import.meta.env.VITE_API_URL}/insights/emi-pressure`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-          fetch(`${import.meta.env.VITE_API_URL}/insights/cashflow?horizons=30,60,90`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-          fetch(`${import.meta.env.VITE_API_URL}/insights/anomalies`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
-        ]);
+    // end_date required by budget-breach — default to 30 days out
+    const endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
 
-        setBudgetRisk(resBudget);
-        setEmiRisk(resEMI);
-        setCashflowForecast(resCashflow.data || []);
-        setAnomalies(resAnomalies.data || []);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingAdvanced(false);
-      }
-    };
+    Promise.allSettled([
+      analyticsApi.budgetBreach(endDate),
+      analyticsApi.emiPressure(),
+      analyticsApi.cashflowForecast([30, 60, 90]),
+      analyticsApi.anomalies(),
+    ]).then(([breach, emi, cashflow, anom]) => {
+      if (cancelled) return;
+      if (breach.status === "fulfilled") setBudgetRisk(breach.value);
+      if (emi.status === "fulfilled")    setEmiRisk(emi.value);
+      if (cashflow.status === "fulfilled") setCashflowForecast(cashflow.value);
+      if (anom.status === "fulfilled")  setAnomalies(anom.value?.anomalies ?? []);
+      setLoadingAdvanced(false);
+    });
 
-    fetchAdvanced();
-  }, [token]);
+    return () => { cancelled = true; };
+  }, []);
 
   return { budgetRisk, emiRisk, cashflowForecast, anomalies, loadingAdvanced };
 }

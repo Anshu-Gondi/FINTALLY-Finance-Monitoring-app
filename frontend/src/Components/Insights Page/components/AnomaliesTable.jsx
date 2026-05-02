@@ -1,23 +1,26 @@
 import PropTypes from "prop-types";
 
+// AnomaliesTable.jsx — API returns recurring anomalies with description/severity/deviation_percent
+// Transaction anomalies have datetime/price/zscore
+// Your hook pulls from anom.value?.anomalies which is the transaction anomaly list
 export default function AnomaliesTable({ data }) {
   if (!data || !data.length) return <p>No anomalies detected 🎯</p>;
 
   return (
-    <table className="table is-fullwidth is-striped is-dark">
+    <table className="table is-fullwidth is-striped">
       <thead>
         <tr>
-          <th>Description</th>
-          <th>Deviation %</th>
-          <th>Severity</th>
+          <th>Date</th>
+          <th>Price</th>
+          <th>Z-Score</th>
         </tr>
       </thead>
       <tbody>
         {data.map((a, i) => (
           <tr key={i}>
-            <td>{a.description}</td>
-            <td>{a.deviationPercent.toFixed(1)}%</td>
-            <td>{a.severity.toFixed(2)}</td>
+            <td>{a.datetime ?? "—"}</td>
+            <td>₹{(a.price ?? 0).toFixed(2)}</td>
+            <td>{(a.zscore ?? 0).toFixed(2)}</td>
           </tr>
         ))}
       </tbody>

@@ -1,69 +1,56 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { auth } from "../../services/api";
 import "./Login.css";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleLogin(e) {
     e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (data.success && data.token) {
-        localStorage.setItem("token", data.token);
-        alert("Login successful!");
-        window.location.href = "/";
-      } else {
-        alert(data.message || "Login failed");
-      }
+      const data = await auth.login(email, password);
+      localStorage.setItem("token", data.token);
+      window.location.href = "/";
     } catch (err) {
-      console.error("Login error:", err);
-      alert("Server error");
+      setError(err.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-        callback: async (response) => {
-          try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/google-auth`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ token: response.credential }),
-            });
-            const data = await res.json();
-            if (data.success && data.token) {
-              localStorage.setItem("token", data.token);
-              alert("Google login successful!");
-              window.location.href = "/";
-            } else {
-              alert(data.message || "Google login failed");
-            }
-          } catch (err) {
-            console.error("Google login error:", err);
-          }
-        },
-      });
-
-      window.google.accounts.id.renderButton(
-        document.getElementById("googleSignInDiv"),
-        { theme: "filled_black", size: "large" }
-      );
-    }
+    if (!window.google) return;
+    window.google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      callback: async (response) => {
+        try {
+          const data = await auth.googleAuth(response.credential);
+          localStorage.setItem("token", data.token);
+          window.location.href = "/";
+        } catch (err) {
+          setError(err.message || "Google login failed");
+        }
+      },
+    });
+    window.google.accounts.id.renderButton(
+      document.getElementById("googleSignInDiv"),
+      { theme: "filled_black", size: "large" }
+    );
   }, []);
 
   return (
     <div className="loginContainer">
       <form className="loginForm neonBox" onSubmit={handleLogin}>
         <h2 className="loginTitle">Login</h2>
+
+        {error && <p className="has-text-danger mb-3">{error}</p>}
+
         <div className="field">
           <input
             className="input neonInput"
@@ -84,24 +71,19 @@ const Login = () => {
             required
           />
         </div>
-        <button className="neonButton" type="submit">
-          Login
+
+        <button className="neonButton" type="submit" disabled={loading}>
+          {loading ? "Logging in…" : "Login"}
         </button>
 
-        <div className="divider">
-          <span>or continue with</span>
-        </div>
-
+        <div className="divider"><span>or continue with</span></div>
         <div className="googleWrapper">
-          <div id="googleSignInDiv"></div>
+          <div id="googleSignInDiv" />
         </div>
 
-        {/* Signup Link */}
         <p className="signupLink">
-          Don’t have an account?{" "}
-          <Link to="/signup" className="signupHighlight">
-            Sign up here
-          </Link>
+          Don &apos; t have an account?{" "}
+          <Link to="/signup" className="signupHighlight">Sign up here</Link>
         </p>
       </form>
     </div>

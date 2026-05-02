@@ -1,9 +1,23 @@
+// TrendChartBlock.jsx — fetches its own data using the same pattern as useAdvancedAnalytics
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { analyticsApi } from "../../../services/api";
 
-export default function TrendChartBlock({ data, loading }) {
-  if (loading) return <p>Loading…</p>;
-  if (!data || !data.length) return <p>No trend data available.</p>;
+export default function TrendChartBlock({ trendMode }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    analyticsApi.trendSummary(trendMode)
+      .then(res => setData(res?.data ?? []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, [trendMode]);
+
+  if (loading) return <p>Loading trend…</p>;
+  if (!data.length) return <p>No trend data available.</p>;
 
   return (
     <ResponsiveContainer width="100%" height={300}>
@@ -21,11 +35,5 @@ export default function TrendChartBlock({ data, loading }) {
 }
 
 TrendChartBlock.propTypes = {
-  data: PropTypes.arrayOf(PropTypes.object),
-  loading: PropTypes.bool,
-};
-
-TrendChartBlock.defaultProps = {
-  data: [],
-  loading: false,
+  trendMode: PropTypes.string.isRequired,
 };

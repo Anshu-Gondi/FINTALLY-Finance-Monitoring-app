@@ -1,23 +1,32 @@
-import PropTypes from "prop-types";
+// SavingsCard.jsx — uses actual savings-optimization endpoint shape
+import { useState, useEffect } from "react";
+import { analyticsApi } from "../../../services/api";
 
-export default function SavingsCard({ data }) {
-  if (!data) return <p>No savings data</p>;
+export default function SavingsCard() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    analyticsApi.savingsOptimization()
+      .then(res => setData(res))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <p>Loading savings…</p>;
+  if (!data) return <p>No savings data available.</p>;
 
   return (
-    <div>
-      <p><strong>Total Saved:</strong> ₹{data.total}</p>
-      <p><strong>Monthly Average:</strong> ₹{data.monthlyAverage}</p>
+    <div className="box">
+      <p>
+        <strong>Saving Rate:</strong>{" "}
+        {(data.saving_rate_percent ?? 0).toFixed(1)}%
+      </p>
+      <p>
+        <strong>Financial Health Score:</strong>{" "}
+        {(data.financial_health_score ?? 0).toFixed(0)} / 100
+      </p>
     </div>
   );
 }
-
-SavingsCard.propTypes = {
-  data: PropTypes.shape({
-    total: PropTypes.number,
-    monthlyAverage: PropTypes.number,
-  }),
-};
-
-SavingsCard.defaultProps = {
-  data: null,
-};

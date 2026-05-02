@@ -1,0 +1,55 @@
+# === Rust build and package files ===
+/target/
+/Cargo.lock
+
+# If this is a binary crate, you may want to include Cargo.lock:
+# !Cargo.lock
+
+# === IDE and editor files ===
+.vscode/
+.idea/
+*.iml
+
+# === OS-specific junk ===
+.DS_Store
+Thumbs.db
+
+# === Logs and temp files ===
+*.log
+*.tmp
+*.bak
+
+# === Rust tooling ===
+# Rust language server and formatter caches
+.rustup/
+.cargo/
+.clippy.toml
+.rustfmt.toml
+
+# === Build artifacts ===
+*.rlib
+*.rmeta
+*.dSYM/
+*.pdb
+
+# === Python bindings (for PyO3/maturin builds) ===
+# Ignore build artifacts created during maturin builds
+/target/wheels/
+/target/release/*.pyd
+/target/release/*.so
+/target/debug/*.pyd
+/target/debug/*.so
+
+# === Virtual environments (if used with Python) ===
+venv/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+
+# === Backup and cache ===
+*.swp
+*.swo
+*.bak
+*.old
+.cache/

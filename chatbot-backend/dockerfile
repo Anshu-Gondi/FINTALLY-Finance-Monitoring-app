@@ -1,0 +1,74 @@
+# ============================================================
+# Stage 1: Rust + Maturin build environment
+# ============================================================
+FROM python:3.10-slim AS rust-builder
+
+# Install Rust toolchain
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl build-essential pkg-config libssl-dev git \
+    && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# Install maturin
+RUN pip install --no-cache-dir maturin
+
+WORKDIR /build
+
+# Copy the entire fintally_core workspace
+COPY fintally_core/ ./fintally_core/
+
+# ---- Build rust_backend ----
+WORKDIR /build/fintally_core
+RUN maturin build --release \
+    --manifest-path rust_backend/Cargo.toml \
+    --out /dist/rust_backend \
+    --interpreter python3.10
+
+# ---- Build fintally_finance ----
+RUN maturin build --release \
+    --manifest-path fintally_finance/Cargo.toml \
+    --out /dist/fintally_finance \
+    --interpreter python3.10
+
+# ---- Build fintally_chatbot ----
+RUN maturin build --release \
+    --manifest-path fintally_chatbot/Cargo.toml \
+    --out /dist/fintally_chatbot \
+    --interpreter python3.10
+
+# ============================================================
+# Stage 2: Python runtime
+# ============================================================
+FROM python:3.10-slim AS runtime
+
+WORKDIR /app
+
+# System deps for PyMuPDF, reportlab, etc.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 libgl1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy built wheels from builder stage
+COPY --from=rust-builder /dist/ /wheels/
+
+# Install Python deps
+COPY requirements.txt requirements-llama.txt ./
+
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir \
+       --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/CPU \
+       llama-cpp-python
+
+# Install all PyO3 wheels
+RUN pip install --no-cache-dir /wheels/rust_backend/*.whl \
+    && pip install --no-cache-dir /wheels/fintally_finance/*.whl \
+    && pip install --no-cache-dir /wheels/fintally_chatbot/*.whl
+
+# Copy app source
+COPY . .
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

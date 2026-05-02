@@ -1,0 +1,33 @@
+[package]
+name        = "fintally_chatbot"
+version     = "0.1.0"
+edition     = "2021"
+description = "LLM chatbot extension for FinTally (personal finance assistant)"
+license     = "MIT OR Apache-2.0"
+repository  = "https://github.com/yourusername/fintally"
+readme      = "README.md"
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+# 🔥 From workspace (NO versions here)
+pyo3               = { workspace = true }
+tokio              = { workspace = true }
+once_cell          = { workspace = true }
+thiserror          = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+serde              = { workspace = true }
+serde_json         = { workspace = true }
+
+async-trait        = { workspace = true }
+futures-util       = { workspace = true }
+futures-core       = { workspace = true }
+futures-executor   = { workspace = true }
+tokio-stream       = { workspace = true }
+tokio-util         = { workspace = true }
+
+signal-hook        = { workspace = true }

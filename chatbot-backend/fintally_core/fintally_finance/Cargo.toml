@@ -1,0 +1,20 @@
+# fintally_core/fintally_finance/Cargo.toml
+[package]
+name    = "fintally_finance"
+version = "1.0.0"
+edition = "2021"
+
+[lib]
+name       = "fintally_finance"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3  = { workspace = true }
+rayon = "1.10"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name    = "finance_bench"
+harness = false

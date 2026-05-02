@@ -1,0 +1,13 @@
+# fintally_core/rust_backend/pyproject.toml
+[build-system]
+requires      = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name        = "rust-backend"
+version     = "0.1.0"
+requires-python = ">=3.10"
+
+[tool.maturin]
+python-source = "."
+module-name   = "rust_backend"

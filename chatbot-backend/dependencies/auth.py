@@ -1,52 +1,36 @@
 import os
+
 import jwt
-from fastapi import Header, HTTPException
-from typing import Optional
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 JWT_SECRET = os.getenv("JWT_SECRET", "secret123")
+JWT_ALGORITHM = "HS256"
+
+bearer_scheme = HTTPBearer()
 
 
-def get_current_user(authorization: Optional[str] = Header(None)) -> str:
-
-    if not authorization:
-        raise HTTPException(
-            status_code=401,
-            detail="Authorization header missing"
-        )
-
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid authorization format"
-        )
-
-    token = authorization.split(" ")[1]
-
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> dict:
+    """
+    Validates the Bearer JWT and returns the decoded payload.
+    Equivalent to the Node.js authMiddleware.
+    """
+    token = credentials.credentials
     try:
-        payload = jwt.decode(
-            token,
-            JWT_SECRET,
-            algorithms=["HS256"]
-        )
-
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return payload  # contains at minimum {"userId": "..."}
     except jwt.ExpiredSignatureError:
         raise HTTPException(
-            status_code=401,
-            detail="Token expired"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Token has expired",
         )
-
     except jwt.InvalidTokenError:
         raise HTTPException(
-            status_code=401,
-            detail="Invalid token"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid token",
         )
-
-    user_id = payload.get("userId")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token payload"
-        )
-
-    return user_id
+        
+def get_user_id(user: dict = Depends(get_current_user)) -> str:
+    return user["userId"]
