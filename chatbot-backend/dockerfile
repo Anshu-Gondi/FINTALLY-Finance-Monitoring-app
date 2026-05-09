@@ -1,74 +1,66 @@
-# ============================================================
-# Stage 1: Rust + Maturin build environment
-# ============================================================
-FROM python:3.10-slim AS rust-builder
-
-# Install Rust toolchain
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl build-essential pkg-config libssl-dev git \
-    && curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV PATH="/root/.cargo/bin:$PATH"
-
-# Install maturin
-RUN pip install --no-cache-dir maturin
-
-WORKDIR /build
-
-# Copy the entire fintally_core workspace
-COPY fintally_core/ ./fintally_core/
-
-# ---- Build rust_backend ----
-WORKDIR /build/fintally_core
-RUN maturin build --release \
-    --manifest-path rust_backend/Cargo.toml \
-    --out /dist/rust_backend \
-    --interpreter python3.10
-
-# ---- Build fintally_finance ----
-RUN maturin build --release \
-    --manifest-path fintally_finance/Cargo.toml \
-    --out /dist/fintally_finance \
-    --interpreter python3.10
-
-# ---- Build fintally_chatbot ----
-RUN maturin build --release \
-    --manifest-path fintally_chatbot/Cargo.toml \
-    --out /dist/fintally_chatbot \
-    --interpreter python3.10
-
-# ============================================================
-# Stage 2: Python runtime
-# ============================================================
-FROM python:3.10-slim AS runtime
+# ====================== BUILDER STAGE ======================
+FROM ghcr.io/pyo3/maturin:latest AS builder
 
 WORKDIR /app
 
-# System deps for PyMuPDF, reportlab, etc.
+# Copy Rust workspace
+COPY fintally_core/ ./fintally_core/
+
+WORKDIR /app/fintally_core
+
+# Build all crates individually
+RUN maturin build --release -m rust_backend/Cargo.toml --strip && \
+    maturin build --release -m fintally_finance/Cargo.toml --strip && \
+    maturin build --release -m fintally_chatbot/Cargo.toml --strip
+
+# ====================== RUNTIME STAGE ======================
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 libgl1 \
+    build-essential \
+    gcc \
+    g++ \
+    cmake \
+    libglib2.0-0 \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy built wheels from builder stage
-COPY --from=rust-builder /dist/ /wheels/
+# Copy wheels from builder
+COPY --from=builder /app/fintally_core/target/wheels/*.whl /wheels/
 
-# Install Python deps
-COPY requirements.txt requirements-llama.txt ./
+# Install dependencies
+COPY requirements.txt ./
 
-RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir \
-       --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/CPU \
-       llama-cpp-python
-
-# Install all PyO3 wheels
-RUN pip install --no-cache-dir /wheels/rust_backend/*.whl \
-    && pip install --no-cache-dir /wheels/fintally_finance/*.whl \
-    && pip install --no-cache-dir /wheels/fintally_chatbot/*.whl
+RUN pip install --no-cache-dir -r requirements.txt && \
+    if [ "$LLAMA_NO_AVX" = "1" ]; then \
+        export CMAKE_ARGS="-DGGML_AVX=OFF \
+                            -DGGML_AVX2=OFF \
+                            -DGGML_AVX512=OFF \
+                            -DGGML_FMA=OFF \
+                            -DGGML_F16C=OFF \
+                            -DGGML_NATIVE=OFF"; \
+    else \
+        export CMAKE_ARGS="-DGGML_AVX=ON \
+                            -DGGML_AVX2=ON \
+                            -DGGML_AVX512=OFF \
+                            -DGGML_FMA=ON \
+                            -DGGML_F16C=ON \
+                            -DGGML_NATIVE=ON"; \
+    fi && \
+    export FORCE_CMAKE=1 && \
+    pip install --no-cache-dir llama-cpp-python && \
+    pip install --no-cache-dir /wheels/*.whl
 
 # Copy app source
 COPY . .
 
+# Security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

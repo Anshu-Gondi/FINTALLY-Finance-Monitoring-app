@@ -4,8 +4,6 @@ use crate::core::utils::errors::AppError;
 use async_trait::async_trait;
 use futures_util::StreamExt;
 
-use pyo3::types::PyAnyMethods;
-
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_util::sync::CancellationToken;
@@ -42,7 +40,7 @@ impl LlmEngine for PythonLlamaEngine {
         tokio::task::spawn_blocking(move || {
             let result: Result<(), AppError> = pyo3::Python::with_gil(|py| {
                 let module = py
-                    .import_bound("python_llama")
+                    .import("python_llama")
                     .map_err(|e| AppError::Other(e.to_string()))?;
 
                 let gen = module

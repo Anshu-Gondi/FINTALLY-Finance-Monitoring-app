@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use pyo3::exceptions::{ PyValueError, PyTypeError };
+use pyo3::exceptions::PyValueError;
 use rayon::prelude::*;
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -337,7 +337,7 @@ fn budget_projection_batch(
 // ─── module export ───────────────────────────────────────────────────────────
 
 #[pymodule]
-fn fintally_finance(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn fintally_finance(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compound_interest_batch, m)?)?;
     m.add_function(wrap_pyfunction!(emi_batch, m)?)?;
     m.add_function(wrap_pyfunction!(sip_batch, m)?)?;

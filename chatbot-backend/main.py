@@ -55,6 +55,19 @@ async def lifespan(app: FastAPI):
     # Initialize cache (replaces @app.on_event("startup"))
     FastAPICache.init(InMemoryBackend(), prefix="finance-cache")
 
+    # ── LLM warm-up ───────────────────────────────────────────────────────────
+    # Load TinyLlama into memory at startup so the first chat request
+    # doesn't block for 5-10 seconds. Runs in a thread to avoid
+    # blocking the event loop.
+    try:
+        import asyncio
+        import python_llama
+        await asyncio.to_thread(python_llama.init, "tinyllama", 512)
+        logger.info("✅ LLM loaded: tinyllama")
+    except Exception as e:
+        # Non-fatal — server still starts, LLM just loads on first request
+        logger.warning(f"⚠️  LLM failed to pre-load: {e}")
+
     yield
 
     logger.info("🛑 Shutting down FinTally API...")
@@ -103,3 +116,7 @@ app.include_router(
 @app.get("/api/test", tags=["Health"])
 async def test():
     return {"body": "test ok"}
+
+@app.get("/health", tags=["Health"])
+async def health_check():
+    return {"status": "ok", "message": "FinTally backend is running"}

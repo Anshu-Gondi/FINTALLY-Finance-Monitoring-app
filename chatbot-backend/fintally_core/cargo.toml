@@ -7,7 +7,8 @@ members = [
 ]
 
 [workspace.dependencies]
-pyo3 = { version = "0.21", features = ["extension-module", "abi3-py310", "serde"] }
+pyo3 = { version = "0.20", features = ["extension-module", "abi3-py310", "serde"] }
+pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

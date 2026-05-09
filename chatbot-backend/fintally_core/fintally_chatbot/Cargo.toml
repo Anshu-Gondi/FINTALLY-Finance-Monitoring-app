@@ -8,12 +8,13 @@ repository  = "https://github.com/yourusername/fintally"
 readme      = "README.md"
 
 [lib]
-name = "_native"
+name = "fintally_chatbot"
 crate-type = ["cdylib"]
 
 [dependencies]
 # 🔥 From workspace (NO versions here)
 pyo3               = { workspace = true }
+pyo3-asyncio       = { workspace = true }
 tokio              = { workspace = true }
 once_cell          = { workspace = true }
 thiserror          = { workspace = true }

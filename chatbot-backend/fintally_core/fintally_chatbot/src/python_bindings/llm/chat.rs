@@ -1,13 +1,19 @@
 use pyo3::prelude::*;
-use std::pin::Pin;
+use pyo3::pyasync::IterANextOutput;
+use pyo3::IntoPy;
 use std::sync::Arc;
 
 use futures_util::StreamExt;
+use tokio::sync::mpsc::{ Receiver, channel };
+use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 
 use crate::core::llm::model::LLM;
 use crate::core::utils::errors::AppError;
 
-/// Python-visible LLM object
+/// ─────────────────────────────────────────────
+/// Python-visible LLM
+/// ─────────────────────────────────────────────
 #[pyclass]
 pub struct PyLLM {
     pub(crate) inner: Arc<LLM>,
@@ -15,78 +21,148 @@ pub struct PyLLM {
 
 #[pymethods]
 impl PyLLM {
-    /// 🔒 Constructor hidden — use factory
     #[new]
     fn new() -> PyResult<Self> {
         Err(pyo3::exceptions::PyNotImplementedError::new_err("Use create_llm() factory function"))
     }
 
-    /// Non-streaming generation (BLOCKING)
+    /// ✅ Async generate
     #[pyo3(signature = (prompt, context = None))]
-    fn generate(&self, prompt: String, context: Option<String>) -> PyResult<String> {
-        let full_prompt = crate::core::llm::prompt::Prompt
-            ::build(&prompt, context.as_deref())
-            .map_err(app_error_to_py)?;
+    fn generate<'py>(
+        &self,
+        py: Python<'py>,
+        prompt: String,
+        context: Option<String>
+    ) -> PyResult<&'py PyAny> {
+        let inner = self.inner.clone();
 
-        futures_executor
-            ::block_on(self.inner.generate_text(&full_prompt, context.as_deref()))
-            .map_err(app_error_to_py)
-    }
+        pyo3_asyncio::tokio::future_into_py(py, async move {
+            let full_prompt = crate::core::llm::prompt::Prompt
+                ::build(&prompt, context.as_deref())
+                .map_err(app_error_to_py)?;
 
-    /// 🔥 STREAMING — Python iterator (blocking, safe)
-    #[pyo3(signature = (prompt, context = None))]
-    fn stream(&self, prompt: String, context: Option<String>) -> PyResult<StreamIterator> {
-        let full_prompt = crate::core::llm::prompt::Prompt
-            ::build(&prompt, context.as_deref())
-            .map_err(app_error_to_py)?;
+            let result = inner
+                .generate_text(&full_prompt, context.as_deref()).await
+                .map_err(app_error_to_py)?;
 
-        let cancelable = futures_executor
-            ::block_on(self.inner.stream_text(&full_prompt, context.as_deref()))
-            .map_err(app_error_to_py)?;
-
-        Ok(StreamIterator {
-            stream: cancelable.stream,
-            cancel: cancelable.cancel,
+            Ok(result)
         })
     }
 
-    /// Embeddings (blocking)
+    /// ✅ Async embeddings
     #[pyo3(signature = (text))]
-    fn embed(&self, text: String) -> PyResult<Vec<f32>> {
-        futures_executor::block_on(self.inner.embed_text(&text)).map_err(app_error_to_py)
+    fn embed<'py>(&self, py: Python<'py>, text: String) -> PyResult<&'py PyAny> {
+        let inner = self.inner.clone();
+
+        pyo3_asyncio::tokio::future_into_py(py, async move {
+            let result = inner.embed_text(&text).await.map_err(app_error_to_py)?;
+
+            Ok(result)
+        })
+    }
+
+    /// 🔥 Streaming (correct async design)
+    #[pyo3(signature = (prompt, context = None))]
+    fn stream<'py>(
+        &self,
+        py: Python<'py>,
+        prompt: String,
+        context: Option<String>
+    ) -> PyResult<&'py PyAny> {
+        let inner = self.inner.clone();
+
+        pyo3_asyncio::tokio::future_into_py(py, async move {
+            let full_prompt = crate::core::llm::prompt::Prompt
+                ::build(&prompt, context.as_deref())
+                .map_err(app_error_to_py)?;
+
+            let cancelable = inner
+                .stream_text(&full_prompt, context.as_deref()).await
+                .map_err(app_error_to_py)?;
+
+            let cancel_token = cancelable.cancel.clone();
+            let cancel_for_task = cancel_token.clone();
+            let mut stream = cancelable.stream;
+
+            let (tx, rx) = channel(32);
+
+            tokio::spawn(async move {
+                loop {
+                    tokio::select! {
+                        _ = cancel_for_task.cancelled() => {
+                            break;
+                        }
+
+                        item = stream.next() => {
+                            match item {
+                                Some(Ok(token)) => {
+                                    if tx.send(Ok(token)).await.is_err() {
+                                        break;
+                                    }
+                                }
+                                Some(Err(e)) => {
+                                    let _ = tx.send(Err(app_error_to_py(e))).await;
+                                    break;
+                                }
+                                None => break,
+                            }
+                        }
+                    }
+                }
+            });
+
+            Ok(PyStream {
+                rx: Arc::new(Mutex::new(rx)),
+                cancel: cancel_token,
+            })
+        })
     }
 }
 
-
 /// ─────────────────────────────────────────────
-/// Stream → Python iterator adapter
+/// Async Python Stream Object
 /// ─────────────────────────────────────────────
 #[pyclass]
-pub struct StreamIterator {
-    stream: Pin<Box<dyn futures_core::Stream<Item = Result<String, AppError>> + Send>>,
-    cancel: tokio_util::sync::CancellationToken,
+pub struct PyStream {
+    rx: Arc<Mutex<Receiver<Result<String, PyErr>>>>,
+    cancel: CancellationToken,
 }
+
 #[pymethods]
-impl StreamIterator {
-    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+impl PyStream {
+    /// async for support
+    fn __aiter__(slf: PyRef<Self>) -> PyRef<Self> {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<Self>) -> PyResult<Option<String>> {
-        match futures_executor::block_on(slf.stream.next()) {
-            Some(Ok(token)) => Ok(Some(token)),
-            Some(Err(e)) => Err(app_error_to_py(e)),
-            None => Ok(None),
-        }
+    fn __anext__<'py>(
+        slf: PyRef<'py, Self>,
+        py: Python<'py>
+    ) -> PyResult<IterANextOutput<PyObject, PyObject>> {
+        let rx = slf.rx.clone();
+
+        let fut = pyo3_asyncio::tokio::future_into_py(py, async move {
+            let mut rx = rx.lock().await;
+
+            match rx.recv().await {
+                Some(Ok(token)) => Ok(token),
+                Some(Err(e)) => Err(e),
+                None => Err(pyo3::exceptions::PyStopAsyncIteration::new_err("Stream ended")),
+            }
+        })?;
+
+        Ok(IterANextOutput::Yield(fut.into_py(py)))
     }
 
-    /// 🔴 STOP BUTTON
+    /// 🔴 Cancel generation
     fn cancel(&self) {
         self.cancel.cancel();
     }
 }
 
-/// Convert Rust AppError → Python Exception
+/// ─────────────────────────────────────────────
+/// Error mapping
+/// ─────────────────────────────────────────────
 fn app_error_to_py(err: AppError) -> PyErr {
     pyo3::exceptions::PyRuntimeError::new_err(err.to_string())
 }

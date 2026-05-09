@@ -10,5 +10,4 @@ description = "LLM chatbot extension for FinTally"
 requires-python = ">=3.10"
 
 [tool.maturin]
-python-source = "."
-module-name   = "fintally_chatbot._native"
+module-name   = "fintally_chatbot"

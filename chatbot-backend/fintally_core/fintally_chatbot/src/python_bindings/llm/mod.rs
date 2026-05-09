@@ -19,13 +19,13 @@ pub fn create_llm(model_name: String, max_tokens: usize) -> PyResult<PyLLM> {
 
 #[pyfunction]
 fn stop_generation(py: Python) -> PyResult<()> {
-    let module = py.import_bound("python_llama")?;
+    let module = py.import("python_llama")?;
     module.getattr("stop")?.call0()?;
     Ok(())
 }
 
 /// Register `llm` submodule contents
-pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+pub fn register(py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_llm, m)?)?;
     m.add_function(wrap_pyfunction!(stop_generation, m)?)?;
     m.add_class::<PyLLM>()?;

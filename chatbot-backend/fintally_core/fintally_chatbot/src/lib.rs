@@ -4,7 +4,7 @@ pub mod core;
 pub mod python_bindings;
 
 #[pymodule]
-fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    python_bindings::register(m)?;
+fn fintally_chatbot(py: Python, m: &PyModule) -> PyResult<()> {
+    python_bindings::register(py, m)?;
     Ok(())
 }
