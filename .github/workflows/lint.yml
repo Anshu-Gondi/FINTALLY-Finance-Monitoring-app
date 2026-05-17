@@ -1,0 +1,57 @@
+name: Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-rust:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust fmt
+        working-directory: chatbot-backend/fintally_core
+        run: cargo fmt --all --check
+
+      - name: Rust clippy
+        working-directory: chatbot-backend/fintally_core
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  lint-python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - run: pip install ruff
+
+      - name: Ruff
+        run: ruff check chatbot-backend
+
+  lint-frontend:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - run: npm install
+
+      - run: npm run lint
