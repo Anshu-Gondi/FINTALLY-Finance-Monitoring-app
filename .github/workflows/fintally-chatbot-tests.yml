@@ -58,7 +58,7 @@ jobs:
       - name: Install built wheel
         shell: bash
         run: |
-          pip install fintally_core/target/wheels/*.whl
+          pip install fintally_chatbot/target/wheels/*.whl
 
       - name: Run non-integration tests
         run: pytest fintally_chatbot/tests -v -m "not integration"

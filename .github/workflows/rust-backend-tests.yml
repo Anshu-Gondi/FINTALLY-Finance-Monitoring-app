@@ -48,7 +48,7 @@ jobs:
       - name: Install built wheel
         shell: bash
         run: |
-          pip install fintally_core/target/wheels/*.whl
+          pip install rust_backend/target/wheels/*.whl
 
       - name: Run tests
         run: pytest rust_backend/tests -v

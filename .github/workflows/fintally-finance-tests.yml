@@ -56,7 +56,7 @@ jobs:
       - name: Install built wheel
         shell: bash
         run: |
-          pip install fintally_core/target/wheels/*.whl
+          pip install fintally_finance/target/wheels/*.whl
 
       - name: Run tests
         run: pytest fintally_finance/tests -v
