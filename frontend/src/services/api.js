@@ -38,14 +38,6 @@ function jsonPost(url, body) {
   }).then(handleResponse);
 }
 
-function jsonPut(url, body) {
-  return fetch(url, {
-    method: "PUT",
-    headers: authHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(body),
-  }).then(handleResponse);
-}
-
 function get(url) {
   return fetch(url, { headers: authHeaders() }).then(handleResponse);
 }

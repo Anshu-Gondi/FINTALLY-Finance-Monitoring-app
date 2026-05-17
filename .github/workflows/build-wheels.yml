@@ -12,10 +12,15 @@ jobs:
         include:
           - os: ubuntu-latest
             target: linux
+
           - os: windows-latest
             target: windows
 
     runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        working-directory: chatbot-backend/fintally_core
 
     steps:
       - uses: actions/checkout@v4
@@ -33,40 +38,36 @@ jobs:
         run: pip install maturin
 
       # ─────────────────────────────
-      # fintally_chatbot
+      # Build all workspace crates
       # ─────────────────────────────
-      - name: Build chatbot wheel
-        working-directory: chatbot-backend/fintally_core/fintally_chatbot
-        run: maturin build --release
 
-      - name: Upload chatbot wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: fintally_chatbot-${{ matrix.target }}
-          path: chatbot-backend/fintally_core/fintally_chatbot/target/wheels/*.whl
-
-      # ─────────────────────────────
-      # fintally_finance
-      # ─────────────────────────────
-      - name: Build finance wheel
-        working-directory: chatbot-backend/fintally_core/fintally_finance
-        run: maturin build --release
-
-      - name: Upload finance wheel
-        uses: actions/upload-artifact@v4
-        with:
-          name: fintally_finance-${{ matrix.target }}
-          path: chatbot-backend/fintally_core/fintally_finance/target/wheels/*.whl
-
-      # ─────────────────────────────
-      # rust_backend
-      # ─────────────────────────────
       - name: Build rust_backend wheel
-        working-directory: chatbot-backend/fintally_core/rust_backend
-        run: maturin build --release
+        run: maturin build -m rust_backend/Cargo.toml --release
+
+      - name: Build fintally_chatbot wheel
+        run: maturin build -m fintally_chatbot/Cargo.toml --release
+
+      - name: Build fintally_finance wheel
+        run: maturin build -m fintally_finance/Cargo.toml --release
+
+      # ─────────────────────────────
+      # Upload wheels
+      # ─────────────────────────────
 
       - name: Upload rust_backend wheel
         uses: actions/upload-artifact@v4
         with:
           name: rust_backend-${{ matrix.target }}
-          path: chatbot-backend/fintally_core/rust_backend/target/wheels/*.whl
+          path: chatbot-backend/fintally_core/target/wheels/*.whl
+
+      - name: Upload fintally_chatbot wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: fintally_chatbot-${{ matrix.target }}
+          path: chatbot-backend/fintally_core/target/wheels/*.whl
+
+      - name: Upload fintally_finance wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: fintally_finance-${{ matrix.target }}
+          path: chatbot-backend/fintally_core/target/wheels/*.whl
