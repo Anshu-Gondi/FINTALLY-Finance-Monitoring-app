@@ -24,7 +24,7 @@ from fastapi_cache.backends.inmemory import InMemoryBackend
 
 # ── Existing FastAPI routers ──────────────────────────────────────────────────
 from routers.analytics import router as analytics_router
-# from routers.chat import router as chat_router
+from routers.chat import router as chat_router
 
 # ── Newly migrated routers ────────────────────────────────────────────────────
 from routers.auth import router as auth_router
@@ -104,7 +104,7 @@ app.include_router(transaction_router)
 app.include_router(budget_router)
 app.include_router(emi_router)
 app.include_router(feedback_router)
-# app.include_router(chat_router)
+app.include_router(chat_router)
 
 # Fix from your old version: prefix + tags added
 app.include_router(

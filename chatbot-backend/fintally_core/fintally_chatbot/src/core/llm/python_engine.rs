@@ -82,7 +82,8 @@ impl LlmEngine for PythonLlamaEngine {
     }
 
     async fn embed(&self, _text: &str) -> Result<Vec<f32>, AppError> {
-        Ok(vec![0.0; 768])
+        // Mock: correct 384-dim output
+        Ok(vec![0.1f32; 384])
     }
 }
 

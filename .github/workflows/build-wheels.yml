@@ -1,0 +1,72 @@
+name: Build PyO3 Wheels
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, dev]
+
+jobs:
+  build-wheels:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux
+          - os: windows-latest
+            target: windows
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install maturin
+        run: pip install maturin
+
+      # ─────────────────────────────
+      # fintally_chatbot
+      # ─────────────────────────────
+      - name: Build chatbot wheel
+        working-directory: chatbot-backend/fintally_core/fintally_chatbot
+        run: maturin build --release
+
+      - name: Upload chatbot wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: fintally_chatbot-${{ matrix.target }}
+          path: chatbot-backend/fintally_core/fintally_chatbot/target/wheels/*.whl
+
+      # ─────────────────────────────
+      # fintally_finance
+      # ─────────────────────────────
+      - name: Build finance wheel
+        working-directory: chatbot-backend/fintally_core/fintally_finance
+        run: maturin build --release
+
+      - name: Upload finance wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: fintally_finance-${{ matrix.target }}
+          path: chatbot-backend/fintally_core/fintally_finance/target/wheels/*.whl
+
+      # ─────────────────────────────
+      # rust_backend
+      # ─────────────────────────────
+      - name: Build rust_backend wheel
+        working-directory: chatbot-backend/fintally_core/rust_backend
+        run: maturin build --release
+
+      - name: Upload rust_backend wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust_backend-${{ matrix.target }}
+          path: chatbot-backend/fintally_core/rust_backend/target/wheels/*.whl

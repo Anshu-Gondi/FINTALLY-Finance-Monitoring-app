@@ -3,12 +3,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        LLAMA_NO_AVX: ${LLAMA_NO_AVX:-0}
     ports:
       - "8000:8000"
     env_file: .env
     volumes:
       - ./llm_models:/app/llm_models
       - ./uploads:/app/uploads
+    
     restart: unless-stopped
     
     # Better healthcheck (using the /health endpoint you added)

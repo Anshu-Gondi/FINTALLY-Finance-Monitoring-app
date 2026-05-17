@@ -1,0 +1,38 @@
+name: fintally_chatbot Tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+jobs:
+  test-chatbot:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        working-directory: chatbot-backend/fintally_core/fintally_chatbot
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: |
+          pip install maturin
+          pip install pytest pytest-asyncio pytest-timeout
+
+      - name: Build extension
+        run: maturin develop --release
+
+      - name: Run tests
+        run: pytest tests -v -m "not integration"

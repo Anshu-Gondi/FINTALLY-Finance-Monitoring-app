@@ -2,6 +2,7 @@
 
 # --- Web / API ---
 fastapi
+fastapi-cache2
 uvicorn[standard]
 pydantic[email]
 python-dotenv
@@ -26,35 +27,40 @@ google-auth
 google-auth-httplib2
 google-auth-oauthlib
 requests-oauthlib
-grpcio
-grpcio-tools
-httpx
 
 # --- PDF / Docs ---
 PyMuPDF
 reportlab
 beautifulsoup4
 
+# --- RAG / Embeddings ---
+faiss-cpu==1.7.4
+
+# Lightweight ONNX embedding pipeline
+transformers
+tokenizers
+onnxruntime
+
+# --- Data Processing ---
+polars
+pyarrow
+openpyxl
+
+# --- Numeric (pinned: llama_cpp_python requires numpy <2.0) ---
+numpy==1.26.4
+
 # --- LLaMA (CPU build — SSE4.2 ONLY, NO AVX) ---
-# IMPORTANT: Do NOT install from the pre-built wheel index below.
-# Those wheels are compiled for AVX2. Your Celeron N4020 only has SSE4.2.
+# IMPORTANT: Do NOT install from the pre-built wheel index.
+# Those wheels are compiled for AVX2. Celeron N4020 only has SSE4.2.
 # Running an AVX2 binary on SSE4.2 = illegal instruction crash.
 #
-# Instead, compile from source ONCE using:
-#
-#   Windows (cmd, not PowerShell):
-#     set CMAKE_ARGS=-DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_AVX512=OFF -DGGML_FMA=OFF -DGGML_F16C=OFF -DGGML_NATIVE=OFF
-#     set FORCE_CMAKE=1
-#     pip install llama-cpp-python --no-cache-dir
-#
-# After that one manual install, this line just tracks the dependency:
-# llama-cpp-python
-numpy==1.26.4        # pin: llama_cpp_python wheel requires <2.0
+# Compiled in a separate Docker stage (see Dockerfile llama-builder).
+# This line is here only to track the version — Docker handles the build.
 
-# --- Build (needed at image build time, not runtime) ---
-maturin
+# --- Build (needed at image build time only, NOT runtime) ---
+# maturin is intentionally excluded — it lives in the builder Docker stage only
 
-# --- Test ---
+# --- Test (move to requirements-dev.txt when you have time) ---
 pytest
 pytest-asyncio
 pytest-timeout
