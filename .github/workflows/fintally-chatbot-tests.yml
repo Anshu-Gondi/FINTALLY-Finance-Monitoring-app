@@ -18,6 +18,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      CARGO_TERM_COLOR: always
+
     defaults:
       run:
         # IMPORTANT:
@@ -46,14 +49,16 @@ jobs:
           pip install pytest-asyncio
           pip install pytest-timeout
 
-      - name: Build PyO3 extension
+      - name: Cargo check
+        run: cargo check --workspace
+
+      - name: Build wheel
+        run: maturin build -m fintally_chatbot/Cargo.toml --release
+
+      - name: Install built wheel
+        shell: bash
         run: |
-          maturin develop \
-            -m fintally_chatbot/Cargo.toml \
-            --release
+          pip install fintally_chatbot/target/wheels/*.whl
 
       - name: Run non-integration tests
-        run: |
-          pytest fintally_chatbot/tests \
-            -v \
-            -m "not integration"
+        run: pytest fintally_chatbot/tests -v -m "not integration"

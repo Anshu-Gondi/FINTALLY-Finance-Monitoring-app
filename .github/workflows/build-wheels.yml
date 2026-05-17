@@ -2,12 +2,17 @@ name: Build PyO3 Wheels
 
 on:
   workflow_dispatch:
+
   push:
-    branches: [main, dev]
+    branches:
+      - main
+      - dev
 
 jobs:
   build-wheels:
     strategy:
+      fail-fast: false
+
       matrix:
         include:
           - os: ubuntu-latest
@@ -18,37 +23,46 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      CARGO_TERM_COLOR: always
+
     defaults:
       run:
         working-directory: chatbot-backend/fintally_core
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo
+      - name: Cache cargo registry + target
         uses: Swatinem/rust-cache@v2
 
       - name: Install maturin
         run: pip install maturin
 
+      - name: Cargo check workspace
+        run: cargo check --workspace
+
       # ─────────────────────────────
-      # Build all workspace crates
+      # Build wheels
       # ─────────────────────────────
 
       - name: Build rust_backend wheel
-        run: maturin build -m rust_backend/Cargo.toml --release
+        run: maturin build --manifest-path rust_backend/Cargo.toml --release
 
       - name: Build fintally_chatbot wheel
-        run: maturin build -m fintally_chatbot/Cargo.toml --release
+        run: maturin build --manifest-path fintally_chatbot/Cargo.toml --release
 
       - name: Build fintally_finance wheel
-        run: maturin build -m fintally_finance/Cargo.toml --release
+        run: maturin build --manifest-path fintally_finance/Cargo.toml --release
 
       # ─────────────────────────────
       # Upload wheels

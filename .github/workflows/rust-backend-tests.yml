@@ -20,8 +20,6 @@ jobs:
 
     defaults:
       run:
-        # IMPORTANT:
-        # use workspace root, not crate root
         working-directory: chatbot-backend/fintally_core
 
     steps:
@@ -44,12 +42,13 @@ jobs:
           pip install maturin
           pip install pytest
 
-      - name: Build PyO3 extension
+      - name: Build wheel
+        run: maturin build -m rust_backend/Cargo.toml --release
+
+      - name: Install built wheel
+        shell: bash
         run: |
-          maturin develop \
-            -m rust_backend/Cargo.toml \
-            --release
+          pip install rust_backend/target/wheels/*.whl
 
       - name: Run tests
-        run: |
-          pytest rust_backend/tests -v
+        run: pytest rust_backend/tests -v

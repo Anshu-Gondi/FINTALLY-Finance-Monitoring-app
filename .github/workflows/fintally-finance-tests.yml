@@ -18,6 +18,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      CARGO_TERM_COLOR: always
+
     defaults:
       run:
         # IMPORTANT:
@@ -44,12 +47,16 @@ jobs:
           pip install maturin
           pip install pytest
 
-      - name: Build PyO3 extension
+      - name: Cargo check
+        run: cargo check --workspace
+
+      - name: Build wheel
+        run: maturin build -m fintally_finance/Cargo.toml --release
+
+      - name: Install built wheel
+        shell: bash
         run: |
-          maturin develop \
-            -m fintally_finance/Cargo.toml \
-            --release
+          pip install fintally_finance/target/wheels/*.whl
 
       - name: Run tests
-        run: |
-          pytest fintally_finance/tests -v
+        run: pytest fintally_finance/tests -v
