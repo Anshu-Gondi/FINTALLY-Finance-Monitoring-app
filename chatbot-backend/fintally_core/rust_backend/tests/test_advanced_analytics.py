@@ -63,17 +63,17 @@ def test_predict_budget_breach_mc():
     prices = [-5_000, -7_000, -6_000]
 
     prob, expected, p50_days = rust_backend.predict_budget_breach(
-        dates,
-        prices,
+        dates=dates,
+        prices=prices,
         budget_amount=15_000,
-        start_date="2024-01-01T00:00:00Z",
-        end_date="2024-02-01T00:00:00Z",
+        horizon_days=31,
         simulations=2_000,
     )
 
     assert 0.0 <= prob <= 1.0
     assert expected > 0.0
     assert p50_days is None or p50_days >= 0
+
 
 def test_detect_recurring_anomalies():
     dates = [

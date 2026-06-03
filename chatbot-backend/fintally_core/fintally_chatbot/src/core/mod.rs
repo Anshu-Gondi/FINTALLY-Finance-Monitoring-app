@@ -5,3 +5,4 @@ pub mod llm;
 pub mod finance;
 pub mod utils;
 pub mod math;
+pub mod rag;

@@ -32,3 +32,10 @@ tokio-stream       = { workspace = true }
 tokio-util         = { workspace = true }
 
 signal-hook        = { workspace = true }
+
+uuid = { version = "1", features = ["v4"] }
+ndarray = "0.15"
+
+regex              = { workspace = true }
+fxhash             = { workspace = true }
+usearch = { workspace = true }
