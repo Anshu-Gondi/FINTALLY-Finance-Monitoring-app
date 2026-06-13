@@ -1,4 +1,3 @@
-# chatbot-backend/tests/integration/test_rag_llm_stream_e2e.py
 """
 Fintally RAG + LLM Streaming End-to-End Integration Tests
 ─────────────────────────────────────────────────────────────────────────────
@@ -11,24 +10,36 @@ import importlib.util
 import pytest
 from pathlib import Path
 
-# Safely resolve the native extensions compiled via PyO3
+# ── ENV GUARD: Detect extension and runtime status cleanly ──
 try:
     import fintally_chatbot as fc
+    _EXTENSION_AVAILABLE = True
 except ImportError:
-    pytest.skip(
-        "fintally_chatbot extension not built. Run `maturin develop` first.",
-        allow_module_level=True,
-    )
+    _EXTENSION_AVAILABLE = False
 
-# Check if model files and python_llama are available for the generation phase
-_PYTHON_LLAMA_AVAILABLE = importlib.util.find_spec("python_llama") is not None
+# Only inspect python_llama spec structure if the extension successfully loaded
+_PYTHON_LLAMA_AVAILABLE = (
+    importlib.util.find_spec("python_llama") is not None 
+    if _EXTENSION_AVAILABLE else False
+)
 
 
 # --- Internal Dynamic Resolution Helpers ---
 
+def _get_backend_context():
+    """Ensures module availability without throwing unhandled exceptions at top level."""
+    if not _EXTENSION_AVAILABLE:
+        pytest.skip(
+            "fintally_chatbot extension not built. Run `maturin develop` first.",
+            allow_module_level=True
+        )
+    return fc
+
+
 def _get_rag_class():
-    assert hasattr(fc, "rag"), "The compiled Rust library is missing the 'rag' submodule!"
-    rag_submodule = fc.rag
+    backend = _get_backend_context()
+    assert hasattr(backend, "rag"), "The compiled Rust library is missing the 'rag' submodule!"
+    rag_submodule = backend.rag
     possible_names = ["RagService", "RagEngine", "PyRagService", "PyRagEngine"]
     for name in possible_names:
         if hasattr(rag_submodule, name):
@@ -62,13 +73,13 @@ def mock_real_world_doc(tmp_path: Path) -> str:
 
 # --- End-to-End Integration Test Suite ---
 
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not _PYTHON_LLAMA_AVAILABLE,
+    reason="python_llama not importable or model files missing from active environment context",
+)
 class TestRagLlmStreamIntegration:
 
-    @pytest.mark.integration
-    @pytest.mark.skipif(
-        not _PYTHON_LLAMA_AVAILABLE,
-        reason="python_llama not importable or model files missing",
-    )
     def test_e2e_rag_to_llm_stream_pipeline(self, mock_real_world_doc):
         """
         Validates the full RAG-to-LLM lifecycle:
@@ -77,6 +88,9 @@ class TestRagLlmStreamIntegration:
         3. Inject retrieved chunks as context directly into the LLM prompt.
         4. Read token chunks back out of the async streaming channel.
         """
+        # Ensure extension exists before entering execution thread paths
+        backend = _get_backend_context()
+
         # ── Step 1: Initialize and Ingest Context into the RAG Engine ──
         RagEngineClass = _get_rag_class()
         rag_engine = RagEngineClass(
@@ -107,8 +121,8 @@ class TestRagLlmStreamIntegration:
         assert "$840,000" in retrieved_context
 
         # ── Step 3: Initialize the Streaming LLM ──
-        assert hasattr(fc, "llm"), "No llm submodule found in fintally_chatbot."
-        llm_mod = fc.llm
+        assert hasattr(backend, "llm"), "No llm submodule found in fintally_chatbot."
+        llm_mod = backend.llm
         llm = llm_mod.create_llm("tinyllama", 16)  # Light budget token space for CPU runs
 
         # ── Step 4: Execute the Combined Async Stream Handshake ──

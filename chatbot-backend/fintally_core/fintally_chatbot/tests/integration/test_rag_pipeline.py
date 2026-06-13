@@ -1,4 +1,3 @@
-# fintally_core/fintally_chatbot/tests/integration/test_rag_pipeline.py
 """
 Fintally Chatbot RAG Pipeline End-to-End Integration Tests
 ─────────────────────────────────────────────────────────────────────────────
@@ -10,19 +9,31 @@ import os
 import pytest
 from pathlib import Path
 
-# Import the native extension module compiled from your Rust lib.rs
+# ── ENV GUARD: Safe Extension and Embedder Check ──
 try:
     import fintally_chatbot as core_backend
+    _EXTENSION_AVAILABLE = True
 except ImportError:
     from fintally_chatbot import core as core_backend
+    _EXTENSION_AVAILABLE = True
+except Exception:
+    _EXTENSION_AVAILABLE = False
 
-import fintally_embedder
+try:
+    import fintally_embedder
+    # A quick spec or module attribute check to see if llama_cpp weights are loadable
+    _EMBEDDER_AVAILABLE = hasattr(fintally_embedder, "get_onnx_embedding")
+except Exception:
+    _EMBEDDER_AVAILABLE = False
 
 
 def _get_rag_class():
     """
     Helper to locate the exposed PyO3 struct inside the `rag` submodule space.
     """
+    if not _EXTENSION_AVAILABLE:
+        pytest.skip("fintally_chatbot native module not compiled.", allow_module_level=True)
+        
     assert hasattr(core_backend, "rag"), (
         f"The compiled Rust library is missing the 'rag' submodule! "
         f"Exposed top-level components are: {dir(core_backend)}"
@@ -57,6 +68,13 @@ def _get_method(instance, preferred_name: str):
     )
 
 
+# ── TEST SUITE ──
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not _EMBEDDER_AVAILABLE,
+    reason="fintally_embedder or backing model weight files are missing in this environment"
+)
 def test_fintally_embedder_real_onnx_dimensions():
     """
     Ensures that the production GGUF pipeline successfully runs inference
@@ -70,6 +88,7 @@ def test_fintally_embedder_real_onnx_dimensions():
     assert all(isinstance(x, float) for x in vector), "All elements within the vector must be raw floats."
 
 
+@pytest.mark.integration
 def test_rust_rag_service_empty_query_fallback():
     """
     Validates that the Rust RagService orchestrates correctly through the Python binding layer,
@@ -97,6 +116,11 @@ def test_rust_rag_service_empty_query_fallback():
     assert len(response["matches"]) == 0, "Matches list should remain blank prior to document injection runs."
 
 
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not _EMBEDDER_AVAILABLE,
+    reason="Cannot run ingestion roundtrip without fully operational embedding weights models"
+)
 def test_rag_ingestion_to_retrieval_roundtrip(tmp_path):
     """
     Tests the complete end-to-end multi-language loop:

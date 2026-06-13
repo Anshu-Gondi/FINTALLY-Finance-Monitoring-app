@@ -1,4 +1,3 @@
-# chatbot-backend/tests/integration/test_rag_document_formats.py
 """
 Fintally RAG Multi-Format Document Ingestion Integration Tests
 ─────────────────────────────────────────────────────────────────────────────
@@ -8,8 +7,13 @@ ensuring the extracted text matches index boundaries inside the native Rust HNSW
 
 import pytest
 from pathlib import Path
-from docx import Document
-import fitz  # PyMuPDF
+
+# ── ENV GUARD: Auto-Skip entire file if external parsing libraries are missing ──
+# If either dependency is missing in CI, pytest registers this as an 
+# official, graceful skip rather than a compilation/collection crash.
+Document = pytest.importorskip("docx", reason="python-docx library is missing").Document
+fitz = pytest.importorskip("fitz", reason="PyMuPDF (fitz) library is missing")
+
 
 # Safely resolve the native submodule layout compiled via PyO3
 try:
@@ -98,6 +102,7 @@ def extract_text_from_docx(file_path: str) -> str:
 
 # --- The Integration Test Suite ---
 
+@pytest.mark.integration
 class TestMultiFormatIngestionPipeline:
 
     def test_pdf_extraction_to_rust_rag_roundtrip(self, sample_pdf_document, tmp_path):
