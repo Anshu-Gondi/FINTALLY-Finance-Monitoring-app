@@ -39,7 +39,7 @@ impl UsearchStore {
         // --- DYNAMIC EXPANSION GUARD ---
         // If the index length matches or exceeds its current structural capacity boundary
         // (common after running load_index() on a static file), extend capacity buffer slots.
-        let current_size = self.index.len();
+        let current_size = self.index.size();
         let current_capacity = self.index.capacity();
 
         if current_size >= current_capacity {
