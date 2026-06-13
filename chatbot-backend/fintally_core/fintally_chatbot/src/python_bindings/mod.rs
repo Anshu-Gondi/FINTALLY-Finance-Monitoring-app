@@ -4,7 +4,7 @@ pub mod llm;
 pub mod finance;
 pub mod rag;
 
-pub fn register(py: Python, m: &PyModule) -> PyResult<()> {
+pub fn register(_py: Python, m: &PyModule) -> PyResult<()> {
     let py = m.py();
 
     // ---- 1. llm submodule ----

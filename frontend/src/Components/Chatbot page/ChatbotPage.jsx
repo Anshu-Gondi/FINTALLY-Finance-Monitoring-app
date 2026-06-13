@@ -1,105 +1,226 @@
-import { useState, useRef, useEffect } from "react";
+// src/Components/Chatbot page/ChatbotPage.jsx
+import { useState, useEffect, useRef } from "react";
+import { chatApi } from "../../services/api";
 import "./Chatbot.css";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const ChatbotPage = () => {
+  const [messages, setMessages] = useState([
+    {
+      id: "welcome",
+      role: "assistant",
+      content: "SYSTEM ONLINE // FINTALLY AI READY. ENTER FINANCIAL QUERY_",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [systemStatus, setSystemStatus] = useState(""); 
+  
+  const messagesEndRef = useRef(null);
 
-function ChatbotPage() {
-    const [messages, setMessages] = useState([
-        { sender: "bot", text: "Hello! I'm your finance assistant. How can I help you today?" }
-    ]);
-    const [input, setInput] = useState("");
-    const messagesEndRef = useRef(null);
-    const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, systemStatus]);
 
-    const token = localStorage.getItem("token");
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!input.trim() || isGenerating) return;
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+    const userMessage = input.trim();
+    setInput("");
+    setIsGenerating(true);
+    setSystemStatus("PINGING CORES...");
 
-    const handleSend = async () => {
-        if (!input.trim()) return;
+    setMessages((prev) => [...prev, { id: Date.now().toString(), role: "user", content: userMessage }]);
 
-        const userMessage = { sender: "user", text: input };
-        setMessages(prev => [...prev, userMessage]);
-        setInput("");
-        setLoading(true);
+    const assistantMsgId = (Date.now() + 1).toString();
+    let currentAssistantText = "";
+    let currentToolCall = null;
+    let currentToolResult = null;
 
-        try {
-            const res = await fetch(`${API_URL}/chat`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(token ? { Authorization: `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({ query: input })
-            });
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(chatApi.getStreamUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          message: userMessage,
+          session_id: null, // Ready for tracking sessions when scaled
+          max_tokens: 512,
+        }),
+      });
 
-            let data;
+      if (!response.ok) throw new Error(`HTTP_${response.status}`);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop(); 
+
+        for (const line of lines) {
+          const cleanLine = line.trim();
+          if (!cleanLine.startsWith("data:")) continue;
+          
+          const rawPayload = cleanLine.replace("data:", "").trim();
+          if (!rawPayload) continue;
+
+          if (rawPayload === "[DONE]") {
+            setSystemStatus("");
+            break;
+          }
+          if (rawPayload === "[CONTEXT_LOADED]") {
+            setSystemStatus("SNAPSHOT INJECTED...");
+            continue;
+          }
+          if (rawPayload.startsWith("[TOOL_CALL:")) {
+            currentToolCall = rawPayload.slice(11, -1);
+            setSystemStatus(`RUST_ENGINE_RUNNING: ${currentToolCall.toUpperCase()}...`);
+            continue;
+          }
+          if (rawPayload.startsWith("[TOOL_RESULT:")) {
             try {
-                data = await res.json();
-            } catch (parseError) {
-                console.error("❌ Failed to parse JSON:", parseError);
-                const rawText = await res.text(); // ✅ await is inside async function now
-                setMessages(prev => [
-                    ...prev,
-                    { sender: "bot", text: `⚠️ Invalid JSON from backend. Raw: ${rawText}` }
-                ]);
-                return;
+              currentToolResult = JSON.loads(rawPayload.slice(13, -1));
+            } catch (err) {
+              console.error("Payload breakdown fail", err);
             }
+            continue;
+          }
+          if (rawPayload.startsWith("[ERROR:")) {
+            setSystemStatus(`CORE_FLR: ${rawPayload.slice(7, -1)}`);
+            continue;
+          }
 
-            console.log("📩 API Response:", data);
+          currentAssistantText += rawPayload;
+          setSystemStatus(""); 
 
-            const botReply =
-                data.response ??
-                data.message ??
-                JSON.stringify(data, null, 2) ??
-                "⚠️ No valid reply from backend.";
-
-            setMessages(prev => [...prev, { sender: "bot", text: botReply }]);
-        } catch (error) {
-            console.error("❌ Chatbot API error:", error);
-            setMessages(prev => [
-                ...prev,
-                { sender: "bot", text: `⚠️ Server error: ${error.message}` }
-            ]);
-        } finally {
-            setLoading(false);
+          setMessages((prev) => {
+            // Replaced unused 'filtered' assignment with a direct inline exclusion array mapping
+            return [
+              ...prev.filter((m) => m.id !== assistantMsgId),
+              {
+                id: assistantMsgId,
+                role: "assistant",
+                content: currentAssistantText,
+                toolCalled: currentToolCall,
+                toolResult: currentToolResult,
+              },
+            ];
+          });
         }
-    };
+      }
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { id: Date.now().toString(), role: "assistant", content: `NETWORK_CRASH: ${err.message}` },
+      ]);
+    } finally {
+      setIsGenerating(false);
+      setSystemStatus("");
+    }
+  };
 
-    const handleKeyPress = (e) => {
-        if (e.key === "Enter") {
-            handleSend();
-        }
-    };
+  const renderToolDataCard = (toolName, result) => {
+    if (!result) return null;
+    if (result.error) return <div className="chatbot-tool-card error-card">CALC_ERR // {result.error}</div>;
 
-    return (
-        <div className="chatbot-container">
-            <div className="chat-header">💬 Finance Assistant</div>
-
-            <div className="chat-messages">
-                {messages.map((msg, idx) => (
-                    <div key={idx} className={`message ${msg.sender}`}>
-                        {msg.text}
-                    </div>
-                ))}
-                {loading && <div className="message bot typing">...</div>}
-                <div ref={messagesEndRef}></div>
+    switch (toolName) {
+      case "calculate_emi":
+        return (
+          <div className="chatbot-tool-card emi-card">
+            <div className="tool-card-title">📊 EMI BREAKDOWN DATA</div>
+            <div className="tool-metric-row">
+              <span>MONTHLY EMI:</span>
+              <strong className="neon-text-green">₹{result.emi?.toLocaleString('en-IN')}</strong>
             </div>
-
-            <div className="chat-input">
-                <input
-                    type="text"
-                    placeholder="Ask me about your finances..."
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                />
-                <button onClick={handleSend}>Send</button>
+            <div className="tool-metric-row">
+              <span>INTEREST COMPONENT:</span>
+              <span className="neon-text-blue">₹{result.total_interest?.toLocaleString('en-IN')}</span>
             </div>
+          </div>
+        );
+      case "emergency_fund":
+        return (
+          <div className="chatbot-tool-card emergency-card">
+            <div className="tool-card-title">🛡️ CONTINGENCY RESERVE SIZE</div>
+            <div className="giant-neon-value">₹{result.recommended_fund?.toLocaleString('en-IN')}</div>
+            <small className="label">TARGET CAPACITY BASED ON EXPENSE MULTIPLIER</small>
+          </div>
+        );
+      default:
+        return (
+          <div className="chatbot-tool-card generic-card">
+            <details>
+              <summary>⚡ METRIC_TRACE ({toolName})</summary>
+              <pre>{JSON.stringify(result, null, 2)}</pre>
+            </details>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="chatbot-page-wrapper">
+      <div className="chatbot-box-wrapper">
+        {/* Terminal Header */}
+        <div className="chatbot-window-header">
+          <div className="header-title-block">
+            <span className="live-dot"></span>
+            <h2 className="chatbot-title">FINTALLY_CORE_ASSISTANT v1.02</h2>
+          </div>
+          <span className="engine-badge">RUST_BINDINGS_ACTIVE</span>
         </div>
-    );
-}
+
+        {/* Output Screen */}
+        <div className="chatbot-messages-viewport">
+          {messages.map((msg) => (
+            <div key={msg.id} className={`chatbot-msg-row ${msg.role}`}>
+              <div className="chatbot-msg-bubble">
+                <div className="msg-meta-tag">{msg.role.toUpperCase()} {"//"}</div>
+                <div className="msg-body-content">{msg.content}</div>
+                {msg.toolCalled && msg.toolResult && (
+                  <div className="tool-card-mount-point">
+                    {renderToolDataCard(msg.toolCalled, msg.toolResult)}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          
+          {systemStatus && (
+            <div className="chatbot-status-bar animate-pulse">
+              <span className="status-loader">&gt;&gt;</span> {systemStatus}
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Interface */}
+        <form onSubmit={handleSendMessage} className="chatbot-form-input-dock">
+          <input
+            type="text"
+            className="neonInput"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="ENTER LOGICAL FIN-QUERY STRINGS..."
+            disabled={isGenerating}
+            maxLength={2000}
+          />
+          <button type="submit" className="chatbot-submit-btn" disabled={isGenerating || !input.trim()}>
+            {isGenerating ? "..." : "EXECUTE"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 export default ChatbotPage;

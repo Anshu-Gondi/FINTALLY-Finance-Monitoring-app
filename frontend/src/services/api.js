@@ -231,3 +231,28 @@ export const analyticsApi = {
   goalProjection: (targetAmount) =>
     get(`${BASE}/goal-projection?target_amount=${targetAmount}`),
 };
+
+// ─── Chatbot Service Module  (/api/chat/*) ───────────────────────────────────
+
+export const chatApi = {
+  /** Get past sessions for current user profile */
+  getSessions: () => get(`${BASE}/api/chat/sessions`),
+
+  /** Fetch structural conversational logs within a specific session window */
+  getHistory: (sessionId = null, limit = 50) => {
+    const url = new URL(`${BASE}/api/chat/history`);
+    if (sessionId) url.searchParams.set("session_id", sessionId);
+    url.searchParams.set("limit", limit);
+    return get(url.toString());
+  },
+
+  /** Clear logs completely */
+  clearHistory: (sessionId = null) => {
+    const url = new URL(`${BASE}/api/chat/history`);
+    if (sessionId) url.searchParams.set("session_id", sessionId);
+    return del(url.toString());
+  },
+
+  /** Native Endpoint configuration tracking utility helper for SSE Stream */
+  getStreamUrl: () => `${BASE}/api/chat/`
+};

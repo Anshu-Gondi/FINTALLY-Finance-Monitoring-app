@@ -7,8 +7,8 @@ pub struct UsearchStore {
 }
 
 impl UsearchStore {
-    /// Allocates a new native HNSW vector cluster space
-    pub fn new(dimensions: usize) -> Result<Self, RagError> {
+    /// Allocates a new native HNSW vector cluster space with configurable initial capacity.
+    pub fn new(dimensions: usize, initial_capacity: usize) -> Result<Self, RagError> {
         let mut options = IndexOptions::default();
         options.dimensions = dimensions;
         options.metric = MetricKind::Cos;            // Fast directional cosine distance metrics
@@ -17,9 +17,12 @@ impl UsearchStore {
         let index = Index::new(&options)
             .map_err(|_| RagError::VectorStoreError("Failed to initialize native USearch graph index context.".into()))?;
 
-        // Pre-reserve standard capacity spaces to limit allocation loops
-        index.reserve(5000)
-            .map_err(|_| RagError::VectorStoreError("Failed to reserve storage buffer steps within native index allocator.".into()))?;
+        // CELERON TUNING: Make reservation dynamic. Pre-allocating the correct volume up-front
+        // prevents mid-ingestion thread freezes caused by underlying C++ graph resizing blocks.
+        if initial_capacity > 0 {
+            index.reserve(initial_capacity)
+                .map_err(|_| RagError::VectorStoreError("Failed to reserve storage buffer steps within native index allocator.".into()))?;
+        }
 
         Ok(Self { index, dimensions })
     }
@@ -38,7 +41,7 @@ impl UsearchStore {
         Ok(())
     }
 
-    /// Finds matching vectors inside the HNSW index layer
+    /// Finds matching vectors inside the HNSW index layer using zero-branch results processing
     pub fn search_vectors(&self, query_vector: &[f32], top_k: usize) -> Result<Vec<(u64, f32)>, RagError> {
         if query_vector.len() != self.dimensions {
             return Err(RagError::VectorStoreError("Query vector dimension target configuration out of sync.".into()));
@@ -47,12 +50,21 @@ impl UsearchStore {
         let matches = self.index.search(query_vector, top_k)
             .map_err(|_| RagError::VectorStoreError("Native graph query search routine step execution failure.".into()))?;
 
+        // Pre-allocate the result array to prevent incremental reallocation spikes
         let mut results = Vec::with_capacity(matches.keys.len());
-        for i in 0..matches.keys.len() {
-            // USearch returns raw distance. Convert to a similarity score where higher is better
-            let similarity_score = 1.0 - matches.distances[i];
-            results.push((matches.keys[i], similarity_score));
-        }
+
+        // CELERON TUNING: Iterator Fusing
+        // Using a zip iterator proves matching lengths to the compiler, completely
+        // stripping all bounds-checking branch panics from the generated loop assembly.
+        results.extend(
+            matches.keys.iter()
+                .zip(matches.distances.iter())
+                .map(|(&key, &distance)| {
+                    // USearch returns raw distance. Convert to a similarity score where higher is better
+                    let similarity_score = 1.0 - distance;
+                    (key, similarity_score)
+                })
+        );
 
         Ok(results)
     }
@@ -69,5 +81,90 @@ impl UsearchStore {
         self.index.load(path)
             .map_err(|_| RagError::VectorStoreError("Failed to fetch binary data arrays from local filesystem targets.".into()))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_store_initialization_and_capacity() {
+        // Test normal operational allocation
+        let store_gen = UsearchStore::new(128, 100);
+        assert!(store_gen.is_ok(), "Failed to allocate native USearch memory blocks");
+        
+        let store = store_gen.unwrap();
+        assert_eq!(store.dimensions, 128);
+
+        // Test fallback boundaries with zero pre-allocation size requirements
+        let zero_capacity_store = UsearchStore::new(64, 0);
+        assert!(zero_capacity_store.is_ok());
+    }
+
+    #[test]
+    fn test_add_vector_dimension_guards() {
+        let store = UsearchStore::new(4, 10).unwrap();
+
+        // 1. Valid dimension path matching configuration space
+        let matching_vector = vec![0.25, 0.5, 0.75, 1.0];
+        assert!(store.add_vector(42, &matching_vector).is_ok());
+
+        // 2. Fragmented/Short dimension mismatch path
+        let broken_vector = vec![0.1, 0.2, 0.3];
+        let bad_append = store.add_vector(43, &broken_vector);
+        
+        assert!(bad_append.is_err());
+        match bad_append.unwrap_err() {
+            RagError::VectorStoreError(msg) => {
+                assert!(msg.contains("Vector dimension layout size mismatch"));
+            },
+            other => panic!("Expected VectorStoreError from matrix size divergence, caught: {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_search_fused_iterator_and_similarity_conversion() {
+        // Initialize simple 3-dimensional workspace metrics
+        let store = UsearchStore::new(3, 5).unwrap();
+        
+        // Populate tracking points
+        let item_a = vec![1.0, 0.0, 0.0];
+        let item_b = vec![0.0, 1.0, 0.0];
+        
+        store.add_vector(1001, &item_a).unwrap();
+        store.add_vector(1002, &item_b).unwrap();
+
+        // Query point directly pointing at item_a layout definitions
+        let query_point = vec![1.0, 0.0, 0.0];
+        let query_execution = store.search_vectors(&query_point, 2);
+        
+        assert!(query_execution.is_ok());
+        let records = query_execution.unwrap();
+
+        // Validate results matching density expectations
+        assert!(!records.is_empty(), "Search pipeline returned cold/empty arrays");
+        
+        let (first_matched_id, similarity_score) = records[0];
+        assert_eq!(first_matched_id, 1001);
+        
+        // Cosine distance on an identical vector is 0.0, so similarity mapping must be ~1.0
+        assert!(similarity_score > 0.99, "Similarity calculation failed inversion mapping transformations");
+    }
+
+    #[test]
+    fn test_search_vector_dimension_mismatch_guard() {
+        let store = UsearchStore::new(384, 5).unwrap();
+        let bad_query_point = vec![0.5, 0.5]; // Drastically under-dimensioned
+        
+        let result = store.search_vectors(&bad_query_point, 5);
+        assert!(result.is_err());
+        
+        match result.unwrap_err() {
+            RagError::VectorStoreError(msg) => {
+                assert!(msg.contains("Query vector dimension target configuration out of sync"));
+            },
+            other => panic!("Expected dimension out of sync exception, caught: {:?}", other),
+        }
     }
 }

@@ -25,7 +25,7 @@ fn stop_generation(py: Python) -> PyResult<()> {
 }
 
 /// Register `llm` submodule contents
-pub fn register(py: Python, m: &PyModule) -> PyResult<()> {
+pub fn register(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_llm, m)?)?;
     m.add_function(wrap_pyfunction!(stop_generation, m)?)?;
     m.add_class::<PyLLM>()?;

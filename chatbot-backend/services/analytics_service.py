@@ -370,7 +370,7 @@ async def recurring_impact_analysis(user_id: str):
 
 # ---------------- BUDGET UTILIZATION ----------------
 async def budget_utilization_analysis(user_id: str):
-    budget = get_active_budget(user_id)
+    budget = await get_active_budget(user_id)
     if not budget:
         return 0.0, 0.0, 0.0, 0.0  # graceful empty
 
@@ -393,7 +393,7 @@ async def budget_utilization_analysis(user_id: str):
 # Bug fixed: Rust returns (burn_rate, Optional[f64]) for days_left.
 # Schema expects int. We coerce safely with a large sentinel for "never".
 async def burn_rate_analysis(user_id: str):
-    budget = get_active_budget(user_id)
+    budget = await get_active_budget(user_id)
     if not budget:
         return 0.0, 0, 0  # graceful empty
 

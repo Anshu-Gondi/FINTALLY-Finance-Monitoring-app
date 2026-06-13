@@ -3,8 +3,9 @@ use pyo3::pyasync::IterANextOutput;
 use pyo3::IntoPy;
 use std::sync::Arc;
 
+// Explicitly bring StreamExt into scope for .next() on async items
 use futures_util::StreamExt;
-use tokio::sync::mpsc::{ Receiver, channel };
+use tokio::sync::mpsc::{channel, Receiver};
 use tokio::sync::Mutex;
 use tokio_util::sync::CancellationToken;
 
@@ -32,17 +33,17 @@ impl PyLLM {
         &self,
         py: Python<'py>,
         prompt: String,
-        context: Option<String>
+        context: Option<String>,
     ) -> PyResult<&'py PyAny> {
         let inner = self.inner.clone();
 
         pyo3_asyncio::tokio::future_into_py(py, async move {
-            let full_prompt = crate::core::llm::prompt::Prompt
-                ::build(&prompt, context.as_deref())
+            let full_prompt = crate::core::llm::prompt::Prompt::build(&prompt, context.as_deref())
                 .map_err(app_error_to_py)?;
 
             let result = inner
-                .generate_text(&full_prompt, context.as_deref()).await
+                .generate_text(&full_prompt, context.as_deref())
+                .await
                 .map_err(app_error_to_py)?;
 
             Ok(result)
@@ -67,22 +68,25 @@ impl PyLLM {
         &self,
         py: Python<'py>,
         prompt: String,
-        context: Option<String>
+        context: Option<String>,
     ) -> PyResult<&'py PyAny> {
         let inner = self.inner.clone();
 
         pyo3_asyncio::tokio::future_into_py(py, async move {
-            let full_prompt = crate::core::llm::prompt::Prompt
-                ::build(&prompt, context.as_deref())
+            let full_prompt = crate::core::llm::prompt::Prompt::build(&prompt, context.as_deref())
                 .map_err(app_error_to_py)?;
 
             let cancelable = inner
-                .stream_text(&full_prompt, context.as_deref()).await
+                .stream_text(&full_prompt, context.as_deref())
+                .await
                 .map_err(app_error_to_py)?;
 
             let cancel_token = cancelable.cancel.clone();
             let cancel_for_task = cancel_token.clone();
-            let mut stream = cancelable.stream;
+            
+            // Fix E0599 & E0282: Pin the stream explicitly to the stack layer 
+            // so futures_util::StreamExt can resolve the underlying item types cleanly.
+            let mut stream = Box::pin(cancelable.stream);
 
             let (tx, rx) = channel(32);
 
@@ -137,7 +141,7 @@ impl PyStream {
 
     fn __anext__<'py>(
         slf: PyRef<'py, Self>,
-        py: Python<'py>
+        py: Python<'py>,
     ) -> PyResult<IterANextOutput<PyObject, PyObject>> {
         let rx = slf.rx.clone();
 
@@ -164,5 +168,7 @@ impl PyStream {
 /// Error mapping
 /// ─────────────────────────────────────────────
 fn app_error_to_py(err: AppError) -> PyErr {
+    // Fix E0433: This handles mapping errors gracefully out to Python space.
+    // If your app error layout uses specialized domain sub-variants, parse them cleanly here.
     pyo3::exceptions::PyRuntimeError::new_err(err.to_string())
 }

@@ -11,6 +11,7 @@ use crate::core::finance::{
 use crate::core::math::{ similarity::similarity, stats::{ compute_stat_scores, generate_alerts } };
 use crate::core::llm::dto::*;
 use crate::core::utils::errors::AppError;
+use crate::core::utils::domain_error::DomainError;
 use crate::core::types::*;
 use tokio::task;
 

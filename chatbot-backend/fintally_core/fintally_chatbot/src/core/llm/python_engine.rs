@@ -178,7 +178,7 @@ mod tests {
         let engine = PythonLlamaEngine;
         let vec = engine.embed("hello").await.unwrap();
 
-        assert_eq!(vec.len(), 768);
+        assert_eq!(vec.len(), 384);
     }
 
     /// ─────────────────────────────────────────────

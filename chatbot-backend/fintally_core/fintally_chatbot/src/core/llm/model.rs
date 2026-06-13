@@ -1,6 +1,7 @@
 use crate::core::llm::engine::{ LlmEngine, CancelableStream };
 use crate::core::llm::prompt::Prompt;
 use crate::core::utils::errors::AppError;
+use futures_util::StreamExt;
 
 pub struct LLM {
     engine: Box<dyn LlmEngine>,

@@ -1,115 +1,81 @@
-# ─── Environment & Secrets ─────────────────────────────────────────
-.env
-.env.*
-*.env
+# ====================================================================
+# FinTally Monorepo Root Git Ignore Configuration
+# ====================================================================
+
+# ─── Security, Secret Keys & Cloud OAuth Tokens ───────────────────
+**/.env
+**/.env.*
 *.key
 *.pem
 .secret/
 secrets/
-config/*.env
+# Protects active Google Drive OAuth token caches
+chatbot-backend/mycreds.txt
+# Protects core client API developer keys
+chatbot-backend/client_secret.json
 
-# ─── Node.js ───────────────────────────────────────────────────────
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-pnpm-lock.yaml
+# ─── FinTally AI Vector Engines & Local Doc Pipelines ──────────────
+# Excludes physical Rust HNSW database indices
+chatbot-backend/vector_storage/
+# Excludes active tax/policy document caches
+chatbot-backend/trusted_docs_source/
+# Cleans up temporary plain-text parser mirrors
+**/*.pdf.txt
 
-# ─── React (Vite/CRA) ──────────────────────────────────────────────
-.vite/
-.vscode/
-.idea/
-*.local
-*.DS_Store
-*.tsbuildinfo
-*.tgz
-coverage/
-/build/
-/dist/
-.out/
-.next/
-
-# ─── Python (FastAPI + Django) ─────────────────────────────────────
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.egg
-*.egg-info/
-*.log
-*.sqlite3
-*.db
-*.tmp
-*.bak
-.mypy_cache/
-.pytest_cache/
-.ipynb_checkpoints/
-Pipfile.lock
-poetry.lock
-*.lock
-
-# ─── Django Specific ───────────────────────────────────────────────
-*.sqlite3
-db.sqlite3
-/media/
-staticfiles/
-static/
-*.pot
-*.mo
-*.pyc
-*.pyo
-*.pyd
-*.db
-local_settings.py
-
-# ─── Virtual Environments ───────────────────────────────────────────
-.venv/
-venv/
-venv310/
-.venv310/
-ENV/
-env/
-env.bak/
-env_old/
-env*/
-
-# ─── LLM Models ─────────────────────────────────────────────────────
-/models/
+# ─── Large LLM Model Assets ─────────────────────────────────────────
+chatbot-backend/llm_models/          # Cuts out deep GGUF models (tinyllama, phi-2)
 *.gguf
 *.bin
 *.pth
-*.ckpt
 *.safetensors
 
-# ─── MongoDB or Database Dumps ─────────────────────────────────────
-*.lock
-dump/
-*.bak
-*.sql
+# ─── Rust Workspace Crates & Native Compilations ──────────────────
+# Strips all heavy Cargo compile artifacts
+**/target/                           
+chatbot-backend/fintally_core/target/
+chatbot-backend/fintally_core/nextest_full.log
+chatbot-backend/fintally_core/build_errors.log
+
+# ─── Python Virtual Environments & Interpreter Caches ───────────────
+chatbot-backend/venv/
+**/__pycache__/
+**/*.py[cod]
+**/*.pyd
+.mypy_cache/
+.pytest_cache/
+
+# ─── Database Layouts & File Upload Temp Caches ─────────────────────
+chatbot-backend/uploads/
+!chatbot-backend/uploads/favicon.ico # White-lists app icon graphic asset
+*.sqlite3
 *.db
+*.sql
+*.tmp
+*.bak
 
-# ─── Logs ───────────────────────────────────────────────────────────
-logs/
-*.log
-*.pid
-*.seed
-*.pid.lock
+# ─── Frontend React & Node Ecosystems ───────────────────────────────
+frontend/node_modules/
+**/node_modules/
+frontend/dist/
+frontend/.vite/
+**/*.log
+**/*.log*
+package-lock.json
+pnpm-lock.yaml
 
-# ─── System Files ───────────────────────────────────────────────────
+# ─── IDE Configurations & Operating System Garbage ──────────────────
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
-ehthumbs.db
-Icon?
 *.swp
 *.swo
 
-# ─── Archive/Temp ───────────────────────────────────────────────────
+# ─── System Archives & Compression Blocks ────────────────────────────
 *.zip
 *.gz
 *.tar
 *.rar
 *.7z
-*.tmp
 .cache/
 temp/

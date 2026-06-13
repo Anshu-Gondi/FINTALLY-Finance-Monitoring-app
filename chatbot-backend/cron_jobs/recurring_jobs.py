@@ -11,6 +11,8 @@ from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from bson import ObjectId
 
+from apscheduler.triggers.cron import CronTrigger
+from services.rag_service import rag_service
 from services.db import db
 
 logger = logging.getLogger(__name__)
@@ -125,6 +127,15 @@ async def generate_recurring_transactions() -> None:
     except Exception:
         logger.exception("❌ Error in recurring transactions job")
 
+async def run_daily_rag_sync() -> None:
+    """
+    Wakes up, runs the secure Google Drive sync pipeline, 
+    and handles native backend index embedding logic.
+    """
+    try:
+        await rag_service.sync_and_reindex_trusted_sources()
+    except Exception:
+        logger.exception("❌ Error executing daily Google Drive context synchronization")
 
 # ──────────────────────────────────────────────
 # Scheduler registration
@@ -132,6 +143,7 @@ async def generate_recurring_transactions() -> None:
 
 def start_scheduler() -> None:
     """Call this once during app startup."""
+    # Your existing 5 min transaction interval worker
     scheduler.add_job(
         generate_recurring_transactions,
         trigger="interval",
@@ -139,8 +151,18 @@ def start_scheduler() -> None:
         id="recurring_transactions",
         replace_existing=True,
     )
+    
+    # New Daily RAG Sync Cron Job: Firing every day at 2:30 AM
+    scheduler.add_job(
+        run_daily_rag_sync,
+        trigger="interval",   # Swapped from CronTrigger
+        minutes=2,            # Fires every 2 minutes
+        id="daily_drive_rag_sync",
+        replace_existing=True,
+    )
+    
     scheduler.start()
-    logger.info("🕐 Recurring transaction scheduler started (every 5 min)")
+    logger.info("Driver hooks connected: Recurring transaction execution (5m) & Daily Google Drive RAG cron (2:30 AM) online.")
 
 
 def stop_scheduler() -> None:

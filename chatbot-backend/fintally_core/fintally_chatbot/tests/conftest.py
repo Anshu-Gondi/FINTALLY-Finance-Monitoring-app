@@ -1,29 +1,14 @@
 """
-tests/conftest.py
+fintally_core/fintally_chatbot/tests/conftest.py
 ─────────────────────────────────────────────────────────────────────────────
-Ensures chatbot-backend/ is importable during pytest collection.
+Ensures chatbot-backend/ is discoverable and importable during pytest 
+collection loops across isolated nested directories.
 
 Why:
-    python_llama.py lives at:
-
-        chatbot-backend/python_llama.py
-
-    but pytest runs from:
-
-        chatbot-backend/fintally_core/fintally_chatbot/
-
-    so the backend root is not automatically on sys.path.
-
-    Rust's PythonLlamaEngine ultimately does:
-
-        py.import("python_llama")
-
-    which fails unless chatbot-backend/ is importable.
-
-This conftest walks upward from this file until it finds
-python_llama.py, then inserts that directory into sys.path.
-
-This is more robust than hardcoding "../../../".
+    Both python_llama.py and fintally_embedder.py reside in the chatbot-backend/
+    root directory. Pytest operates deeply nested inside fintally_core/. 
+    This config walks upward dynamically to find and append the backend root
+    to sys.path, enabling seamless real integration testing.
 """
 
 from pathlib import Path
@@ -32,28 +17,24 @@ import sys
 
 def _find_backend_root(start: Path) -> Path:
     """
-    Walk upward until python_llama.py is found.
-
-    Raises:
-        RuntimeError if the file cannot be found.
+    Walks upward through directory levels until the core root is identified.
+    Returns the resolved parent Path.
     """
     current = start.resolve()
 
     while current != current.parent:
-        candidate = current / "python_llama.py"
-
-        if candidate.exists():
+        # Check for core file indicators to establish workspace identity
+        if (current / "python_llama.py").exists() and (current / "fintally_embedder.py").exists():
             return current
-
         current = current.parent
 
     raise RuntimeError(
-        "Could not locate chatbot-backend root containing python_llama.py"
+        "Could not locate chatbot-backend root directory containing production integration scripts."
     )
 
 
+# Locate and append backend roots cleanly
 _THIS_FILE = Path(__file__)
-
 _BACKEND_ROOT = _find_backend_root(_THIS_FILE.parent)
 
 if str(_BACKEND_ROOT) not in sys.path:

@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyDict, PyList};
 use pyo3::exceptions::PyRuntimeError;
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 
 use crate::core::rag::builder::RagServiceBuilder;
 use crate::core::rag::service::RagService;
@@ -51,7 +51,8 @@ impl PyRagEngine {
         
         Python::with_gil(|py| {
             let dict = PyDict::new(py);
-            dict.set_item("document_id", response.document_id)?;
+            // .as_ref() drops Box<str> down to a standard &str slice which PyO3 can serialize
+            dict.set_item("document_id", response.document_id.as_ref())?;
             dict.set_item("chunks_count", response.chunks_count)?;
             dict.set_item("success", response.success)?;
             dict.set_item("execution_time_ms", response.execution_time_ms)?;
@@ -68,20 +69,34 @@ impl PyRagEngine {
         score_threshold: Option<f32>,
         filters: Option<HashMap<String, String>>,
     ) -> PyResult<PyObject> {
-        let response = self.service.query(query_text, top_k, score_threshold, filters).map_err(to_py_err)?;
+        // Convert incoming Python HashMap filters into the optimized BTreeMap expected by the service
+        let optimized_filters: Option<BTreeMap<Box<str>, Box<str>>> = filters.map(|f| {
+            f.into_iter()
+             .map(|(k, v)| (k.into_boxed_str(), v.into_boxed_str()))
+             .collect()
+        });
+
+        let response = self.service.query(query_text, top_k, score_threshold, optimized_filters).map_err(to_py_err)?;
         
         Python::with_gil(|py| {
             let result_dict = PyDict::new(py);
-            result_dict.set_item("context_block", response.context_block)?;
+            result_dict.set_item("context_block", response.context_block.as_ref())?;
             
-            let matches_list = pyo3::types::PyList::empty(py);
+            let matches_list = PyList::empty(py);
             for chunk_match in response.matches {
                 let match_dict = PyDict::new(py);
                 match_dict.set_item("chunk_id", chunk_match.chunk_id)?;
-                match_dict.set_item("document_id", chunk_match.document_id)?;
-                match_dict.set_item("text", chunk_match.text)?;
+                match_dict.set_item("document_id", chunk_match.document_id.as_ref())?;
+                match_dict.set_item("text", chunk_match.text.as_ref())?;
                 match_dict.set_item("score", chunk_match.score)?;
-                match_dict.set_item("metadata", chunk_match.metadata)?;
+                
+                // Manually parse the BTreeMap<Box<str>, Box<str>> metadata into a valid PyDict
+                let metadata_dict = PyDict::new(py);
+                for (k, v) in &chunk_match.metadata {
+                    metadata_dict.set_item(k.as_ref(), v.as_ref())?;
+                }
+                match_dict.set_item("metadata", metadata_dict)?;
+                
                 matches_list.append(match_dict)?;
             }
             

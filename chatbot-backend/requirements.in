@@ -29,12 +29,13 @@ google-auth-oauthlib
 requests-oauthlib
 
 # --- PDF / Docs ---
+python-docx
 PyMuPDF
 reportlab
 beautifulsoup4
 
-# --- RAG / Embeddings ---
-faiss-cpu==1.7.4
+# RAG / Embedding
+PyDrive2
 
 # Lightweight ONNX embedding pipeline
 transformers

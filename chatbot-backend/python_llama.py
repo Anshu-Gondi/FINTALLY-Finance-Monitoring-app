@@ -88,6 +88,7 @@ def _get_model(model_name: str) -> Llama:
                 verbose=False,
                 logits_all=False,
                 embedding=False,
+                use_mmap=True,
             )
     return _model_cache[model_name]
 

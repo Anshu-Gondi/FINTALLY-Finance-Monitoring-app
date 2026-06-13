@@ -1,19 +1,15 @@
+# services/llm_bridge.py
 """
-services/llm_bridge.py
-
-Orchestrates: FastAPI ↔ User Context ↔ TinyLlama ↔ Rust tools
+Orchestrates: FastAPI ↔ User Context + Polars RAG ↔ TinyLlama ↔ Rust tools
 
 Flow per request:
-  1. Fetch user's real financial snapshot (analytics_service, concurrent)
-  2. Build system prompt with that snapshot injected
-  3. First LLM pass → detect tool call or plain response
-  4. If tool call → execute via Rust fintally_chatbot bindings
-  5. Second LLM pass → explain result in context of user's actual situation
-  6. Stream tokens back
-
-Key design: user_context is fetched ONCE per request, before the LLM.
-            It costs ~one concurrent MongoDB round-trip and makes every
-            single answer personalized with real numbers.
+  1. Fetch user's real financial snapshot (MongoDB) AND query the semantic document 
+     vector space (Rust + Polars DataFrame) concurrently.
+  2. Build system prompt with both snapshot metrics and document contexts injected.
+  3. First LLM pass → detect tool call or plain response.
+  4. If tool call → execute via Rust fintally_chatbot bindings.
+  5. Second LLM pass → explain result in context of user's complete situation.
+  6. Stream tokens back.
 """
 
 import json
@@ -24,6 +20,7 @@ from typing import AsyncGenerator, Optional
 
 import python_llama
 from services.user_context import get_user_context, format_context_for_prompt
+from services.rag_service import rag_service
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +69,7 @@ TOOL_REGISTRY = {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Prompt builder
+# Prompt builders
 # ──────────────────────────────────────────────────────────────────────────────
 
 _SYSTEM_BASE = """\
@@ -107,14 +104,28 @@ Assistant: ELSS (Equity Linked Savings Scheme) is a tax-saving mutual fund with 
 """
 
 
-def _build_system_prompt(user_context: str) -> str:
-    """Inject user's real financial snapshot into the system prompt."""
-    ctx_block = format_context_for_prompt(user_context)
-    return _SYSTEM_BASE + ctx_block
+def _build_system_prompt(user_context: str, rag_context: str) -> str:
+    """Inject both real financial metrics and retrieved document knowledge cleanly into the system prompt."""
+    prompt_blocks = [_SYSTEM_BASE]
+    
+    # Append MongoDB user portfolio data if found
+    if user_context.strip():
+        prompt_blocks.append(format_context_for_prompt(user_context))
+        
+    # Append RAG file context if vector search returned hits
+    if rag_context.strip():
+        prompt_blocks.append(
+            "\n=== RELEVANT DOCUMENT REFERENCE CONTEXT ===\n"
+            "Use the following factual excerpts from uploaded documents to inform your answer:\n"
+            f"{rag_context}\n"
+            "=== END DOCUMENT REFERENCE ==="
+        )
+        
+    return "\n".join(prompt_blocks)
 
 
-def _build_prompt(user_message: str, chat_history: list[dict], user_context: str) -> str:
-    system = _build_system_prompt(user_context)
+def _build_prompt(user_message: str, chat_history: list[dict], user_context: str, rag_context: str) -> str:
+    system = _build_system_prompt(user_context, rag_context)
     parts = [f"<|system|>\n{system}\n</s>"]
 
     # Last 6 messages only — TinyLlama context window is tight (1024 tokens)
@@ -133,24 +144,18 @@ def _build_explain_prompt(
     tool_result: dict,
     chat_history: list[dict],
     user_context: str,
+    rag_context: str,
 ) -> str:
-    """
-    Second-pass prompt: LLM explains the tool result.
-    Critically: user context is still in scope so the explanation
-    can reference the user's actual situation.
-    e.g. "Your EMI of ₹10,331 takes your total burden to 42% of income,
-    which is in the High Risk zone per your current profile."
-    """
-    system = _build_system_prompt(user_context)
+    """Second-pass prompt: LLM explains the tool result utilizing full metrics and document context."""
+    system = _build_system_prompt(user_context, rag_context)
     result_str = json.dumps(tool_result, indent=2)
 
     instruction = (
         f"The tool '{tool_name}' returned:\n{result_str}\n\n"
         f"Explain this clearly to the user. "
         f"Use ₹ for amounts. Be concise. "
-        f"Where relevant, relate it to their financial snapshot above "
-        f"(e.g. how the EMI affects their existing burden, "
-        f"how an investment fits their savings rate, etc.)."
+        f"Where relevant, relate it to their financial snapshot or the document references above "
+        f"(e.g., matching policy constraints, capacity limits, or targeted balance targets)."
     )
 
     parts = [f"<|system|>\n{system}\n</s>"]
@@ -199,10 +204,7 @@ def _extract_tool_call(text: str) -> Optional[dict]:
 # ──────────────────────────────────────────────────────────────────────────────
 
 async def _execute_rust_tool(tool_name: str, args: dict) -> dict:
-    """
-    Bridge to execute_tool_async in fintally_chatbot/tools.rs via PyO3 bindings.
-    Falls back with an error dict if bindings aren't loaded.
-    """
+    """Bridge to execute_tool_async in fintally_chatbot/tools.rs via PyO3 bindings."""
     try:
         from fintally_chatbot.finance import assistant as rust_assistant  # type: ignore
         result = await rust_assistant.execute_tool_async(tool_name, args)
@@ -216,7 +218,7 @@ async def _execute_rust_tool(tool_name: str, args: dict) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Main streaming generator
+# Main streaming generator — WITH REAL ASYNC STREAMING FIX!
 # ──────────────────────────────────────────────────────────────────────────────
 
 async def chat_stream(
@@ -227,42 +229,86 @@ async def chat_stream(
 ) -> AsyncGenerator[str, None]:
     """
     Main entry point for the chat router.
-
-    Yields string chunks for SSE. Protocol chunks:
-      [TOOL_CALL:name]     — tool being called (show spinner in UI)
-      [TOOL_RESULT:{json}] — raw result (UI can render as a card)
-      [CONTEXT_LOADED]     — emitted after user context is fetched (optional UI indicator)
-      [ERROR:msg]          — failure
-    Regular text chunks are LLM tokens to display directly.
+    Yields string chunks dynamically using a thread-safe Async Queue.
     """
 
-    # ── Phase 1: Fetch user financial context ─────────────────────────────────
-    user_context = await _safe_fetch_context(user_id)
-    if user_context:
+    # ── Phase 1: Concurrent Data Gathering ──
+    try:
+        user_ctx_task = _safe_fetch_context(user_id)
+        rag_ctx_task = asyncio.wait_for(rag_service.search_knowledge(user_message), timeout=4.0)
+
+        user_context, rag_context = await asyncio.gather(
+            user_ctx_task,
+            rag_ctx_task,
+            return_exceptions=True
+        )
+
+        if isinstance(user_context, Exception): user_context = ""
+        if isinstance(rag_context, Exception): rag_context = ""
+
+    except Exception as e:
+        logger.warning(f"Failed concurrent context compilation space: {e}")
+        user_context, rag_context = "", ""
+
+    if user_context or rag_context:
         yield "[CONTEXT_LOADED]"
 
-    # ── Phase 2: First LLM pass ───────────────────────────────────────────────
-    prompt = _build_prompt(user_message, chat_history, user_context)
+    # Helper function to drain tokens from an LLM thread via an asyncio Queue
+    async def stream_from_thread(target_prompt: str) -> AsyncGenerator[str, None]:
+        loop = asyncio.get_running_loop()
+        q = asyncio.Queue()
 
+        # This runs on the background worker thread, feeding tokens into our thread-safe queue
+        def worker():
+            try:
+                for token in python_llama.stream_generate(target_prompt, max_tokens):
+                    loop.call_soon_threadsafe(q.put_nowait, ("token", token))
+            except Exception as thread_err:
+                loop.call_soon_threadsafe(q.put_nowait, ("error", thread_err))
+            finally:
+                loop.call_soon_threadsafe(q.put_nowait, ("done", None))
+
+        # Spin up worker thread immediately 
+        worker_task = loop.run_in_executor(None, worker)
+
+        # Consume queue items in real-time on our main async event loop
+        while True:
+            status, payload = await q.get()
+            if status == "token":
+                yield payload
+            elif status == "error":
+                raise payload
+            elif status == "done":
+                break
+        
+        await worker_task
+
+    # ── Phase 2: First LLM pass ───────────────────────────────────────────────
+    prompt = _build_prompt(user_message, chat_history, user_context, rag_context)
+
+    first_pass_chunks = []
     try:
-        first_pass = await asyncio.to_thread(
-            lambda: list(python_llama.stream_generate(prompt, max_tokens))
-        )
+        async for token in stream_from_thread(prompt):
+            first_pass_chunks.append(token)
+            # If the model starts writing regular conversational text, pass tokens immediately to the UI!
+            if len(first_pass_chunks) > 5 and not "".join(first_pass_chunks).startswith("<"):
+                yield token
     except Exception as e:
         logger.error(f"LLM first pass failed: {e}")
         yield f"[ERROR:LLM generation failed — {e}]"
         return
 
-    first_text = "".join(first_pass)
+    first_text = "".join(first_pass_chunks)
     logger.debug(f"LLM first pass: {first_text[:300]}")
 
     # ── Phase 3: Tool call detection ──────────────────────────────────────────
     tool_call = _extract_tool_call(first_text)
 
     if tool_call is None:
-        # Plain response — stream directly
-        for token in first_pass:
-            yield token
+        # If it was a plain text response and we didn't pass early tokens yet, clear the buffer
+        if len(first_pass_chunks) <= 5:
+            for token in first_pass_chunks:
+                yield token
         return
 
     # ── Phase 4: Execute Rust tool ────────────────────────────────────────────
@@ -284,22 +330,18 @@ async def chat_stream(
         yield f"Sorry, I ran into an issue: {tool_result['error']}"
         return
 
-    # ── Phase 5: Second LLM pass — explain result in user's context ───────────
+    # ── Phase 5: Second LLM pass — explain result with all contexts ───────────
     explain_prompt = _build_explain_prompt(
-        user_message, tool_name, tool_result, chat_history, user_context
+        user_message, tool_name, tool_result, chat_history, user_context, rag_context
     )
 
     try:
-        explain_tokens = await asyncio.to_thread(
-            lambda: list(python_llama.stream_generate(explain_prompt, max_tokens))
-        )
+        async for token in stream_from_thread(explain_prompt):
+            yield token
     except Exception as e:
         logger.error(f"LLM explain pass failed: {e}")
         yield f"\nResult: {json.dumps(tool_result, indent=2)}"
         return
-
-    for token in explain_tokens:
-        yield token
 
 
 # ──────────────────────────────────────────────────────────────────────────────
