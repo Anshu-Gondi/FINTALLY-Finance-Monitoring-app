@@ -17,8 +17,8 @@ impl UsearchStore {
         let index = Index::new(&options)
             .map_err(|_| RagError::VectorStoreError("Failed to initialize native USearch graph index context.".into()))?;
 
-        // CELERON TUNING: Make reservation dynamic. Pre-allocating the correct volume up-front
-        // prevents mid-ingestion thread freezes caused by underlying C++ graph resizing blocks.
+        // Pre-allocating the correct volume up-front prevents mid-ingestion 
+        // thread freezes caused by underlying C++ graph resizing blocks.
         if initial_capacity > 0 {
             index.reserve(initial_capacity)
                 .map_err(|_| RagError::VectorStoreError("Failed to reserve storage buffer steps within native index allocator.".into()))?;
@@ -27,13 +27,31 @@ impl UsearchStore {
         Ok(Self { index, dimensions })
     }
 
-    /// Indexes an f32 vector into the quantized USearch matrix under a given chunk ID
+    /// Indexes an f32 vector into the quantized USearch matrix under a given chunk ID.
+    /// Safely auto-expands internal node allocations if capacity ceilings are breached.
     pub fn add_vector(&self, chunk_id: u64, vector: &[f32]) -> Result<(), RagError> {
         if vector.len() != self.dimensions {
             return Err(RagError::VectorStoreError(
                 format!("Vector dimension layout size mismatch: expected {}, got {}.", self.dimensions, vector.len())
             ));
         }
+
+        // --- DYNAMIC EXPANSION GUARD ---
+        // If the index length matches or exceeds its current structural capacity boundary
+        // (common after running load_index() on a static file), extend capacity buffer slots.
+        let current_size = self.index.len();
+        let current_capacity = self.index.capacity();
+
+        if current_size >= current_capacity {
+            // Dynamically scale out slots. Adding a safety headroom padding of 500 items 
+            // stops performance degradation from repeated incremental reallocations.
+            let expanded_target = current_size + 500;
+            self.index.reserve(expanded_target)
+                .map_err(|_| RagError::VectorStoreError(
+                    format!("Failed to auto-expand HNSW vector storage limits up to target slot count: {}.", expanded_target)
+                ))?;
+        }
+        // -------------------------------
 
         self.index.add(chunk_id, vector)
             .map_err(|_| RagError::VectorStoreError(format!("Failed to register vector item ID: {}", chunk_id)))?;
@@ -54,8 +72,6 @@ impl UsearchStore {
         let mut results = Vec::with_capacity(matches.keys.len());
 
         // CELERON TUNING: Iterator Fusing
-        // Using a zip iterator proves matching lengths to the compiler, completely
-        // stripping all bounds-checking branch panics from the generated loop assembly.
         results.extend(
             matches.keys.iter()
                 .zip(matches.distances.iter())
@@ -90,14 +106,12 @@ mod tests {
 
     #[test]
     fn test_store_initialization_and_capacity() {
-        // Test normal operational allocation
         let store_gen = UsearchStore::new(128, 100);
         assert!(store_gen.is_ok(), "Failed to allocate native USearch memory blocks");
         
         let store = store_gen.unwrap();
         assert_eq!(store.dimensions, 128);
 
-        // Test fallback boundaries with zero pre-allocation size requirements
         let zero_capacity_store = UsearchStore::new(64, 0);
         assert!(zero_capacity_store.is_ok());
     }
@@ -106,11 +120,9 @@ mod tests {
     fn test_add_vector_dimension_guards() {
         let store = UsearchStore::new(4, 10).unwrap();
 
-        // 1. Valid dimension path matching configuration space
         let matching_vector = vec![0.25, 0.5, 0.75, 1.0];
         assert!(store.add_vector(42, &matching_vector).is_ok());
 
-        // 2. Fragmented/Short dimension mismatch path
         let broken_vector = vec![0.1, 0.2, 0.3];
         let bad_append = store.add_vector(43, &broken_vector);
         
@@ -124,38 +136,46 @@ mod tests {
     }
 
     #[test]
+    fn test_auto_expansion_over_initial_capacity() {
+        // Create an index limited intentionally to exactly 1 slot
+        let store = UsearchStore::new(2, 1).unwrap();
+
+        // Fill the initial slot
+        assert!(store.add_vector(101, &vec![1.0, 0.0]).is_ok());
+
+        // This second vector should trigger the auto-expansion guard instead of crashing
+        assert!(store.add_vector(102, &vec![0.0, 1.0]).is_ok(), "Index failed to auto-expand capacity bounds!");
+        assert!(store.index.capacity() >= 2);
+    }
+
+    #[test]
     fn test_search_fused_iterator_and_similarity_conversion() {
-        // Initialize simple 3-dimensional workspace metrics
         let store = UsearchStore::new(3, 5).unwrap();
         
-        // Populate tracking points
         let item_a = vec![1.0, 0.0, 0.0];
         let item_b = vec![0.0, 1.0, 0.0];
         
         store.add_vector(1001, &item_a).unwrap();
         store.add_vector(1002, &item_b).unwrap();
 
-        // Query point directly pointing at item_a layout definitions
         let query_point = vec![1.0, 0.0, 0.0];
         let query_execution = store.search_vectors(&query_point, 2);
         
         assert!(query_execution.is_ok());
         let records = query_execution.unwrap();
 
-        // Validate results matching density expectations
         assert!(!records.is_empty(), "Search pipeline returned cold/empty arrays");
         
         let (first_matched_id, similarity_score) = records[0];
         assert_eq!(first_matched_id, 1001);
         
-        // Cosine distance on an identical vector is 0.0, so similarity mapping must be ~1.0
         assert!(similarity_score > 0.99, "Similarity calculation failed inversion mapping transformations");
     }
 
     #[test]
     fn test_search_vector_dimension_mismatch_guard() {
         let store = UsearchStore::new(384, 5).unwrap();
-        let bad_query_point = vec![0.5, 0.5]; // Drastically under-dimensioned
+        let bad_query_point = vec![0.5, 0.5];
         
         let result = store.search_vectors(&bad_query_point, 5);
         assert!(result.is_err());
