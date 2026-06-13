@@ -11,9 +11,17 @@ from pathlib import Path
 # ── ENV GUARD: Auto-Skip entire file if external parsing libraries are missing ──
 # If either dependency is missing in CI, pytest registers this as an 
 # official, graceful skip rather than a compilation/collection crash.
-Document = pytest.importorskip("docx", reason="python-docx library is missing").Document
-fitz = pytest.importorskip("fitz", reason="PyMuPDF (fitz) library is missing")
+try:
+    from docx import Document
+    _DOCX_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    _DOCX_AVAILABLE = False
 
+try:
+    import fitz  # PyMuPDF
+    _PDF_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    _PDF_AVAILABLE = False
 
 # Safely resolve the native submodule layout compiled via PyO3
 try:
@@ -104,7 +112,8 @@ def extract_text_from_docx(file_path: str) -> str:
 
 @pytest.mark.integration
 class TestMultiFormatIngestionPipeline:
-
+    
+    @pytest.mark.skipif(not _PDF_AVAILABLE, reason="PyMuPDF (fitz) is not installed in this environment context")
     def test_pdf_extraction_to_rust_rag_roundtrip(self, sample_pdf_document, tmp_path):
         """
         Validates the text parsed from a binary PDF via PyMuPDF cleanly bridges into 
@@ -141,6 +150,7 @@ class TestMultiFormatIngestionPipeline:
         query_result = query_fn("What is the leakage code identifier?", 1, 0.0, None)
         assert "FX-99281" in query_result["context_block"]
 
+    @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx library is missing or unconfigured in CI")
     def test_docx_extraction_to_rust_rag_roundtrip(self, sample_docx_document, tmp_path):
         """
         Validates Word .docx structures map smoothly through Python extraction models 
