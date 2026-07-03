@@ -1,12 +1,8 @@
-use pyo3::prelude::*;
-use pyo3::exceptions::PyValueError;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── Internal Helpers ────────────────────────────────────────────────────────
 
-/// Saturating multiply-add for i64.
-/// Equivalent to your SafeMulAdd — uses i128 internally (always available
-/// in Rust, no Windows/Linux ifdef needed).
 #[inline]
 fn safe_mul_add(a: i64, b: i64, c: i64) -> i64 {
     let result = (a as i128) * (b as i128) + (c as i128);
@@ -33,34 +29,26 @@ fn safe_f64_to_i64(x: f64) -> i64 {
     }
 }
 
-// ─── compound interest ───────────────────────────────────────────────────────
+// ─── Struct Definitions for Web API JSON Serialization ───────────────────────
 
-/// Calculate compound interest for a batch of inputs.
-///
-/// Args:
-///     principals: list[int]   — principal amounts (integer currency units)
-///     rates:      list[float] — annual interest rates as percentages (e.g. 10.0 = 10%)
-///     years:      list[int]   — investment duration in years
-///     compounds:  list[int]   — compounding frequency per year (12 = monthly)
-///
-/// Returns:
-///     list[int] — final amounts after compound interest, rounded
-///
-/// Raises:
-///     ValueError: if any list lengths differ
-///     TypeError:  if inputs are not lists
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BudgetProjectionResult {
+    pub projected_spent: Vec<i64>,
+    pub usage_percent: Vec<f64>,
+    pub warning_flag: Vec<u8>,
+}
 
-#[pyfunction]
-fn compound_interest_batch(
-    principals: Vec<i64>,
-    rates: Vec<f64>,
-    years: Vec<i32>,
-    compounds: Vec<i32>
-) -> PyResult<Vec<i64>> {
+// ─── Public Calculation Functions ────────────────────────────────────────────
+
+pub fn compound_interest_batch(
+    principals: &[i64],
+    rates: &[f64],
+    years: &[i32],
+    compounds: &[i32],
+) -> Result<Vec<i64>, String> {
     let n = principals.len();
-
     if rates.len() != n || years.len() != n || compounds.len() != n {
-        return Err(PyValueError::new_err("All input lists must have the same length"));
+        return Err("All input lists must have the same length".to_string());
     }
 
     let compute = |i: usize| -> i64 {
@@ -69,11 +57,7 @@ fn compound_interest_batch(
         let y = years[i];
         let c = compounds[i];
 
-        if !r.is_finite() {
-            return 0;
-        }
-
-        if p <= 0 || r < 0.0 || y <= 0 || c <= 0 {
+        if !r.is_finite() || p <= 0 || r < 0.0 || y <= 0 || c <= 0 {
             return 0;
         }
 
@@ -86,43 +70,22 @@ fn compound_interest_batch(
         }
 
         let amount = (p as f64) * exp_arg.exp();
-
         safe_f64_to_i64(amount)
     };
 
-    let result = Python::with_gil(|py| {
-        py.allow_threads(|| {
-            if should_parallelize(n) {
-                (0..n).into_par_iter().map(compute).collect()
-            } else {
-                (0..n).map(compute).collect()
-            }
-        })
-    });
+    let result = if should_parallelize(n) {
+        (0..n).into_par_iter().map(compute).collect()
+    } else {
+        (0..n).map(compute).collect()
+    };
 
     Ok(result)
 }
 
-// ─── EMI ─────────────────────────────────────────────────────────────────────
-
-/// Calculate EMI (Equated Monthly Installment) for a batch of loans.
-///
-/// Args:
-///     principals: list[int]   — loan principal amounts
-///     rates:      list[float] — annual interest rates as percentages
-///     months:     list[int]   — loan tenure in months
-///
-/// Returns:
-///     list[int] — monthly EMI amounts, rounded
-///
-/// Raises:
-///     ValueError: if list lengths differ
-#[pyfunction]
-fn emi_batch(principals: Vec<i64>, rates: Vec<f64>, months: Vec<i32>) -> PyResult<Vec<i64>> {
+pub fn emi_batch(principals: &[i64], rates: &[f64], months: &[i32]) -> Result<Vec<i64>, String> {
     let n = principals.len();
-
     if rates.len() != n || months.len() != n {
-        return Err(PyValueError::new_err("All input lists must have the same length"));
+        return Err("All input lists must have the same length".to_string());
     }
 
     let compute = |i: usize| -> i64 {
@@ -134,20 +97,16 @@ fn emi_batch(principals: Vec<i64>, rates: Vec<f64>, months: Vec<i32>) -> PyResul
         }
 
         let raw_r = rates[i];
-
         if !raw_r.is_finite() {
             return 0;
         }
 
         let r = (raw_r * 0.01) / 12.0;
-
         if r == 0.0 {
-            // integer division matches C++ P[i] / M[i]
             return p / (m as i64);
         }
 
         let exp_arg = (m as f64) * r.ln_1p();
-
         if exp_arg > 700.0 {
             return i64::MAX;
         }
@@ -158,45 +117,24 @@ fn emi_batch(principals: Vec<i64>, rates: Vec<f64>, months: Vec<i32>) -> PyResul
         safe_f64_to_i64(emi)
     };
 
-    let result = Python::with_gil(|py| {
-        py.allow_threads(|| {
-            if should_parallelize(n) {
-                (0..n).into_par_iter().map(compute).collect()
-            } else {
-                (0..n).map(compute).collect()
-            }
-        })
-    });
+    let result = if should_parallelize(n) {
+        (0..n).into_par_iter().map(compute).collect()
+    } else {
+        (0..n).map(compute).collect()
+    };
 
     Ok(result)
 }
 
-// ─── SIP ─────────────────────────────────────────────────────────────────────
-
-/// Calculate SIP (Systematic Investment Plan) future value for a batch.
-///
-/// Args:
-///     monthly:   list[int]   — monthly investment amounts
-///     rates:     list[float] — annual interest rates as percentages
-///     years:     list[int]   — investment duration in years
-///     compounds: list[int]   — compounding frequency per year
-///
-/// Returns:
-///     list[int] — future values, rounded
-///
-/// Raises:
-///     ValueError: if list lengths differ
-#[pyfunction]
-fn sip_batch(
-    monthly: Vec<i64>,
-    rates: Vec<f64>,
-    years: Vec<i32>,
-    compounds: Vec<i32>
-) -> PyResult<Vec<i64>> {
+pub fn sip_batch(
+    monthly: &[i64],
+    rates: &[f64],
+    years: &[i32],
+    compounds: &[i32],
+) -> Result<Vec<i64>, String> {
     let n = monthly.len();
-
     if rates.len() != n || years.len() != n || compounds.len() != n {
-        return Err(PyValueError::new_err("All input lists must have the same length"));
+        return Err("All input lists must have the same length".to_string());
     }
 
     let compute = |i: usize| -> i64 {
@@ -208,22 +146,20 @@ fn sip_batch(
             return 0;
         }
 
-        let total_periods = (y * c) as f64; // periods match compounding frequency
-        let monthly_sum = (y * 12) as i64; // always months for zero-rate case
+        let total_periods = (y * c) as f64;
+        let monthly_sum = (y * 12) as i64;
         let raw_r = rates[i];
 
         if !raw_r.is_finite() {
             return 0;
         }
 
-        let rate = (raw_r * 0.01) / (c as f64); // rate per period
-
+        let rate = (raw_r * 0.01) / (c as f64);
         if rate == 0.0 {
-            return m * monthly_sum; // simple sum of monthly deposits
+            return m * monthly_sum;
         }
 
         let exp_arg = total_periods * rate.ln_1p();
-
         if exp_arg > 700.0 {
             return i64::MAX;
         }
@@ -234,67 +170,28 @@ fn sip_batch(
         safe_f64_to_i64(fv)
     };
 
-    let result = Python::with_gil(|py| {
-        py.allow_threads(|| {
-            if should_parallelize(n) {
-                (0..n).into_par_iter().map(compute).collect()
-            } else {
-                (0..n).map(compute).collect()
-            }
-        })
-    });
+    let result = if should_parallelize(n) {
+        (0..n).into_par_iter().map(compute).collect()
+    } else {
+        (0..n).map(compute).collect()
+    };
 
     Ok(result)
 }
 
-// ─── budget projection ───────────────────────────────────────────────────────
-
-/// Result type returned by budget_projection_batch.
-/// Each field is a list of the same length as the inputs.
-#[pyclass]
-pub struct BudgetProjectionResult {
-    #[pyo3(get)]
-    pub projected_spent: Vec<i64>,
-    #[pyo3(get)]
-    pub usage_percent: Vec<f64>,
-    #[pyo3(get)]
-    pub warning_flag: Vec<u8>,
-}
-
-/// Calculate budget projections for a batch.
-///
-/// warning_flag values:
-///     0 — usage < 80%   (healthy)
-///     1 — usage 80–99%  (approaching limit)
-///     2 — usage >= 100% (over budget)
-///
-/// Args:
-///     principals: list[int] — monthly spend rate
-///     budgets:    list[int] — total budget amounts
-///     spent:      list[int] — amount already spent
-///     months:     list[int] — months remaining to project
-///
-/// Returns:
-///     BudgetProjectionResult with projected_spent, usage_percent, warning_flag
-///
-/// Raises:
-///     ValueError: if list lengths differ
-#[pyfunction]
-fn budget_projection_batch(
-    principals: Vec<i64>,
-    budgets: Vec<i64>,
-    spent: Vec<i64>,
-    months: Vec<i32>
-) -> PyResult<BudgetProjectionResult> {
+pub fn budget_projection_batch(
+    principals: &[i64],
+    budgets: &[i64],
+    spent: &[i64],
+    months: &[i32],
+) -> Result<BudgetProjectionResult, String> {
     let n = principals.len();
-
     if budgets.len() != n || spent.len() != n || months.len() != n {
-        return Err(PyValueError::new_err("All input lists must have the same length"));
+        return Err("All input lists must have the same length".to_string());
     }
 
     let compute = |i: usize| -> (i64, f64, u8) {
         let projected = safe_mul_add(principals[i], months[i] as i64, spent[i]);
-
         let usage = if budgets[i] > 0 {
             ((projected as f64) / (budgets[i] as f64)) * 100.0
         } else {
@@ -302,21 +199,15 @@ fn budget_projection_batch(
         };
 
         let flag = if usage >= 100.0 { 2u8 } else if usage >= 80.0 { 1u8 } else { 0u8 };
-
         (projected, usage, flag)
     };
 
-    let results: Vec<(i64, f64, u8)> = Python::with_gil(|py| {
-        py.allow_threads(|| {
-            if should_parallelize(n) {
-                (0..n).into_par_iter().map(compute).collect()
-            } else {
-                (0..n).map(compute).collect()
-            }
-        })
-    });
+    let results: Vec<(i64, f64, u8)> = if should_parallelize(n) {
+        (0..n).into_par_iter().map(compute).collect()
+    } else {
+        (0..n).map(compute).collect()
+    };
 
-    // split (this is fine, don't over-optimize prematurely)
     let mut projected_spent = Vec::with_capacity(n);
     let mut usage_percent = Vec::with_capacity(n);
     let mut warning_flag = Vec::with_capacity(n);
@@ -332,16 +223,4 @@ fn budget_projection_batch(
         usage_percent,
         warning_flag,
     })
-}
-
-// ─── module export ───────────────────────────────────────────────────────────
-
-#[pymodule]
-fn fintally_finance(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(compound_interest_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(emi_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(sip_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(budget_projection_batch, m)?)?;
-    m.add_class::<BudgetProjectionResult>()?;
-    Ok(())
 }

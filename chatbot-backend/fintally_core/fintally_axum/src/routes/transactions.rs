@@ -1,0 +1,322 @@
+use axum::{
+    extract::{Multipart, Path, Query},
+    http::{header, HeaderMap, StatusCode},
+    response::IntoResponse,
+    Extension, Json,
+};
+use chrono::{DateTime, Utc};
+use fintally_db::DbContext;
+use fintally_db::models::RecurringFrequency; 
+use serde::Deserialize;
+use std::path::Path as StdPath;
+use tokio::fs;
+
+// Import the Claims struct from your auth module
+use crate::auth::Claims; 
+
+const UPLOAD_DIR: &str = "./uploads";
+
+#[derive(Deserialize)]
+pub struct PaginationQuery {
+    pub page: Option<i64>,
+}
+
+struct UploadedTransaction {
+    name: String,
+    price: f64,
+    description: String,
+    datetime: DateTime<Utc>,
+    category: String,
+    is_recurring: bool,
+    recurring_frequency: Option<RecurringFrequency>,
+    receipt_bytes: Option<Vec<u8>>,
+    receipt_name: Option<String>,
+}
+
+pub async fn test_route() -> Json<serde_json::Value> {
+    Json(serde_json::json!({ "body": "test ok" }))
+}
+
+// POST /api/transaction
+pub async fn create_transaction(
+    Extension(db_ctx): Extension<DbContext>,
+    claims: Claims, // ◄─ Added Auth Extractor
+    mut multipart: Multipart,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let tx = extract_multipart(&mut multipart).await?;
+
+    let mut receipt_url: Option<String> = None;
+    if let (Some(bytes), Some(name)) = (tx.receipt_bytes, tx.receipt_name) {
+        fs::create_dir_all(UPLOAD_DIR).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let filename = format!("{}_{}", Utc::now().timestamp_millis(), name);
+        let path = StdPath::new(UPLOAD_DIR).join(&filename);
+        fs::write(path, bytes).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        receipt_url = Some(format!("/uploads/{}", filename));
+    }
+
+    // Using real user_id from decoded claims token instead of a random dummy UUID
+    let rec = sqlx::query!(
+        r#"INSERT INTO transactions (user_id, name, price, description, datetime, category, is_recurring, recurring_frequency, receipt_url) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::recurring_frequency, $9) RETURNING id"#,
+        claims.user_id, tx.name, tx.price, tx.description, tx.datetime, tx.category, tx.is_recurring, tx.recurring_frequency as Option<RecurringFrequency>, receipt_url
+    )
+    .fetch_one(&db_ctx.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::json!({ "success": true, "id": rec.id }))))
+}
+
+// GET /api/transaction
+pub async fn get_transactions(
+    Extension(db_ctx): Extension<DbContext>,
+    claims: Claims, // ◄─ Added Auth Extractor
+    Query(pagination): Query<PaginationQuery>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let limit = 10;
+    let page = pagination.page.unwrap_or(1).max(1);
+    let offset = (page - 1) * limit;
+
+    // Filter results strictly by the token owner's real user_id
+    let rows = sqlx::query!(
+        r#"SELECT id, user_id, name, price, description, datetime, category, is_recurring, recurring_frequency as "recurring_frequency: RecurringFrequency", receipt_url FROM transactions WHERE user_id = $1 ORDER BY datetime DESC LIMIT $2 OFFSET $3"#,
+        claims.user_id, limit, offset
+    )
+    .fetch_all(&db_ctx.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let list: Vec<serde_json::Value> = rows.into_iter().map(|r| {
+        serde_json::json!({
+            "id": r.id,
+            "name": r.name,
+            "price": r.price,
+            "description": r.description,
+            "datetime": r.datetime,
+            "category": r.category,
+            "isRecurring": r.is_recurring,
+            "recurringFrequency": r.recurring_frequency,
+            "receiptUrl": r.receipt_url
+        })
+    }).collect();
+
+    Ok(Json(serde_json::json!({ "success": true, "data": list })))
+}
+
+// PUT /api/transaction/:id
+pub async fn update_transaction(
+    Extension(db_ctx): Extension<DbContext>,
+    claims: Claims, // ◄─ Added Auth Extractor
+    Path(transaction_id): Path<i64>,
+    mut multipart: Multipart,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+
+    // Ensure the record belongs to the active user before continuing
+    let existing = sqlx::query!(
+        "SELECT receipt_url FROM transactions WHERE id = $1 AND user_id = $2",
+        transaction_id,
+        claims.user_id
+    )
+    .fetch_optional(&db_ctx.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, "Transaction not found".to_string()))?;
+
+    let mut name: Option<String> = None;
+    let mut price: Option<f64> = None;
+    let mut description: Option<String> = None;
+    let mut datetime: Option<DateTime<Utc>> = None;
+    let mut category: Option<String> = None;
+    let mut is_recurring: Option<bool> = None;
+    let mut recurring_frequency: Option<RecurringFrequency> = None;
+    let mut receipt_bytes: Option<Vec<u8>> = None;
+    let mut receipt_name: Option<String> = None;
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))? {
+        let field_name = field.name().unwrap_or("").to_string();
+        if field_name == "receipt" {
+            receipt_name = field.file_name().map(String::from);
+            receipt_bytes = Some(field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?.to_vec());
+        } else {
+            let value = field.text().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+            if value.is_empty() { continue; }
+            match field_name.as_str() {
+                "name" => name = Some(value),
+                "price" => price = Some(value.parse::<f64>().unwrap_or(0.0)),
+                "description" => description = Some(value),
+                "datetime" => datetime = Some(DateTime::parse_from_rfc3339(&value).map(|dt| dt.with_timezone(&Utc)).unwrap_or_else(|_| Utc::now())),
+                "category" => category = Some(value),
+                "isRecurring" => is_recurring = Some(value.parse::<bool>().unwrap_or(false)),
+                "recurringFrequency" => {
+                    recurring_frequency = match value.as_str() {
+                        "Daily" => Some(RecurringFrequency::Daily),
+                        "Weekly" => Some(RecurringFrequency::Weekly),
+                        "Monthly" => Some(RecurringFrequency::Monthly),
+                        _ => None,
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    let mut new_receipt_url = existing.receipt_url;
+    if let (Some(bytes), Some(file_name)) = (receipt_bytes, receipt_name) {
+        if let Some(old_url) = &new_receipt_url {
+            let _ = fs::remove_file(format!(".{}", old_url)).await;
+        }
+        let filename = format!("{}_{}", Utc::now().timestamp_millis(), file_name);
+        fs::write(StdPath::new(UPLOAD_DIR).join(&filename), bytes).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        new_receipt_url = Some(format!("/uploads/{}", filename));
+    }
+
+    sqlx::query!(
+        r#"UPDATE transactions 
+          SET name = COALESCE($1, name),
+              price = COALESCE($2, price),
+              description = COALESCE($3, description),
+              datetime = COALESCE($4, datetime),
+              category = COALESCE($5, category),
+              is_recurring = COALESCE($6, is_recurring),
+              recurring_frequency = COALESCE($7::recurring_frequency, recurring_frequency),
+              receipt_url = COALESCE($8, receipt_url)
+          WHERE id = $9 AND user_id = $10"#,
+        name, price, description, datetime, category, is_recurring, recurring_frequency as Option<RecurringFrequency>, new_receipt_url, transaction_id, claims.user_id
+    )
+    .execute(&db_ctx.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(serde_json::json!({ "success": true, "message": "Transaction updated successfully" })))
+}
+
+// DELETE /api/transaction/:id
+pub async fn delete_transaction(
+    Extension(db_ctx): Extension<DbContext>,
+    claims: Claims, // ◄─ Added Auth Extractor
+    Path(transaction_id): Path<i64>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    
+    // Ensure the record belongs to the active user before dropping files/rows
+    let record = sqlx::query!(
+        "SELECT receipt_url FROM transactions WHERE id = $1 AND user_id = $2", 
+        transaction_id,
+        claims.user_id
+    )
+    .fetch_optional(&db_ctx.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, "Transaction not found".to_string()))?;
+
+    if let Some(url) = record.receipt_url {
+        let _ = fs::remove_file(format!(".{}", url)).await;
+    }
+
+    sqlx::query!("DELETE FROM transactions WHERE id = $1 AND user_id = $2", transaction_id, claims.user_id)
+        .execute(&db_ctx.pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(serde_json::json!({ "success": true, "message": "Transaction deleted successfully" })))
+}
+
+// GET /api/transaction/receipt/:id
+pub async fn get_receipt(
+    Extension(db_ctx): Extension<DbContext>,
+    claims: Claims, // ◄─ Added Auth Extractor
+    Path(transaction_id): Path<i64>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    
+    // Scoped receipt access strictly to the authenticated owner
+    let r = sqlx::query!(
+        "SELECT id, name, price, description, category FROM transactions WHERE id = $1 AND user_id = $2", 
+        transaction_id,
+        claims.user_id
+    )
+    .fetch_optional(&db_ctx.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, "Transaction not found".to_string()))?;
+
+    let font_family = genpdf::fonts::from_files("./fonts", "LiberationSans", None)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Font error: {}", e)))?;
+    
+    let mut doc = genpdf::Document::new(font_family);
+    doc.set_title("FinTally Transaction Receipt");
+    
+    let mut decorator = genpdf::SimplePageDecorator::new();
+    decorator.set_margins(15);
+    doc.set_page_decorator(decorator);
+
+    doc.push(genpdf::elements::Text::new("FinTally"));
+    doc.push(genpdf::elements::Text::new("Transaction Receipt"));
+    
+    let mut table = genpdf::elements::TableLayout::new(vec![1, 3]);
+    let _ = table.row()
+        .element(genpdf::elements::Paragraph::new("Transaction ID"))
+        .element(genpdf::elements::Paragraph::new(r.id.to_string()))
+        .push();
+    let _ = table.row()
+        .element(genpdf::elements::Paragraph::new("Name"))
+        .element(genpdf::elements::Paragraph::new(r.name))
+        .push();
+    let _ = table.row()
+        .element(genpdf::elements::Paragraph::new("Amount"))
+        .element(genpdf::elements::Paragraph::new(format!("Rs.{}", r.price)))
+        .push();
+    let _ = table.row()
+        .element(genpdf::elements::Paragraph::new("Category"))
+        .element(genpdf::elements::Paragraph::new(r.category))
+        .push();
+
+    doc.push(table);
+
+    let mut buffer = Vec::new();
+    doc.render(&mut buffer).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_TYPE, "application/pdf".parse().unwrap());
+    headers.insert(header::CONTENT_DISPOSITION, format!("attachment; filename=\"receipt_{}.pdf\"", transaction_id).parse().unwrap());
+
+    Ok((headers, buffer))
+}
+
+async fn extract_multipart(multipart: &mut Multipart) -> Result<UploadedTransaction, (StatusCode, String)> {
+    let mut name = String::new();
+    let mut price = 0.0;
+    let mut description = String::new();
+    let mut datetime = Utc::now();
+    let mut category = "General".to_string();
+    let mut is_recurring = false;
+    let mut recurring_frequency = None;
+    let mut receipt_bytes = None;
+    let mut receipt_name = None;
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))? {
+        let field_name = field.name().unwrap_or("").to_string();
+        if field_name == "receipt" {
+            receipt_name = field.file_name().map(String::from);
+            receipt_bytes = Some(field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?.to_vec());
+        } else {
+            let value = field.text().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+            match field_name.as_str() {
+                "name" => name = value,
+                "price" => price = value.parse::<f64>().unwrap_or(0.0),
+                "description" => description = value,
+                "datetime" => datetime = DateTime::parse_from_rfc3339(&value).map(|dt| dt.with_timezone(&Utc)).unwrap_or_else(|_| Utc::now()),
+                "category" => category = value,
+                "isRecurring" => is_recurring = value.parse::<bool>().unwrap_or(false),
+                "recurringFrequency" => {
+                    recurring_frequency = match value.as_str() {
+                        "Daily" => Some(RecurringFrequency::Daily),
+                        "Weekly" => Some(RecurringFrequency::Weekly),
+                        "Monthly" => Some(RecurringFrequency::Monthly),
+                        _ => None,
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    Ok(UploadedTransaction { name, price, description, datetime, category, is_recurring, recurring_frequency, receipt_bytes, receipt_name })
+}
