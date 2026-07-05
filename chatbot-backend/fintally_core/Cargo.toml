@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "rust_backend",
+    "analytics_engine",
     "fintally_finance",
     "fintally_chatbot",
     "fintally_db", 

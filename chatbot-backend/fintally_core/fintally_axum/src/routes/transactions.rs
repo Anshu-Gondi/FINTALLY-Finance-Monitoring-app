@@ -10,6 +10,7 @@ use fintally_db::models::RecurringFrequency;
 use serde::Deserialize;
 use std::path::Path as StdPath;
 use tokio::fs;
+use uuid::Uuid; // ◄─ Added for handling real database UUID transformations
 
 // Import the Claims struct from your auth module
 use crate::auth::Claims; 
@@ -40,9 +41,13 @@ pub async fn test_route() -> Json<serde_json::Value> {
 // POST /api/transaction
 pub async fn create_transaction(
     Extension(db_ctx): Extension<DbContext>,
-    claims: Claims, // ◄─ Added Auth Extractor
+    claims: Claims, 
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    // Convert string identity context safely into SQLx-compatible UUID format
+    let user_id = Uuid::parse_str(&claims.user_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Malformed user authenticating token uuid format".to_string()))?;
+
     let tx = extract_multipart(&mut multipart).await?;
 
     let mut receipt_url: Option<String> = None;
@@ -54,11 +59,10 @@ pub async fn create_transaction(
         receipt_url = Some(format!("/uploads/{}", filename));
     }
 
-    // Using real user_id from decoded claims token instead of a random dummy UUID
     let rec = sqlx::query!(
         r#"INSERT INTO transactions (user_id, name, price, description, datetime, category, is_recurring, recurring_frequency, receipt_url) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::recurring_frequency, $9) RETURNING id"#,
-        claims.user_id, tx.name, tx.price, tx.description, tx.datetime, tx.category, tx.is_recurring, tx.recurring_frequency as Option<RecurringFrequency>, receipt_url
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::recurring_frequency, $9) RETURNING id"#,
+        user_id, tx.name, tx.price, tx.description, tx.datetime, tx.category, tx.is_recurring, tx.recurring_frequency as Option<RecurringFrequency>, receipt_url
     )
     .fetch_one(&db_ctx.pool)
     .await
@@ -70,17 +74,19 @@ pub async fn create_transaction(
 // GET /api/transaction
 pub async fn get_transactions(
     Extension(db_ctx): Extension<DbContext>,
-    claims: Claims, // ◄─ Added Auth Extractor
+    claims: Claims, 
     Query(pagination): Query<PaginationQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let user_id = Uuid::parse_str(&claims.user_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Malformed user authenticating token uuid format".to_string()))?;
+
     let limit = 10;
     let page = pagination.page.unwrap_or(1).max(1);
     let offset = (page - 1) * limit;
 
-    // Filter results strictly by the token owner's real user_id
     let rows = sqlx::query!(
         r#"SELECT id, user_id, name, price, description, datetime, category, is_recurring, recurring_frequency as "recurring_frequency: RecurringFrequency", receipt_url FROM transactions WHERE user_id = $1 ORDER BY datetime DESC LIMIT $2 OFFSET $3"#,
-        claims.user_id, limit, offset
+        user_id, limit, offset
     )
     .fetch_all(&db_ctx.pool)
     .await
@@ -106,16 +112,17 @@ pub async fn get_transactions(
 // PUT /api/transaction/:id
 pub async fn update_transaction(
     Extension(db_ctx): Extension<DbContext>,
-    claims: Claims, // ◄─ Added Auth Extractor
+    claims: Claims, 
     Path(transaction_id): Path<i64>,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let user_id = Uuid::parse_str(&claims.user_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Malformed user authenticating token uuid format".to_string()))?;
 
-    // Ensure the record belongs to the active user before continuing
     let existing = sqlx::query!(
         "SELECT receipt_url FROM transactions WHERE id = $1 AND user_id = $2",
         transaction_id,
-        claims.user_id
+        user_id
     )
     .fetch_optional(&db_ctx.pool)
     .await
@@ -181,7 +188,7 @@ pub async fn update_transaction(
               recurring_frequency = COALESCE($7::recurring_frequency, recurring_frequency),
               receipt_url = COALESCE($8, receipt_url)
           WHERE id = $9 AND user_id = $10"#,
-        name, price, description, datetime, category, is_recurring, recurring_frequency as Option<RecurringFrequency>, new_receipt_url, transaction_id, claims.user_id
+        name, price, description, datetime, category, is_recurring, recurring_frequency as Option<RecurringFrequency>, new_receipt_url, transaction_id, user_id
     )
     .execute(&db_ctx.pool)
     .await
@@ -193,15 +200,16 @@ pub async fn update_transaction(
 // DELETE /api/transaction/:id
 pub async fn delete_transaction(
     Extension(db_ctx): Extension<DbContext>,
-    claims: Claims, // ◄─ Added Auth Extractor
+    claims: Claims, 
     Path(transaction_id): Path<i64>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let user_id = Uuid::parse_str(&claims.user_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Malformed user authenticating token uuid format".to_string()))?;
     
-    // Ensure the record belongs to the active user before dropping files/rows
     let record = sqlx::query!(
         "SELECT receipt_url FROM transactions WHERE id = $1 AND user_id = $2", 
         transaction_id,
-        claims.user_id
+        user_id
     )
     .fetch_optional(&db_ctx.pool)
     .await
@@ -212,7 +220,7 @@ pub async fn delete_transaction(
         let _ = fs::remove_file(format!(".{}", url)).await;
     }
 
-    sqlx::query!("DELETE FROM transactions WHERE id = $1 AND user_id = $2", transaction_id, claims.user_id)
+    sqlx::query!("DELETE FROM transactions WHERE id = $1 AND user_id = $2", transaction_id, user_id)
         .execute(&db_ctx.pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -223,15 +231,16 @@ pub async fn delete_transaction(
 // GET /api/transaction/receipt/:id
 pub async fn get_receipt(
     Extension(db_ctx): Extension<DbContext>,
-    claims: Claims, // ◄─ Added Auth Extractor
+    claims: Claims, 
     Path(transaction_id): Path<i64>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let user_id = Uuid::parse_str(&claims.user_id)
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Malformed user authenticating token uuid format".to_string()))?;
     
-    // Scoped receipt access strictly to the authenticated owner
     let r = sqlx::query!(
         "SELECT id, name, price, description, category FROM transactions WHERE id = $1 AND user_id = $2", 
         transaction_id,
-        claims.user_id
+        user_id
     )
     .fetch_optional(&db_ctx.pool)
     .await

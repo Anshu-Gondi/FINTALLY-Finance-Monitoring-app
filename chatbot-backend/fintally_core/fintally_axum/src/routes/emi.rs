@@ -10,7 +10,7 @@ use fintally_db::{
     models::{ EmiCalculateRequest, EmiCheckRequest, EmiCreateRequest, RecurringFrequency },
 };
 use crate::auth::Claims; // Your extractor structure
-use fintally_finance::*; // Core finance calculations module
+ // Core finance calculations module
 
 // ─── Shared Response Payloads ────────────────────────────────────────────────
 

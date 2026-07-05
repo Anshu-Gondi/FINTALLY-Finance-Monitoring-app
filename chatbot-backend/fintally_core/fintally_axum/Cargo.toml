@@ -7,6 +7,7 @@ edition = "2021"
 # Local workspace dependency
 fintally_db = { path = "../fintally_db" }
 fintally_finance = { path = "../fintally_finance" }
+analytics_engine = { path = "../analytics_engine" }
 
 # Lean web stack
 axum = { version = "0.7", features = ["multipart"] }

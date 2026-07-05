@@ -1,0 +1,23 @@
+# fintally_core/rust_backend/Cargo.toml
+[package]
+name    = "analytics_engine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name       = "analytics_engine"
+crate-type = ["rlib"]
+
+[dependencies]
+# Local workspace dependency
+fintally_db = { path = "../fintally_db" }
+
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json", "uuid"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+chrono     = { workspace = true }
+rand       = "0.8"
+rand_distr = "0.4"
+bson       = "2.11"
+futures    = "0.3"
