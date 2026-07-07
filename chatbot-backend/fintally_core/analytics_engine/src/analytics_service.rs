@@ -29,8 +29,6 @@ use fintally_db::models::{
     SpendingPatternResult,
     GoalProjectionResult,
     RecurringFrequency,
-    WarningCode,
-    Warning,
 };
 
 // Import computational functions from your pure Rust engine

@@ -11,6 +11,7 @@ pub enum AppError {
     CalculationError(String),
     ProfileNotFound(String),
     AllocationError(String),
+    InferenceError(String),
     ExternalServiceError(String), // placeholder if you ever integrate APIs
     Other(String),
 }
@@ -23,6 +24,7 @@ impl fmt::Display for AppError {
             AppError::CalculationError(msg) => write!(f, "Calculation error: {}", msg),
             AppError::ProfileNotFound(msg) => write!(f, "Profile not found: {}", msg),
             AppError::AllocationError(msg) => write!(f, "Allocation error: {}", msg),
+            AppError::InferenceError(msg) => write!(f, "Inference error: {}", msg),
             AppError::ExternalServiceError(msg) => write!(f, "External service error: {}", msg),
             AppError::Other(msg) => write!(f, "Other error: {}", msg),
         }
@@ -39,13 +41,6 @@ impl From<crate::core::utils::domain_error::EmiError> for AppError {
         AppError::Domain(DomainError::Emi(err))
     }
 }
-
-impl From<pyo3::PyErr> for AppError {
-    fn from(err: pyo3::PyErr) -> Self {
-        AppError::Other(err.to_string())
-    }
-}
-
 
 impl Error for AppError {}
 

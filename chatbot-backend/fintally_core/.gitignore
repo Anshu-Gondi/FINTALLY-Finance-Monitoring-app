@@ -5,6 +5,21 @@
 # If this is a binary crate, you may want to include Cargo.lock:
 # !Cargo.lock
 
+# === Local LLM Models & Heavy Weights ===
+# Specifically targets your Qwen/Llama vault folders and raw model files
+llm_models/
+*.safetensors
+*.bin
+*.gguf
+model.safetensors
+tokenizer.json
+config.json
+
+# === Application Configuration / Secrets ===
+.env
+.env.*
+!.env.example
+
 # === IDE and editor files ===
 .vscode/
 .idea/

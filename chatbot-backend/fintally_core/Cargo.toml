@@ -9,8 +9,11 @@ members = [
 ]
 
 [workspace.dependencies]
-pyo3 = { version = "0.20", features = ["extension-module", "abi3-py310", "serde"] }
-pyo3-asyncio = { version = "0.20", features = ["tokio-runtime"] }
+candle-core         = "0.11.0"
+candle-nn           = "0.11.0"
+candle-transformers = "0.11.0"
+memmap2             = "0.9.0"
+tokenizers          = "0.22.0"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -23,6 +26,7 @@ thiserror = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 
+async-stream = "0.1"
 async-trait = "0.1"
 futures-util = "0.3"
 futures-core = "0.3"

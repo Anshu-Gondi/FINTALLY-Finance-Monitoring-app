@@ -7,8 +7,9 @@ use axum::{
 use chrono::{DateTime, Utc};
 use fintally_db::DbContext;
 use fintally_finance::budget_projection_batch;
-use serde::Deserialize;
-use uuid::Uuid;
+use serde::Deserialize; // Removed unused Serialize
+use uuid::Uuid; // Used to parse the string IDs
+
 use crate::auth::Claims;
 
 #[derive(Deserialize)]
@@ -46,10 +47,13 @@ pub async fn create_or_update_budget(
     claims: Claims,
     Json(body): Json<BudgetCreate>,
 ) -> Result<impl IntoResponse, BudgetApiError> {
+    let user_uuid = Uuid::parse_str(&claims.user_id)
+        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID: {}", e)))?;
+
     let start = body.start_date.unwrap_or_else(Utc::now);
     let end = body.end_date;
 
-    // Pass &claims.user_id directly as &str
+    // Check for an overlapping existing budget setup
     let existing = sqlx::query!(
         r#"
         SELECT id FROM budgets 
@@ -59,7 +63,7 @@ pub async fn create_or_update_budget(
           AND (end_date IS NULL OR end_date >= $4)
         LIMIT 1
         "#,
-        &claims.user_id, 
+        user_uuid, 
         body.category,
         end,
         start
@@ -95,14 +99,13 @@ pub async fn create_or_update_budget(
         }))));
     }
 
-    // Pass &claims.user_id directly as &str
     let inserted = sqlx::query!(
         r#"
         INSERT INTO budgets (user_id, amount, category, start_date, end_date, is_recurring)
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, category, amount, start_date, end_date, is_recurring
         "#,
-        &claims.user_id, body.amount, body.category, start, end, body.is_recurring
+        user_uuid, body.amount, body.category, start, end, body.is_recurring
     )
     .fetch_one(&db_ctx.pool)
     .await
@@ -128,10 +131,13 @@ pub async fn get_budgets(
     Extension(db_ctx): Extension<DbContext>,
     claims: Claims,
 ) -> Result<impl IntoResponse, BudgetApiError> {
+    let user_uuid = Uuid::parse_str(&claims.user_id)
+        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID: {}", e)))?;
+
     let rows = sqlx::query!(
         r#"SELECT id, category, amount, start_date, end_date, is_recurring 
            FROM budgets WHERE user_id = $1 ORDER BY id DESC"#,
-        &claims.user_id
+        user_uuid
     )
     .fetch_all(&db_ctx.pool)
     .await
@@ -152,16 +158,18 @@ pub async fn get_budgets(
 }
 
 // ──────────────────────────────────────────────────────────────
-// GET /api/budget/summary — Realtime calculations using Rust Engine
+// GET /api/budget/summary
 // ──────────────────────────────────────────────────────────────
 pub async fn budget_summary(
     Extension(db_ctx): Extension<DbContext>,
     claims: Claims,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    // 1. Fetch user budgets (expects &str/String)
+    let user_uuid = Uuid::parse_str(&claims.user_id)
+        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID: {}", e)))?;
+
     let user_budgets = sqlx::query!(
         r#"SELECT category, amount, start_date, end_date FROM budgets WHERE user_id = $1"#,
-        &claims.user_id
+        user_uuid
     )
     .fetch_all(&db_ctx.pool)
     .await
@@ -171,15 +179,10 @@ pub async fn budget_summary(
         return Ok(Json(serde_json::json!({ "success": true, "data": [] })));
     }
 
-    // 2. Parse string into actual Uuid for the transactions table lookup
-    let user_id_uuid = Uuid::parse_str(&claims.user_id)
-        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID format: {}", e)))?;
-
-    // 3. Compute dynamic aggregate expenditures from transactions (expects Uuid)
     let expense_rows = sqlx::query!(
         r#"SELECT category as "category!", COALESCE(SUM(ABS(price)), 0.0) as "total!" 
            FROM transactions WHERE user_id = $1 AND price < 0 GROUP BY category"#,
-        user_id_uuid // <-- Use parsed Uuid here
+        user_uuid
     )
     .fetch_all(&db_ctx.pool)
     .await
@@ -197,7 +200,6 @@ pub async fn budget_summary(
         }
     }
 
-    // Convert values down into standard integer subunits (Paise) for your mathematical engine
     let budget_amounts_paise: Vec<i64> = user_budgets.iter().map(|b| (b.amount * 100.0).round() as i64).collect();
     let spent_paise: Vec<i64> = spent_per_budget.iter().map(|s| (s * 100.0).round() as i64).collect();
     let zero_rates = vec![0_i64; user_budgets.len()];
@@ -237,10 +239,13 @@ pub async fn delete_budget(
     claims: Claims,
     Path(budget_id): Path<i64>, 
 ) -> Result<impl IntoResponse, BudgetApiError> {
+    let user_uuid = Uuid::parse_str(&claims.user_id)
+        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID: {}", e)))?;
+
     let result = sqlx::query!(
         "DELETE FROM budgets WHERE id = $1 AND user_id = $2",
         budget_id,
-        &claims.user_id
+        user_uuid
     )
     .execute(&db_ctx.pool)
     .await

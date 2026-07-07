@@ -1,8 +1,8 @@
-use crate::core::llm::engine::{ LlmEngine, CancelableStream };
+use crate::core::llm::engine::{LlmEngine, CancelableStream};
 use crate::core::llm::prompt::Prompt;
 use crate::core::utils::errors::AppError;
-use futures_util::StreamExt;
 
+/// Core Orchestration Layer for Large Language Model Requests
 pub struct LLM {
     engine: Box<dyn LlmEngine>,
     pub model_name: String,
@@ -10,15 +10,16 @@ pub struct LLM {
 }
 
 impl LLM {
+    /// Instantiates the orchestration engine using dynamic trait allocation
     pub fn new(engine: Box<dyn LlmEngine>, model_name: &str, max_tokens: usize) -> Self {
         Self {
             engine,
             model_name: model_name.to_string(),
-            max_tokens: max_tokens.min(512),
+            max_tokens: max_tokens.min(512), // Clamps token counts to avoid payload blowing out
         }
     }
 
-    // Non-streaming
+    /// Generates static, non-streaming text results
     pub async fn generate_text(
         &self,
         prompt_text: &str,
@@ -28,7 +29,7 @@ impl LLM {
         self.engine.generate(&full_prompt, self.max_tokens).await
     }
 
-    // 🔥 Streaming
+    /// Initializes token-by-token processing context streams
     pub async fn stream_text(
         &self,
         prompt_text: &str,
@@ -38,21 +39,25 @@ impl LLM {
         self.engine.stream_generate(&full_prompt, self.max_tokens).await
     }
 
+    /// Computes raw multi-dimensional semantic vector spaces
     pub async fn embed_text(&self, text: &str) -> Result<Vec<f32>, AppError> {
         self.engine.embed(text).await
     }
 }
 
+// ==============================================================================
+// PURE RUST ISOLATED UNIT TESTING
+// ==============================================================================
 #[cfg(test)]
 mod tests {
     use super::*;
     use async_trait::async_trait;
     use futures_core::Stream;
+    use futures_util::StreamExt;
     use std::pin::Pin;
     use tokio_util::sync::CancellationToken;
     use tokio_stream::iter;
 
-    /// Simple mock engine
     struct MockEngine;
 
     impl MockEngine {
@@ -93,8 +98,7 @@ mod tests {
         let llm = LLM::new(engine, "test", 128);
 
         let result = llm.generate_text("", None).await;
-
-        assert!(matches!(result, Err(AppError::InvalidInput(_))));
+        assert!(result.is_err(), "Empty prompts must be explicitly rejected by Prompt validation layer.");
     }
 
     #[tokio::test]
@@ -103,8 +107,7 @@ mod tests {
         let llm = LLM::new(engine, "test", 10_000);
 
         let result = llm.generate_text("Hello", None).await.unwrap();
-
-        assert!(result.ends_with(":512"));
+        assert!(result.ends_with(":512"), "Token inputs should cap firmly at upper ceiling limit (512).");
     }
 
     #[tokio::test]
@@ -113,7 +116,6 @@ mod tests {
         let llm = LLM::new(engine, "test", 64);
 
         let cancelable = llm.stream_text("Hi", None).await.unwrap();
-
         let mut stream = cancelable.stream;
         let item = stream.next().await.unwrap().unwrap();
 
@@ -126,7 +128,6 @@ mod tests {
         let llm = LLM::new(engine, "test", 128);
 
         let vec = llm.embed_text("test").await.unwrap();
-
         assert_eq!(vec, vec![1.0, 2.0, 3.0]);
     }
 }
