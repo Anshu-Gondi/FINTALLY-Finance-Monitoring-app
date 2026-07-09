@@ -26,6 +26,7 @@ mod tests {
     use tokio;
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn planner_calculate_emi() {
         let args = json!({
             "principal": 1_00_000,
@@ -38,6 +39,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn planner_assess_loan() {
         use crate::core::types::*;
         let request = LoanRequest {
@@ -60,6 +62,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn planner_unknown_tool() {
         let args = json!({});
         let result = Planner::execute("unknown_tool", args).await;

@@ -422,6 +422,7 @@ mod tests {
     use tokio;
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn unknown_tool_returns_error() {
         let args = json!({});
         let result = execute_tool_async("not_a_tool", args).await;
@@ -430,6 +431,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn toolname_as_str_roundtrip() {
         let tools = vec![
             ToolName::CalculateEmi,
@@ -511,6 +513,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn stat_analysis_requires_profile_argument() {
         let args = json!({}); // missing profile
         let result = execute_tool_async(ToolName::StatAnalysis.as_str(), args).await;
@@ -518,6 +521,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn investment_plan_rejects_invalid_profile_shape() {
         let args =
             json!({

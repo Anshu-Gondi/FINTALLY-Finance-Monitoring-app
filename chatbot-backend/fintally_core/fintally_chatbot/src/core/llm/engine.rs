@@ -81,6 +81,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn stream_emits_tokens() {
         let engine = MockEngine;
 
@@ -91,6 +92,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn stream_cancels_correctly() {
         let engine = MockEngine;
 
@@ -113,6 +115,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn embed_returns_vector() {
         let engine = MockEngine;
 

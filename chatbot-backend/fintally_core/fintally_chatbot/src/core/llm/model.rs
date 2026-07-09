@@ -93,6 +93,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn invalid_prompt_is_rejected() {
         let engine = Box::new(MockEngine::new());
         let llm = LLM::new(engine, "test", 128);
@@ -102,6 +103,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn max_tokens_is_clamped() {
         let engine = Box::new(MockEngine::new());
         let llm = LLM::new(engine, "test", 10_000);
@@ -111,6 +113,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn streaming_returns_cancelable_stream() {
         let engine = Box::new(MockEngine::new());
         let llm = LLM::new(engine, "test", 64);
@@ -123,6 +126,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn embed_text_is_forwarded() {
         let engine = Box::new(MockEngine::new());
         let llm = LLM::new(engine, "test", 128);
