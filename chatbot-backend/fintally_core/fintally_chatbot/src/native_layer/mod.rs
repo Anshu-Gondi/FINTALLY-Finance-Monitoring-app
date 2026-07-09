@@ -2,6 +2,8 @@ pub mod llm;
 pub mod finance;
 pub mod rag;
 
+use crate::native_layer::llm::chat::create_llm;
+
 /// Optional: A clean aggregate structural configuration struct for initializing 
 /// the entire chatbot workspace dependencies in a single step inside your web server.
 pub struct ChatbotServices {
@@ -11,11 +13,11 @@ pub struct ChatbotServices {
 
 impl ChatbotServices {
     pub fn init(
-        model_name: &str,
+        _model_name: &str,
         max_tokens: usize,
         model_vault_path: &str,
     ) -> Result<Self, crate::core::rag::errors::RagError> {
-        let llm = llm::create_llm(model_name, max_tokens);
+        let llm = create_llm(max_tokens);
         
         let rag_engine = rag::RagEngine::new(
             model_vault_path,

@@ -1,4 +1,3 @@
-use crate::core::rag::errors::RagError;
 
 pub struct OverlapStrategy {
     pub chunk_size: usize,    // Max word count per chunk

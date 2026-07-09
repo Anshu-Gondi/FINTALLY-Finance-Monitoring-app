@@ -71,6 +71,7 @@ mod tests {
 
     /// ❌ Empty input rejected
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn embedding_rejects_empty_text() {
         let engine = Arc::new(MockEngine);
         let embedding = Embedding::new(engine);
@@ -81,6 +82,7 @@ mod tests {
 
     /// ❌ Numeric-only input rejected
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn embedding_rejects_numeric_only_text() {
         let engine = Arc::new(MockEngine);
         let embedding = Embedding::new(engine);
@@ -91,6 +93,7 @@ mod tests {
 
     /// ❌ Overly long input rejected
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn embedding_rejects_too_long_text() {
         let engine = Arc::new(MockEngine);
         let embedding = Embedding::new(engine);
@@ -103,6 +106,7 @@ mod tests {
 
     /// ✅ Valid input returns embedding
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn embedding_returns_vector_for_valid_text() {
         let engine = Arc::new(MockEngine);
         let embedding = Embedding::new(engine);

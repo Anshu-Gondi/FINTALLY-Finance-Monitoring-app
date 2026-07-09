@@ -4,7 +4,7 @@ use std::sync::Arc;
 use memmap2::Mmap;
 
 use candle_core::{Device, Tensor, DType};
-use candle_nn::{VarBuilder, Module};
+use candle_nn::VarBuilder;
 use candle_transformers::models::bert::{BertModel, Config};
 use tokenizers::Tokenizer;
 

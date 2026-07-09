@@ -28,13 +28,14 @@ impl RagService {
 
         // Instantiate native Rust RagEngine with matching parameters
         let engine_instance = RagEngine::new(
+            storage_dir.clone(), // ◄─ Path bound argument goes first if it requires AsRef<Path>
             120, // chunk_size
             20,  // chunk_overlap
             384, // dimensions
             0.5, // alpha
             2,   // default_top_k
-            storage_dir.join("hnsw_index.bin").to_string_lossy().to_string(),
-            storage_dir.join("text_chunks.db").to_string_lossy().to_string(),
+            Some(storage_dir.join("hnsw_index.bin").to_string_lossy().to_string()),
+            Some(storage_dir.join("text_chunks.db").to_string_lossy().to_string()),
         ).map_err(|e| AppError::InferenceError(format!("Could not instantiate native RagEngine: {e}")))?;
 
         Ok(Self {
@@ -87,8 +88,12 @@ impl RagService {
         
         // Query the HNSW index framework directly
         // Mimics: engine.query(query_text, limit, 0.0, None)
-        match engine_guard.query(query_text, limit) {
-            Ok(context_string) => context_string,
+        match engine_guard.query(query_text, Some(limit), Some(0.0), None) {
+            Ok(query_response) => {
+                // Extracts the Box<str> context_block from your QueryResponse 
+                // and converts it cleanly into an owned standard String wrapper.
+                query_response.context_block.into_string()
+            },
             Err(e) => {
                 eprintln!("[RAG-SERVICE] Warning: Vector search sequence fault occurred: {e}");
                 String::new()

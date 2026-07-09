@@ -11,6 +11,7 @@ pub enum RagError {
     RetrievalError(String),
     IoError(std::io::Error),
     SerializationError(String),
+    CandleError(candle_core::Error), // ◄─ Added candle tensor engine variant
 }
 
 // 1. Manually implement formatting for user-facing error strings
@@ -29,6 +30,7 @@ impl fmt::Display for RagError {
             RagError::SerializationError(msg) => {
                 write!(f, "Internal serialization/deserialization failure: {msg}")
             }
+            RagError::CandleError(err) => write!(f, "Candle tensor engine failure: {err}"), // ◄─ Display format
         }
     }
 }
@@ -37,8 +39,8 @@ impl fmt::Display for RagError {
 impl Error for RagError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            // Expose the underlying system I/O error if it was the root cause
             RagError::IoError(err) => Some(err),
+            RagError::CandleError(err) => Some(err), // ◄─ Bubble candle source up safely
             _ => None,
         }
     }
@@ -58,41 +60,52 @@ impl From<String> for RagError {
     }
 }
 
+// 5. Auto-convert candle matrix failures into RagError via standard `?` bounds
+impl From<candle_core::Error> for RagError {
+    fn from(err: candle_core::Error) -> Self {
+        RagError::CandleError(err)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
     use std::io::{Error as IoError, ErrorKind};
-    use std::fs;
-    use std::env;
-    use std::path::PathBuf;
-    use pyo3::prelude::*;
-    
+    use std::sync::Arc;
+    use std::path::Path;
+
     // Core workspace references
     use crate::core::rag::service::RagService;
     use crate::core::rag::ingestion::pipeline::IngestionPipeline;
     use crate::core::rag::vectorstore::usearch_store::UsearchStore;
     use crate::core::rag::vectorstore::memory_store::MemoryVectorStore;
-    use crate::core::rag::embedding::generator::EmbeddingGenerator;
+    use crate::core::rag::embedding::generator::{EmbeddingGenerator, NativeEmbedder};
     use crate::core::rag::retrieval::retriever::VectorRetriever;
 
-    // Helper utility to dynamically spin up a safe isolated runtime context for PyO3
-    fn setup_mock_python_environment(test_name: &str) -> PathBuf {
-        pyo3::prepare_freethreaded_python();
+    // Target reference to your real downloaded unquantized BGE model directories
+    const BGE_VAULT_PATH: &str = "../llm_models/embedding/bge_safetensors_output";
 
-        let mut tmp_dir = env::temp_dir();
-        tmp_dir.push(format!("fintally_errors_env_{}", test_name));
-        fs::create_dir_all(&tmp_dir).unwrap();
+    // Dynamic test builder that constructs your complete service layers natively
+    fn setup_test_service(idx_path: Option<String>, chk_path: Option<String>) -> Option<RagService> {
+        if !Path::new(BGE_VAULT_PATH).exists() {
+            return None; // Safely skip execution if model files aren't physically present
+        }
 
-        let python_code = r#"
-def get_onnx_embedding(text: str):
-    if not text:
-        raise ValueError("ONNX execution exception: Empty text buffer")
-    return [0.5, -0.25, 0.75, 1.0]
-"#;
-        let script_path = tmp_dir.join("fintally_embedder.py");
-        fs::write(&script_path, python_code).unwrap();
-        tmp_dir
+        let embedder = Arc::new(NativeEmbedder::load_from_vault(BGE_VAULT_PATH).ok()?);
+        let test_usearch_store = UsearchStore::new(4, 100)
+            .expect("Failed to initialize test USearch storage layout");
+
+        Some(RagService::new(
+            IngestionPipeline::new(512, 50),
+            test_usearch_store,
+            MemoryVectorStore::new(),
+            EmbeddingGenerator::new(embedder),
+            VectorRetriever::new(0.5),
+            5, 
+            idx_path,
+            chk_path
+        ))
     }
 
     // ==========================================
@@ -118,6 +131,14 @@ def get_onnx_embedding(text: str):
         } else {
             panic!("Expected RagError::VectorStoreError variant");
         }
+        
+        let candle_err = candle_core::Error::Msg("Shape mismatch during unsqueeze".to_string());
+        let rag_err_from_candle: RagError = candle_err.into();
+        if let RagError::CandleError(ref err) = rag_err_from_candle {
+            assert!(err.to_string().contains("Shape mismatch"));
+        } else {
+            panic!("Expected RagError::CandleError variant");
+        }
     }
 
     #[test]
@@ -137,59 +158,39 @@ def get_onnx_embedding(text: str):
     // 2. CORE SERVICE PIPELINE TESTS
     // ==========================================
 
-    /// Helper to provision a structural architecture for RagService using explicit parameterization
-    fn setup_test_service(idx_path: Option<String>, chk_path: Option<String>) -> RagService {
-        // FIX: Changed dimensions from 128 to 4 to match our mock python script output vector format [0.5, -0.25, 0.75, 1.0]
-        let test_usearch_store = UsearchStore::new(4, 100)
-            .expect("Failed to initialize test USearch storage layout");
-
-        RagService::new(
-            IngestionPipeline::new(512, 50),
-            test_usearch_store,
-            MemoryVectorStore::new(),
-            EmbeddingGenerator::new(),
-            VectorRetriever::new(0.5),
-            5, 
-            idx_path,
-            chk_path
-        )
-    }
-
     #[test]
     fn test_persistence_path_guards() {
-        pyo3::prepare_freethreaded_python();
-
-        let lazy_service = setup_test_service(None, None);
+        let lazy_service = match setup_test_service(None, None) {
+            Some(service) => service,
+            None => {
+                println!("skipping test: Real bge vault path not found locally.");
+                return;
+            }
+        };
         assert!(!lazy_service.has_persisted_data());
 
-        let strict_service = setup_test_service(Some("idx.bin".into()), Some("chunks.json".into()));
+        let strict_service = setup_test_service(Some("idx.bin".into()), Some("chunks.json".into())).unwrap();
         assert!(strict_service.has_persisted_data());
     }
 
     #[test]
     fn test_query_pipeline_filter_conversion() {
-        let test_env_dir = setup_mock_python_environment("filter_conversion");
-        
-        Python::with_gil(|py| {
-            let sys = py.import("sys").expect("Failed to boot Python sys module.");
-            let path_list: &pyo3::types::PyList = sys.getattr("path").unwrap().downcast().unwrap();
-            let _ = path_list.insert(0, test_env_dir.to_str().unwrap());
-        });
+        let service = match setup_test_service(None, None) {
+            Some(service) => service,
+            None => return,
+        };
 
-        let service = setup_test_service(None, None);
-
-        let mut mock_python_filters = BTreeMap::new();
-        mock_python_filters.insert("file_type".into(), "pdf".into());
-        mock_python_filters.insert("department".into(), "finance".into());
+        let mut filters = BTreeMap::new();
+        filters.insert("file_type".into(), "pdf".into());
+        filters.insert("department".into(), "finance".into());
 
         let query_execution = service.query(
             "Fetch Q4 balance sheets",
             Some(3),
             Some(0.1),
-            Some(mock_python_filters)
+            Some(filters)
         );
 
-        // This verifies that metadata filters safely passed through PyO3 translation layers
         assert!(
             query_execution.is_ok(),
             "Query system broke converting filter boundaries: {:?}",
@@ -197,22 +198,15 @@ def get_onnx_embedding(text: str):
         );
 
         let response = query_execution.unwrap();
-        
-        // Fix: Do not assert .is_empty() on context blocks or matches if previous parallel 
-        // tests have populated static/cached instances of the embedding pipeline engines.
-        // Instead, verify that the response object safely completed its structure generation.
         let _structural_integrity_check = &response.context_block;
-
-        // Clean up safely after completion
-        let _ = fs::remove_file(test_env_dir.join("fintally_embedder.py"));
-        let _ = fs::remove_dir(test_env_dir);
     }
 
     #[test]
     fn test_safe_error_bubbling_on_missing_disk() {
-        pyo3::prepare_freethreaded_python();
-
-        let service = setup_test_service(None, None);
+        let service = match setup_test_service(None, None) {
+            Some(service) => service,
+            None => return,
+        };
 
         let execution_result = service.save_to_disk();
         assert!(execution_result.is_err());

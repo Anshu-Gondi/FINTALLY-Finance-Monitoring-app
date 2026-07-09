@@ -2,7 +2,6 @@ use crate::core::llm::engine::{LlmEngine, CancelableStream};
 use crate::core::utils::errors::AppError;
 
 use async_trait::async_trait;
-use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
@@ -43,23 +42,18 @@ impl NativeLlamaEngine {
         let tokenizer = Tokenizer::from_file(&tokenizer_path)
             .map_err(|e| format!("Failed to parse tokenizer.json: {e}"))?;
 
-        // 3. Open weights file and memory map it natively using memmap2 (v0.9.0)
-        let file = File::open(&weights_path)
-            .map_err(|e| format!("Failed opening model weights handle: {e}"))?;
-        let mmap = unsafe { memmap2::Mmap::map(&file)
-            .map_err(|e| format!("Failed to map weights zero-copy to address space: {e}"))? };
+        // 3. Initialize VarBuilder directly from the safetensors file paths
+        // Candle's native constructor handles opening, mapping, and reading the file safely.
+        let vb = unsafe {
+            candle_nn::VarBuilder::from_mmaped_safetensors(
+                &[weights_path], 
+                DType::F32, 
+                &device
+            ).map_err(|e| format!("Failed to initialize memory-mapped VarBuilder: {e}"))?
+        };
 
-        // 4. Map loaded structural matrices into Candle using SafeTensors storage
-        let safetensors = candle_core::safetensors::MmapedSafetensors::new(mmap)
-            .map_err(|e| format!("Safetensors mapping error: {e}"))?;
-        
-        let vb = candle_nn::VarBuilder::from_mmaped_safetensors(
-            safetensors, 
-            DType::F32, 
-            &device
-        );
-
-        let model = Model::new(&config, vb?)
+        // 4. Construct the native Qwen graph model topology using the config and builder
+        let model = Model::new(&config, vb)
             .map_err(|e| format!("Failed constructing native Qwen graph topologies: {e}"))?;
 
         Ok(Self {
@@ -125,8 +119,8 @@ impl LlmEngine for NativeLlamaEngine {
                 };
 
                 // Forward pass evaluation through Candle v0.11.0 structures
-                // index_pos represents the sequence index offset (0 for start)
-                let logits = match model.forward(&input_tensor, 0) {
+                // FIXED: Supplied missing 3rd argument (None) representing structural mask tokens
+                let logits = match model.forward(&input_tensor, 0, None) {
                     Ok(l) => l,
                     Err(e) => { let _ = tx.send(Err(AppError::InferenceError(e.to_string()))).await; break; }
                 };

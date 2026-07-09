@@ -12,7 +12,9 @@ pub enum AppError {
     ProfileNotFound(String),
     AllocationError(String),
     InferenceError(String),
-    ExternalServiceError(String), // placeholder if you ever integrate APIs
+    ExternalServiceError(String),
+    ValidationError(String),     
+    SerializationError(String), 
     Other(String),
 }
 
@@ -25,6 +27,8 @@ impl fmt::Display for AppError {
             AppError::ProfileNotFound(msg) => write!(f, "Profile not found: {}", msg),
             AppError::AllocationError(msg) => write!(f, "Allocation error: {}", msg),
             AppError::InferenceError(msg) => write!(f, "Inference error: {}", msg),
+            AppError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
+            AppError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
             AppError::ExternalServiceError(msg) => write!(f, "External service error: {}", msg),
             AppError::Other(msg) => write!(f, "Other error: {}", msg),
         }

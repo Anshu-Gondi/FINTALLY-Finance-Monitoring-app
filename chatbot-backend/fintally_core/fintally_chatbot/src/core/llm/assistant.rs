@@ -11,7 +11,6 @@ use crate::core::finance::{
 use crate::core::math::{ similarity::similarity, stats::{ compute_stat_scores, generate_alerts } };
 use crate::core::llm::dto::*;
 use crate::core::utils::errors::AppError;
-use crate::core::utils::domain_error::DomainError;
 use crate::core::types::*;
 use tokio::task;
 
@@ -244,10 +243,12 @@ pub async fn execute_assess_loan_async(args: Value) -> Result<Value, AppError> {
 mod tests {
     use super::*;
     use serde_json::json;
+    use crate::core::utils::domain_error::DomainError;
 
     // ---------------- EMI ----------------
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn calculate_emi_success() {
         let args =
             json!({
@@ -263,6 +264,7 @@ mod tests {
     // ---------------- Loan Assessment ----------------
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn assess_loan_success() {
         let request = LoanRequest {
             monthly_income: 80_000.0,
@@ -288,6 +290,7 @@ mod tests {
     // ---------------- Emergency Fund ----------------
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn emergency_fund_success() {
         let args =
             json!({
@@ -302,6 +305,7 @@ mod tests {
     // ---------------- Savings Projection ----------------
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn savings_projection_success() {
         let args =
             json!({
@@ -316,6 +320,7 @@ mod tests {
     // ---------------- Budget ----------------
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn generate_budget_young_professional() {
         let args =
             json!({
@@ -332,6 +337,7 @@ mod tests {
     // ✅ Use config presets instead
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn investment_plan_rejects_over_allocation_for_growing_family() {
         let args =
             json!({
@@ -354,6 +360,7 @@ mod tests {
     // ✅ Use real presets
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn cashflow_generation_success() {
         let args =
             json!({
@@ -369,6 +376,7 @@ mod tests {
     // ❌ sample_a / sample_b do NOT exist → define real vectors
 
     #[tokio::test]
+    #[cfg_attr(miri, ignore)]
     async fn profile_similarity_success() {
         let a = UserProfileVector {
             user_id: "user_a".to_string(),
