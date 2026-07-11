@@ -1,0 +1,8 @@
+.git
+.github
+.vscode
+fintally_core/target/
+fintally_core/.env
+fintally_core/build_errors.log
+fintally_core/client_secret.json
+fintally_core/errors.log

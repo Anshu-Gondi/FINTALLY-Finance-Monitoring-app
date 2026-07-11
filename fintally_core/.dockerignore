@@ -1,0 +1,11 @@
+.git
+.env
+target/
+**/*.rs
+**/*.toml
+**/*.sh
+**/tests/
+**/benches/
+errors.log
+nextest_full.log
+client_secret.json

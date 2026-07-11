@@ -1,0 +1,22 @@
+# fintally_core/fintally_finance/Cargo.toml
+[package]
+name    = "fintally_finance"
+version = "1.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+name       = "fintally_finance"
+crate-type = ["rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rayon = "1.10"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name    = "finance_bench"
+harness = false
