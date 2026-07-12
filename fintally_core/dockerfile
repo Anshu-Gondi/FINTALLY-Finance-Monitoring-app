@@ -1,14 +1,15 @@
 # -------------------------------------------------------------
-# Stage 1: The Planner (Runs at Root Context)
+# Stage 1: The Planner
 # -------------------------------------------------------------
 FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS planner
 WORKDIR /app
+# Copies your full workspace context exactly like your passing setup
 COPY . .
-# 🧠 Run from root so cargo-chef can map all workspace members flawlessly
-RUN cargo chef prepare --recipe-path recipe.json
+# 🧠 Tell cargo-chef exactly where the target workspace lives inside the folder structure
+RUN cargo chef prepare --recipe-path recipe.json --working-directory fintally_core
 
 # -------------------------------------------------------------
-# Stage 2: The Cacher (Builds Workspace Dependencies)
+# Stage 2: The Cacher (Builds only external dependencies)
 # -------------------------------------------------------------
 FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS cacher
 WORKDIR /app
@@ -20,14 +21,12 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the recipe file generated at the root level
 COPY --from=planner /app/recipe.json recipe.json
-
-# 🧠 Cook from root, telling it explicitly which target crates to prepare caching for
-RUN cargo chef cook --release --recipe-path recipe.json
+# 🧠 Cook the dependencies from the exact workspace context
+RUN cargo chef cook --release --recipe-path recipe.json --working-directory fintally_core
 
 # -------------------------------------------------------------
-# Stage 3: The Source Builder
+# Stage 3: The Source Builder (Your Exact Passing Context)
 # -------------------------------------------------------------
 FROM rust:1.80-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y \
@@ -39,24 +38,24 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# 1. Bring in the pre-compiled dependencies into the target cache
+# 1. Bring in the pre-compiled dependencies first
 COPY --from=cacher /app/target target
 COPY --from=cacher /usr/local/cargo /usr/local/cargo
 
-# 2. Copy your actual project source files
+# 2. Copies the entire project folder context exactly like your original
 COPY . .
 
-# Move back down into your core directory to run binaries/compilation
+# Move directly into your workspace subdirectory before compiling
 WORKDIR /app/fintally_core
 
-# Tell SQLx to look at the .sqlx directory copied from the root
+# Tell SQLx to use the .sqlx cache *during* compilation
 ENV SQLX_OFFLINE=true
 
-# 3. Compile and execute the model downloader
+# 3. Compile and execute the downloader tool from the chatbot crate
 RUN cargo build --release -p fintally_chatbot --bin download_models
 RUN ./target/release/download_models
 
-# 4. Compile the primary Axum application entry point
+# 4. Compile your primary running Axum entry point
 RUN cargo build --release -p fintally_axum --bin fintally_axum
 
 # -------------------------------------------------------------
@@ -69,7 +68,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Extract artifacts using your correct structural mapping paths
+# Extract the compiled binary and downloaded models using the exact paths that worked
 COPY --from=builder /app/fintally_core/target/release/fintally_axum /app/fintally_backend
 COPY --from=builder /app/fintally_core/llm_models /app/llm_models
 
