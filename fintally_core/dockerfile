@@ -16,6 +16,9 @@ COPY . .
 # Move directly into your workspace subdirectory before compiling
 WORKDIR /app/fintally_core
 
+# 🧠 CRITICAL FIX: Tell SQLx to use the .sqlx cache *during* compilation!
+ENV SQLX_OFFLINE=true
+
 # 1. Compile and execute the downloader tool from the chatbot crate
 RUN cargo build --release -p fintally_chatbot --bin download_models
 RUN ./target/release/download_models

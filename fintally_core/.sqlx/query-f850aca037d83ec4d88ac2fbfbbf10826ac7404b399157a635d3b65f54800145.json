@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE transactions\n            SET \n                last_generated_at = $1,\n                tenure_months = $2,\n                is_recurring = $3,\n                recurring_frequency = $4::recurring_frequency\n            WHERE id = $5\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Int4",
+        "Bool",
+        {
+          "Custom": {
+            "name": "recurring_frequency",
+            "kind": {
+              "Enum": [
+                "Daily",
+                "Weekly",
+                "Monthly"
+              ]
+            }
+          }
+        },
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f850aca037d83ec4d88ac2fbfbbf10826ac7404b399157a635d3b65f54800145"
+}

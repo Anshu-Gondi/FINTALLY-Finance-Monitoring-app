@@ -1,0 +1,91 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id, user_id, name, price, description, datetime, category, \n            recurring_frequency as \"recurring_frequency: RecurringFrequency\", \n            last_generated_at, tenure_months, receipt_url\n        FROM transactions\n        WHERE is_recurring = true \n          AND recurring_frequency IS NOT NULL\n          AND (tenure_months > 0 OR tenure_months IS NULL)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "price",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "datetime",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "category",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "recurring_frequency: RecurringFrequency",
+        "type_info": {
+          "Custom": {
+            "name": "recurring_frequency",
+            "kind": {
+              "Enum": [
+                "Daily",
+                "Weekly",
+                "Monthly"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "last_generated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "tenure_months",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "receipt_url",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "acdc8b17998c7d56ed2d228de21447a34329e1984c2aea50f8f1720475ae7e6c"
+}

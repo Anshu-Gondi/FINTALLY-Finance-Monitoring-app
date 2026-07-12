@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT category as \"category!\", COALESCE(SUM(ABS(price)), 0.0) as \"total!\" \n           FROM transactions WHERE user_id = $1 AND price < 0 GROUP BY category",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "category!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "total!",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "fb86ee6ef572deca5d721657e057e94b692a6e2c8dc7f9eb0c7d72d3f375a59d"
+}

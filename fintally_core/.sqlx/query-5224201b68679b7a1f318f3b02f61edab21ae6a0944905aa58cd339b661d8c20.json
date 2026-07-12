@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO transactions (user_id, name, price, description, datetime, category, is_recurring, recurring_frequency, receipt_url) \n          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::recurring_frequency, $9) RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Float8",
+        "Text",
+        "Timestamptz",
+        "Varchar",
+        "Bool",
+        {
+          "Custom": {
+            "name": "recurring_frequency",
+            "kind": {
+              "Enum": [
+                "Daily",
+                "Weekly",
+                "Monthly"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5224201b68679b7a1f318f3b02f61edab21ae6a0944905aa58cd339b661d8c20"
+}
