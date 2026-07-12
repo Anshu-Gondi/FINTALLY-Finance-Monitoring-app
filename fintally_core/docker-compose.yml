@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  fintally-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fintally_backend_container
+    ports:
+      - "8080:8080"
+    # Mounts their local configured environment file at runtime safely
+    env_file:
+      - .env
+    restart: always
