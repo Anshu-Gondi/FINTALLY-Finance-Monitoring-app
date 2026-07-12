@@ -21,6 +21,19 @@ jobs:
       - name: Checkout Source Code Repository
         uses: actions/checkout@v4
 
+      # 🧠 DISK OPTIMIZATION: Maximize available space on the runner before invoking Buildx
+      # This cleans out Android, .NET, Haskell, and cached tools to give you ~30GB+ of room.
+      - name: Maximize Runner Disk Space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 2048
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -44,9 +57,8 @@ jobs:
       - name: Build, Bake and Push Protected Production Docker Container Image
         uses: docker/build-push-action@v6
         with:
-          # CHANGE: Read from the repository root so workspace paths match up perfectly
           context: .
-          file: ./fintally_core/Dockerfile
+          file: ./fintally_core/Dockerfile  # 🧠 Note: Change this to match your renamed file in the workspace root!
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
