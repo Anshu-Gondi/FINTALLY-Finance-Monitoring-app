@@ -1,6 +1,31 @@
-# --- Stage 1: The Automated Factory (Builder) ---
-FROM rust:1.80-slim-bookworm AS builder
+# -------------------------------------------------------------
+# Stage 1: The Planner
+# -------------------------------------------------------------
+FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS planner
+WORKDIR /app
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
+# -------------------------------------------------------------
+# Stage 2: The Cacher (Builds only external dependencies)
+# -------------------------------------------------------------
+FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS cacher
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    cmake \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# -------------------------------------------------------------
+# Stage 3: The Source Builder (Your Exact Context)
+# -------------------------------------------------------------
+FROM rust:1.80-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
@@ -10,32 +35,37 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copies the entire project folder context into the builder
+# 1. Bring in the pre-compiled dependencies first
+COPY --from=cacher /app/target target
+COPY --from=cacher /usr/local/cargo /usr/local/cargo
+
+# 2. Copy your actual project source files
 COPY . .
 
-# Move directly into your workspace subdirectory before compiling
+# Move back down into your core directory exactly like your original setup
 WORKDIR /app/fintally_core
 
-# 🧠 CRITICAL FIX: Tell SQLx to use the .sqlx cache *during* compilation!
+# Tell SQLx to look at the .sqlx directory copied from the root
 ENV SQLX_OFFLINE=true
 
-# 1. Compile and execute the downloader tool from the chatbot crate
+# 3. Compile and execute the model downloader
 RUN cargo build --release -p fintally_chatbot --bin download_models
 RUN ./target/release/download_models
 
-# 2. Compile your primary running Axum entry point
+# 4. Compile the primary Axum application entry point
 RUN cargo build --release -p fintally_axum --bin fintally_axum
 
-# --- Stage 2: The Hardened Black Box (Runtime) ---
+# -------------------------------------------------------------
+# Stage 4: The Hardened Black Box (Runtime)
+# -------------------------------------------------------------
 FROM debian:bookworm-slim
-
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Extract the compiled binary and downloaded models using the updated paths
+# Extract artifacts exactly like your working configuration
 COPY --from=builder /app/fintally_core/target/release/fintally_axum /app/fintally_backend
 COPY --from=builder /app/fintally_core/llm_models /app/llm_models
 
