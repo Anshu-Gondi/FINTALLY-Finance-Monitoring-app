@@ -31,7 +31,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Automatically handles automated tags based on git branches/tags
       - name: Extract Docker Metadata Configurations
         id: meta
         uses: docker/metadata-action@v5
@@ -45,8 +44,8 @@ jobs:
       - name: Build, Bake and Push Protected Production Docker Container Image
         uses: docker/build-push-action@v6
         with:
-          # Tells BuildKit that the 'root' for the build context is inside your subdirectory
-          context: ./fintally_core
+          # CHANGE: Read from the repository root so workspace paths match up perfectly
+          context: .
           file: ./fintally_core/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}

@@ -1,16 +1,11 @@
 /**
  * api.js — FinTally API service layer
- *
- * Single source of truth for every backend call.
- * All endpoints derived directly from the FastAPI router definitions.
- *
- * Base URL comes from VITE_API_URL (e.g. http://localhost:8000).
- * Router prefixes (/api, /api/transaction, etc.) are baked in here.
+ * Synchronized with high-performance Axum Rust backend specifications.
  */
 
-const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── CORE HELPERS ───────────────────────────────────────────────────────────
 
 function authHeaders(extra = {}) {
   const token = localStorage.getItem("token");
@@ -23,8 +18,7 @@ function authHeaders(extra = {}) {
 async function handleResponse(res) {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg =
-      json?.detail?.message ?? json?.detail ?? json?.message ?? res.statusText;
+    const msg = json?.detail?.message ?? json?.detail ?? json?.error ?? json?.message ?? res.statusText;
     throw new Error(msg || `HTTP ${res.status}`);
   }
   return json;
@@ -43,12 +37,10 @@ function get(url) {
 }
 
 function del(url) {
-  return fetch(url, { method: "DELETE", headers: authHeaders() }).then(
-    handleResponse,
-  );
+  return fetch(url, { method: "DELETE", headers: authHeaders() }).then(handleResponse);
 }
 
-// ─── Auth  (/api/signup  /api/login  /api/google-auth) ───────────────────────
+// ─── AUTHENTICATION MODULE ──────────────────────────────────────────────────
 
 export const auth = {
   signup: (name, email, password) =>
@@ -61,35 +53,25 @@ export const auth = {
     jsonPost(`${BASE}/api/google-auth`, { token }),
 };
 
-// ─── Transactions  (/api/transaction/*) ──────────────────────────────────────
+// ─── TRANSACTIONS MODULE ────────────────────────────────────────────────────
 
 export const transactionApi = {
-  /** Paginated list. Returns { success, data: Transaction[] } */
   list: (page = 1) =>
     get(`${BASE}/api/transaction?page=${page}`),
 
-  /**
-   * Create — multipart/form-data (supports optional receipt file).
-   * @param {object} fields  - { name, price, description, datetime, category, isRecurring, recurringFrequency }
-   * @param {File|null} receiptFile
-   */
   create: (fields, receiptFile = null) => {
     const form = new FormData();
     Object.entries(fields).forEach(([k, v]) => {
       if (v !== null && v !== undefined) form.append(k, v);
     });
     if (receiptFile) form.append("receipt", receiptFile);
-    return fetch(`${BASE}/api/transaction/`, {
+    return fetch(`${BASE}/api/transaction`, {
       method: "POST",
-      headers: authHeaders(),          // no Content-Type — browser sets multipart boundary
+      headers: authHeaders(),
       body: form,
     }).then(handleResponse);
   },
 
-  /**
-   * Update — multipart/form-data.
-   * Only the fields you pass will be updated (partial update).
-   */
   update: (id, fields, receiptFile = null) => {
     const form = new FormData();
     Object.entries(fields).forEach(([k, v]) => {
@@ -97,7 +79,7 @@ export const transactionApi = {
     });
     if (receiptFile) form.append("receipt", receiptFile);
     return fetch(`${BASE}/api/transaction/${id}`, {
-      method: "PUT",
+      method: "PUT", // 🔥 Ensure Axum router has .put() configured for this endpoint
       headers: authHeaders(),
       body: form,
     }).then(handleResponse);
@@ -105,83 +87,57 @@ export const transactionApi = {
 
   delete: (id) => del(`${BASE}/api/transaction/${id}`),
 
-  /**
-   * Download receipt PDF as a Blob (caller creates an object URL).
-   */
   downloadReceipt: async (id) => {
     const res = await fetch(`${BASE}/api/transaction/receipt/${id}`, {
       headers: authHeaders(),
     });
-    if (!res.ok) throw new Error(`Receipt failed: HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`Receipt download failed: HTTP ${res.status}`);
     return res.blob();
   },
 };
 
-// ─── Budget  (/api/budget/*) ─────────────────────────────────────────────────
+// ─── BUDGET MODULE ──────────────────────────────────────────────────────────
 
 export const budgetApi = {
-  /** Returns { success, data: Budget[] } */
-  list: () => get(`${BASE}/api/budget/`),
-
-  /** Returns { success, data: BudgetSummary[] } — includes usagePercent & status */
+  list: () => get(`${BASE}/api/budget`),
   summary: () => get(`${BASE}/api/budget/summary`),
-
-  /**
-   * Create or update (backend does upsert on overlapping period + category).
-   * @param {{ amount, category?, startDate?, endDate?, isRecurring? }} body
-   */
-  save: (body) => jsonPost(`${BASE}/api/budget/`, body),
-
+  save: (body) => jsonPost(`${BASE}/api/budget`, body),
   delete: (id) => del(`${BASE}/api/budget/${id}`),
 };
 
-// ─── EMI  (/api/emi/*) ───────────────────────────────────────────────────────
+// ─── EMI ENGINE MODULE ──────────────────────────────────────────────────────
 
 export const emiApi = {
-  /**
-   * Pure math — returns { emi, totalPayable, totalInterest }.
-   * Cached on server for 10 min.
-   * @param {{ principal: number, annualRate: number, months: number }} body
-   */
   calculate: (body) => jsonPost(`${BASE}/api/emi/calculate`, body),
-
-  /**
-   * Math + budget affordability check.
-   * @param {{ principal, annualRate, months, category? }} body
-   */
   check: (body) => jsonPost(`${BASE}/api/emi/check`, body),
-
-  /**
-   * Create EMI as a recurring monthly transaction (fails if not affordable).
-   * @param {{ principal, annualRate, months, category?, name? }} body
-   */
   create: (body) => jsonPost(`${BASE}/api/emi/create`, body),
+  delete: (id) => del(`${BASE}/api/emi/${id}`),
 };
 
-// ─── Feedback  (/api/feedback) ───────────────────────────────────────────────
+// ─── SYSTEM FEEDBACK ────────────────────────────────────────────────────────
 
 export const feedbackApi = {
   submit: (name, email, message) =>
     jsonPost(`${BASE}/api/feedback`, { name, email, message }),
 };
 
-// ─── Analytics  (no /api prefix — router has no prefix) ─────────────────────
+// ─── CORE ANALYTICS MODULE ──────────────────────────────────────────────────
 
 export const analyticsApi = {
   dailySummary: (interval = 1) =>
-    get(`${BASE}/daily-summary?interval=${interval}`),
+    get(`${BASE}/api/analytics/daily?interval=${interval}`),
 
   periodSummary: (range = "weekly", bucketDays = null) => {
-    const url = new URL(`${BASE}/period-summary`);
+    const url = new URL(`${BASE}/api/analytics/period`);
     url.searchParams.set("range", range);
     if (bucketDays) url.searchParams.set("bucket_days", bucketDays);
     return get(url.toString());
   },
 
-  lifetimeAnalysis: () => get(`${BASE}/lifetime-analysis`),
+  lifetimeAnalysis: () => get(`${BASE}/api/analytics/lifetime`),
 
   categorySummary: ({ start, end, type, keyword, limit } = {}) => {
-    const url = new URL(`${BASE}/category-summary`);
+    const url = new URL(`${BASE}/api/analytics/category`);
     if (start)   url.searchParams.set("start", start);
     if (end)     url.searchParams.set("end", end);
     if (type)    url.searchParams.set("type", type);
@@ -191,54 +147,41 @@ export const analyticsApi = {
   },
 
   trendSummary: (range = "6months") =>
-    get(`${BASE}/trend-summary?range=${range}`),
+    get(`${BASE}/api/analytics/trend?range=${range}`),
 
-  minMaxTransaction: () => get(`${BASE}/min-max-transaction`),
-
-  emiPressure: () => get(`${BASE}/emi-pressure`),
+  minMaxTransaction: () => get(`${BASE}/api/analytics/min-max`),
+  emiPressure: () => get(`${BASE}/api/analytics/emi-pressure`),
 
   cashflowForecast: (horizons = [30, 60, 90]) => {
     const params = horizons.map((h) => `horizons=${h}`).join("&");
-    return get(`${BASE}/cashflow-forecast?${params}`);
+    return get(`${BASE}/api/analytics/cashflow-forecast?${params}`);
   },
 
   budgetBreach: (endDate, simulations = 2000) =>
-    get(`${BASE}/budget-breach?end_date=${endDate}&simulations=${simulations}`),
+    get(`${BASE}/api/analytics/budget-breach?end_date=${endDate}&simulations=${simulations}`),
 
-  recurringAnomalies: () => get(`${BASE}/recurring-anomalies`),
-
+  recurringAnomalies: () => get(`${BASE}/api/analytics/anomalies/recurring`),
   anomalies: (threshold = 2.5) =>
-    get(`${BASE}/anomalies?threshold=${threshold}`),
+    get(`${BASE}/api/analytics/anomalies/transactions?threshold=${threshold}`),
 
-  categoryDrift: () => get(`${BASE}/category-drift`),
-
-  recurringImpact: () => get(`${BASE}/recurring-impact`),
-
-  budgetUtilization: () => get(`${BASE}/budget-utilization`),
-
-  burnRate: () => get(`${BASE}/burn-rate`),
-
-  incomeStability: () => get(`${BASE}/income-stability`),
-
-  savingsOptimization: () => get(`${BASE}/savings-optimization`),
-
-  netWorth: () => get(`${BASE}/net-worth`),
-
-  financialHealthScore: () => get(`${BASE}/financial-health-score`),
-
-  spendingPatterns: () => get(`${BASE}/spending-patterns`),
-
+  categoryDrift: () => get(`${BASE}/api/analytics/drift`),
+  recurringImpact: () => get(`${BASE}/api/analytics/recurring-impact`),
+  budgetUtilization: () => get(`${BASE}/api/analytics/utilization`),
+  burnRate: () => get(`${BASE}/api/analytics/burn-rate`),
+  incomeStability: () => get(`${BASE}/api/analytics/income-stability`),
+  savingsOptimization: () => get(`${BASE}/api/analytics/savings-optimization`),
+  netWorth: () => get(`${BASE}/api/analytics/net-worth`),
+  financialHealthScore: () => get(`${BASE}/api/analytics/health-score`),
+  spendingPatterns: () => get(`${BASE}/api/analytics/spending-patterns`),
   goalProjection: (targetAmount) =>
-    get(`${BASE}/goal-projection?target_amount=${targetAmount}`),
+    get(`${BASE}/api/analytics/goal-projection?target_amount=${targetAmount}`),
 };
 
-// ─── Chatbot Service Module  (/api/chat/*) ───────────────────────────────────
+// ─── CHATBOT ENGINE MODULE ──────────────────────────────────────────────────
 
 export const chatApi = {
-  /** Get past sessions for current user profile */
   getSessions: () => get(`${BASE}/api/chat/sessions`),
 
-  /** Fetch structural conversational logs within a specific session window */
   getHistory: (sessionId = null, limit = 50) => {
     const url = new URL(`${BASE}/api/chat/history`);
     if (sessionId) url.searchParams.set("session_id", sessionId);
@@ -246,13 +189,11 @@ export const chatApi = {
     return get(url.toString());
   },
 
-  /** Clear logs completely */
   clearHistory: (sessionId = null) => {
     const url = new URL(`${BASE}/api/chat/history`);
     if (sessionId) url.searchParams.set("session_id", sessionId);
     return del(url.toString());
   },
 
-  /** Native Endpoint configuration tracking utility helper for SSE Stream */
   getStreamUrl: () => `${BASE}/api/chat/`
 };

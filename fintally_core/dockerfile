@@ -10,8 +10,11 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy everything inside fintally_core into the builder
+# Copies the entire project folder context into the builder
 COPY . .
+
+# Move directly into your workspace subdirectory before compiling
+WORKDIR /app/fintally_core
 
 # 1. Compile and execute the downloader tool from the chatbot crate
 RUN cargo build --release -p fintally_chatbot --bin download_models
@@ -29,8 +32,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY --from=builder /app/target/release/fintally_axum /app/fintally_backend
-COPY --from=builder /app/llm_models /app/llm_models
+# Extract the compiled binary and downloaded models using the updated paths
+COPY --from=builder /app/fintally_core/target/release/fintally_axum /app/fintally_backend
+COPY --from=builder /app/fintally_core/llm_models /app/llm_models
 
 EXPOSE 8080
 CMD ["./fintally_backend"]
