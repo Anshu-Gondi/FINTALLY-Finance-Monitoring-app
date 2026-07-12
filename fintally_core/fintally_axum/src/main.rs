@@ -7,6 +7,7 @@ use fintally_chatbot::core::llm::native_engine::NativeLlamaEngine;
 use fintally_chatbot::core::llm::engine::LlmEngine;
 
 use axum::{ routing::{ get, post, delete }, Router, response::IntoResponse, Json, Extension };
+use tower_http::cors::{ CorsLayer, Any };
 use futures_util::StreamExt;
 use std::sync::Arc;
 
@@ -144,6 +145,9 @@ async fn main() {
     });
 
     // ─── 4. Build Unified Core App Router ────────────────────────────────────
+
+    let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
+
     let app = Router::new()
         .route("/api/signup", post(routes::auth::signup))
         .route("/api/login", post(routes::auth::login))
@@ -156,7 +160,12 @@ async fn main() {
                 routes::transactions::get_transactions
             )
         )
-        .route("/api/transaction/:id", delete(routes::transactions::delete_transaction))
+        .route(
+            "/api/transaction/:id",
+            delete(routes::transactions::delete_transaction).put(
+                routes::transactions::update_transaction
+            )
+        )
         .route("/api/transaction/receipt/:id", get(routes::transactions::get_receipt))
         .route("/api/emi/calculate", post(routes::emi::emi_calculate))
         .route("/api/emi/check", post(routes::emi::emi_check))
@@ -172,10 +181,12 @@ async fn main() {
         )
         .route("/api/budget/:id", delete(routes::budget::delete_budget))
         .route("/api/budget/summary", get(routes::budget::budget_summary))
+        .layer(cors)
         .layer(Extension(db_ctx))
         .layer(Extension(rag_service));
 
-    let port = std::env::var("PORT")
+    let port = std::env
+        ::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .expect("PORT environment variable must be a valid number");
@@ -183,7 +194,7 @@ async fn main() {
     // Bind to 0.0.0.0 so the container handles traffic routed from outside
     let bind_address = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&bind_address).await.unwrap();
-    
+
     println!("🚀 Axum core gateway processing on http://{}", bind_address);
     axum::serve(listener, app).await.unwrap();
 }
