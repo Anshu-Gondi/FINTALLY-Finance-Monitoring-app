@@ -3,10 +3,10 @@
 # -------------------------------------------------------------
 FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS planner
 WORKDIR /app
-# Copies your full workspace context exactly like your passing setup
 COPY . .
-# 🧠 Tell cargo-chef exactly where the target workspace lives inside the folder structure
-RUN cargo chef prepare --recipe-path recipe.json --working-directory fintally_core
+# 🧠 Change directory first, then prepare the recipe
+WORKDIR /app/fintally_core
+RUN cargo chef prepare --recipe-path recipe.json
 
 # -------------------------------------------------------------
 # Stage 2: The Cacher (Builds only external dependencies)
@@ -21,9 +21,10 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=planner /app/recipe.json recipe.json
-# 🧠 Cook the dependencies from the exact workspace context
-RUN cargo chef cook --release --recipe-path recipe.json --working-directory fintally_core
+# Replicate the exact directory layout
+WORKDIR /app/fintally_core
+COPY --from=planner /app/fintally_core/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
 
 # -------------------------------------------------------------
 # Stage 3: The Source Builder (Your Exact Passing Context)
