@@ -1,15 +1,14 @@
 # -------------------------------------------------------------
-# Stage 1: The Planner
+# Stage 1: The Planner (Runs at Root Context)
 # -------------------------------------------------------------
 FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS planner
 WORKDIR /app
 COPY . .
-# 🧠 JUMP IN: Move into your workspace directory where Cargo.toml lives!
-WORKDIR /app/fintally_core
+# 🧠 Run from root so cargo-chef can map all workspace members flawlessly
 RUN cargo chef prepare --recipe-path recipe.json
 
 # -------------------------------------------------------------
-# Stage 2: The Cacher (Builds only external dependencies)
+# Stage 2: The Cacher (Builds Workspace Dependencies)
 # -------------------------------------------------------------
 FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS cacher
 WORKDIR /app
@@ -21,13 +20,14 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# 🧠 MATCH PATHS: Move to the subfolder so cargo chef cooks inside the workspace context
-WORKDIR /app/fintally_core
-COPY --from=planner /app/fintally_core/recipe.json recipe.json
+# Copy the recipe file generated at the root level
+COPY --from=planner /app/recipe.json recipe.json
+
+# 🧠 Cook from root, telling it explicitly which target crates to prepare caching for
 RUN cargo chef cook --release --recipe-path recipe.json
 
 # -------------------------------------------------------------
-# Stage 3: The Source Builder (Your Exact Context)
+# Stage 3: The Source Builder
 # -------------------------------------------------------------
 FROM rust:1.80-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y \
@@ -39,14 +39,14 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# 1. Bring in the pre-compiled dependencies first
+# 1. Bring in the pre-compiled dependencies into the target cache
 COPY --from=cacher /app/target target
 COPY --from=cacher /usr/local/cargo /usr/local/cargo
 
 # 2. Copy your actual project source files
 COPY . .
 
-# Move back down into your core directory exactly like your original setup
+# Move back down into your core directory to run binaries/compilation
 WORKDIR /app/fintally_core
 
 # Tell SQLx to look at the .sqlx directory copied from the root
@@ -69,7 +69,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Extract artifacts exactly like your working configuration
+# Extract artifacts using your correct structural mapping paths
 COPY --from=builder /app/fintally_core/target/release/fintally_axum /app/fintally_backend
 COPY --from=builder /app/fintally_core/llm_models /app/llm_models
 
