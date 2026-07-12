@@ -1,17 +1,17 @@
 # -------------------------------------------------------------
 # Stage 1: The Planner
 # -------------------------------------------------------------
-FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS planner
+# 🧠 BUMPED: Upgraded toolchain from 1.80 to 1.85 to natively support Edition 2024 dependencies
+FROM lukemathwalker/cargo-chef:latest-rust-1.85-slim-bookworm AS planner
 WORKDIR /app
 COPY . .
-# 🧠 Change directory first, then prepare the recipe
 WORKDIR /app/fintally_core
 RUN cargo chef prepare --recipe-path recipe.json
 
 # -------------------------------------------------------------
 # Stage 2: The Cacher (Builds only external dependencies)
 # -------------------------------------------------------------
-FROM lukemathwalker/cargo-chef:latest-rust-1.80-slim-bookworm AS cacher
+FROM lukemathwalker/cargo-chef:latest-rust-1.85-slim-bookworm AS cacher
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
@@ -21,7 +21,6 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Replicate the exact directory layout
 WORKDIR /app/fintally_core
 COPY --from=planner /app/fintally_core/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
@@ -29,7 +28,8 @@ RUN cargo chef cook --release --recipe-path recipe.json
 # -------------------------------------------------------------
 # Stage 3: The Source Builder (Your Exact Passing Context)
 # -------------------------------------------------------------
-FROM rust:1.80-slim-bookworm AS builder
+# 🧠 MATCHED: Kept the primary compiler in alignment with the cacher toolchain stage
+FROM rust:1.85-slim-bookworm AS builder
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
