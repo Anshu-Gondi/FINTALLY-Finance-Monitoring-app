@@ -340,13 +340,22 @@ pub fn emi_monthly_pressure(
 }
 
 /// Detects anomalous transactions using robust MAD method
-pub fn detect_anomalies(prices: Vec<f64>, threshold: f64) -> Vec<f64> {
-    if prices.len() < 2 {
+/// Detects anomalous transactions using robust MAD method with mean fallback
+pub fn detect_anomalies(
+    dates: Vec<String>,
+    prices: Vec<f64>,
+    threshold: f64,
+) -> Vec<(String, f64, f64)> {
+    if prices.len() < 2 || dates.len() != prices.len() {
         return vec![];
     }
 
-    let mut sorted = prices.clone();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    // Standardize to absolute magnitudes so negative expenses don't warp calculations
+    let abs_prices: Vec<f64> = prices.iter().map(|p| p.abs()).collect();
+
+    let mut sorted = abs_prices.clone();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
     let mid = sorted.len() / 2;
     let median = if sorted.len() % 2 == 0 {
         (sorted[mid - 1] + sorted[mid]) / 2.0
@@ -354,8 +363,9 @@ pub fn detect_anomalies(prices: Vec<f64>, threshold: f64) -> Vec<f64> {
         sorted[mid]
     };
 
-    let mut deviations: Vec<f64> = prices.iter().map(|x| (x - median).abs()).collect();
-    deviations.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let mut deviations: Vec<f64> = abs_prices.iter().map(|x| (x - median).abs()).collect();
+    deviations.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+
     let mid_dev = deviations.len() / 2;
     let mad = if deviations.len() % 2 == 0 {
         (deviations[mid_dev - 1] + deviations[mid_dev]) / 2.0
@@ -363,13 +373,27 @@ pub fn detect_anomalies(prices: Vec<f64>, threshold: f64) -> Vec<f64> {
         deviations[mid_dev]
     };
 
-    if mad == 0.0 {
-        return vec![];
-    }
-
-    prices
+    dates
         .into_iter()
-        .filter(|x| (x - median).abs() / mad > threshold)
+        .zip(prices.into_iter())
+        .filter_map(|(date, price)| {
+            let abs_val = price.abs();
+
+            // Calculate z-score using MAD, or fall back to standard relative difference if MAD == 0
+            let zscore = if mad > 0.0 {
+                (0.6745 * (abs_val - median).abs()) / mad
+            } else if median > 0.0 {
+                (abs_val - median).abs() / median
+            } else {
+                0.0
+            };
+
+            if zscore > threshold {
+                Some((date, price, zscore))
+            } else {
+                None
+            }
+        })
         .collect()
 }
 

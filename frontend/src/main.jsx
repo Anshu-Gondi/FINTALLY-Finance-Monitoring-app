@@ -7,7 +7,7 @@ import Home from './Components/Home page/Home.jsx';
 import Login from "./Components/Login Page/Login.jsx";
 import Signup from "./Components/Signup Page/Signup.jsx";
 import InsightsPage from "./Components/Insights Page/Insights.jsx";
-import ChatbotPage from "./Components/chatbot page/ChatbotPage.jsx";
+import ChatbotPage from "./Components/Chatbot page/ChatbotPage.jsx";
 import About from "./Components/About page/About.jsx";
 import Feedback from './Components/Feedback page/Feedback.jsx';
 import 'bulma/css/bulma.min.css';

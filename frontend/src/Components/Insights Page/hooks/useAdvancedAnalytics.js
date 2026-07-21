@@ -22,17 +22,26 @@ export default function useAdvancedAnalytics() {
       .toISOString()
       .split("T")[0];
 
+    // Note: You can pass a lower threshold here (e.g. 1.2 or 1.5) to test sensitivity
     Promise.allSettled([
       analyticsApi.budgetBreach(endDate),
       analyticsApi.emiPressure(),
       analyticsApi.cashflowForecast([30, 60, 90]),
-      analyticsApi.anomalies(),
+      analyticsApi.anomalies(1.5), // Lowered threshold slightly for testing
     ]).then(([breach, emi, cashflow, anom]) => {
       if (cancelled) return;
+
       if (breach.status === "fulfilled") setBudgetRisk(breach.value);
       if (emi.status === "fulfilled")    setEmiRisk(emi.value);
       if (cashflow.status === "fulfilled") setCashflowForecast(cashflow.value);
-      if (anom.status === "fulfilled")  setAnomalies(anom.value?.anomalies ?? []);
+
+      // 🔍 DEBUG LOGS FOR ANOMALIES
+      if (anom.status === "fulfilled") {
+        setAnomalies(anom.value?.anomalies ?? []);
+      } else {
+        console.error("❌ Anomalies API Request Rejected/Failed:", anom.reason);
+      }
+
       setLoadingAdvanced(false);
     });
 

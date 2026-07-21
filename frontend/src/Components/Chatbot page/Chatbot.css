@@ -5,7 +5,7 @@
   justify-content: center;
   align-items: center;
   min-height: calc(100vh - 80px);
-  background: transparent; /* Inherits background gradient from App.css */
+  background: transparent;
   padding: 10px;
 }
 
@@ -44,6 +44,18 @@
   background-color: #39ff14;
   border-radius: 50%;
   box-shadow: 0 0 8px #39ff14;
+  transition: all 0.3s ease;
+}
+
+.live-dot.processing {
+  background-color: #ff0055;
+  box-shadow: 0 0 10px #ff0055;
+  animation: pulseDot 1s infinite alternate;
+}
+
+@keyframes pulseDot {
+  from { opacity: 0.3; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1.2); }
 }
 
 .chatbot-title {
@@ -53,6 +65,7 @@
   color: #00f0ff;
   text-shadow: 0 0 8px #00f0ff;
   letter-spacing: 0.1rem;
+  font-family: 'Consolas', 'Courier New', monospace;
 }
 
 .engine-badge {
@@ -63,6 +76,14 @@
   color: #39ff14;
   border-radius: 4px;
   text-shadow: 0 0 4px #39ff14;
+  font-family: monospace;
+}
+
+.engine-badge.busy {
+  background: rgba(255, 0, 85, 0.1);
+  border-color: #ff0055;
+  color: #ff0055;
+  text-shadow: 0 0 6px #ff0055;
 }
 
 /* Viewport Display Panel */
@@ -93,15 +114,23 @@
   max-width: 85%;
   padding: 15px 20px;
   border-radius: 16px;
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Fix for font symbol overlapping (Rupee symbol ₹) */
+.msg-body-content {
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', system-ui, sans-serif;
+  letter-spacing: 0.3px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chatbot-msg-row.user .chatbot-msg-bubble {
   background: rgba(0, 240, 255, 0.15);
   border: 1px solid #00f0ff;
   color: #a0f0ff;
-  text-shadow: 0 0 4px #00b6ff;
+  text-shadow: 0 0 2px rgba(0, 240, 255, 0.5);
   border-top-right-radius: 0;
   box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
 }
@@ -110,7 +139,7 @@
   background: rgba(10, 10, 25, 0.85);
   border: 1px solid #39ff14;
   color: #39ff14;
-  text-shadow: 0 0 4px #0f9d0f;
+  text-shadow: 0 0 2px rgba(57, 255, 20, 0.5);
   border-top-left-radius: 0;
   box-shadow: 0 0 15px rgba(57, 255, 20, 0.1);
 }
@@ -118,8 +147,9 @@
 .msg-meta-tag {
   font-size: 0.7rem;
   opacity: 0.6;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   letter-spacing: 0.05rem;
+  font-family: monospace;
 }
 
 /* Embedded Micro-Cards Layout */
@@ -135,6 +165,7 @@
   border-radius: 8px;
   padding: 12px 16px;
   box-shadow: 0 0 12px rgba(0, 240, 255, 0.2);
+  font-family: 'Consolas', monospace;
 }
 
 .tool-card-title {
@@ -185,12 +216,20 @@
   cursor: pointer;
   box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
   transition: all 0.2s ease;
+  font-family: monospace;
 }
 
 .chatbot-submit-btn:hover:not(:disabled) {
   background: #39ff14;
   color: #000;
   box-shadow: 0 0 20px #39ff14;
+}
+
+.chatbot-submit-btn:disabled {
+  border-color: #ff0055;
+  color: #ff0055;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* Status Monitor Stream indicators */
@@ -203,4 +242,19 @@
   padding: 6px 16px;
   border-radius: 20px;
   text-shadow: 0 0 4px #00f0ff;
+  font-family: monospace;
+}
+
+.status-timer {
+  color: #ff0055;
+  font-weight: bold;
+}
+
+.animate-pulse {
+  animation: pulseBar 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulseBar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }

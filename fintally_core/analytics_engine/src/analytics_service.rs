@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use chrono::{ DateTime, Utc, Duration, Datelike, Timelike };
 use sqlx::{ PgPool, Row };
 use uuid::Uuid; // Assuming IDs are UUIDs or Strings in Postgres. Change type if needed.
+use serde::{Serialize, Deserialize};
 
 // Import domain models from your crate
 use fintally_db::models::{
@@ -50,6 +51,7 @@ use crate::analytics_aggregator::{
     savings_metrics,
     net_worth_analysis,
     cashflow_forecast as rust_cashflow_forecast,
+    detect_anomalies
 };
 
 // ---------------- HELPER UTILITIES ----------------
@@ -69,7 +71,7 @@ pub async fn daily_summary(
     let rows = sqlx
         ::query(
             r#"
-        SELECT datetime, price FROM transactions 
+        SELECT datetime, price FROM transactions
         WHERE user_id = $1 AND datetime >= $2 AND datetime <= $3
         "#
         )
@@ -124,7 +126,7 @@ pub async fn period_summary(
     let rows = sqlx
         ::query(
             r#"
-        SELECT datetime, price FROM transactions 
+        SELECT datetime, price FROM transactions
         WHERE user_id = $1 AND datetime >= $2 AND datetime <= $3
         "#
         )
@@ -163,7 +165,7 @@ pub async fn lifetime_analysis(
     // Let SQL group and sum by year-month directly
     let rows = sqlx::query!(
         r#"
-        SELECT 
+        SELECT
             TO_CHAR(datetime, 'YYYY-MM') as "period!",
             COALESCE(SUM(CASE WHEN price > 0 THEN price ELSE 0 END), 0)::float8 as "income!",
             COALESCE(SUM(CASE WHEN price < 0 THEN ABS(price) ELSE 0 END), 0)::float8 as "expense!"
@@ -181,12 +183,12 @@ pub async fn lifetime_analysis(
     let data = rows
         .into_iter()
         .map(|r| {
-            let total = r.income + r.expense; 
-            AnalyticsPoint { 
-                period: r.period, 
-                income: r.income, 
-                expense: r.expense, 
-                total 
+            let total = r.income + r.expense;
+            AnalyticsPoint {
+                period: r.period,
+                income: r.income,
+                expense: r.expense,
+                total
             }
         })
         .collect();
@@ -198,45 +200,59 @@ pub async fn lifetime_analysis(
 pub async fn min_max_transaction(
     pool: &PgPool,
     user_id: Uuid
-) -> Result<(Option<(String, f64)>, Option<(String, f64)>), sqlx::Error> {
-    // Querying min and max directly using distinct orderings
-    let min_row = sqlx::query!(
+) -> Result<AnalyticsResult, sqlx::Error> {
+    // 1. Fetch transactions
+    let rows = sqlx::query(
         r#"
-        SELECT datetime::text as "date?", price::float8 as "price?" 
-        FROM transactions 
-        WHERE user_id = $1 
-        ORDER BY price ASC 
-        LIMIT 1
-        "#,
-        user_id
+        SELECT datetime, price
+        FROM transactions
+        WHERE user_id = $1
+        "#
     )
-    .fetch_optional(pool)
+    .bind(user_id)
+    .fetch_all(pool)
     .await?;
 
-    let max_row = sqlx::query!(
-        r#"
-        SELECT datetime::text as "date?", price::float8 as "price?" 
-        FROM transactions 
-        WHERE user_id = $1 
-        ORDER BY price DESC 
-        LIMIT 1
-        "#,
-        user_id
-    )
-    .fetch_optional(pool)
-    .await?;
+    if rows.is_empty() {
+        return Ok(AnalyticsResult { data: vec![], meta: None, warnings: None });
+    }
 
-    let min_res = match (min_row.as_ref().and_then(|r| r.date.clone()), min_row.as_ref().and_then(|r| r.price)) {
-        (Some(d), Some(p)) => Some((d, p)),
-        _ => None,
-    };
+    let mut dates = Vec::with_capacity(rows.len());
+    let mut prices = Vec::with_capacity(rows.len());
 
-    let max_res = match (max_row.as_ref().and_then(|r| r.date.clone()), max_row.as_ref().and_then(|r| r.price)) {
-        (Some(d), Some(p)) => Some((d, p)),
-        _ => None,
-    };
+    for r in rows {
+        let dt: DateTime<Utc> = r.get("datetime");
+        let price: f64 = r.get("price");
+        dates.push(dt.to_rfc3339());
+        prices.push(price);
+    }
 
-    Ok((min_res, max_res))
+    // 2. Pass dates and prices into your pure Rust computational engine
+    let (min_opt, max_opt) = find_min_max(dates, prices);
+
+    let mut data = Vec::new();
+
+    // Add Min Transaction Point
+    if let Some((date, price)) = min_opt {
+        data.push(AnalyticsPoint {
+            period: format!("Min ({})", &date[..10]), // formatted date key for XAxis
+            income: if price > 0.0 { price } else { 0.0 },
+            expense: if price < 0.0 { price.abs() } else { 0.0 },
+            total: price,
+        });
+    }
+
+    // Add Max Transaction Point
+    if let Some((date, price)) = max_opt {
+        data.push(AnalyticsPoint {
+            period: format!("Max ({})", &date[..10]),
+            income: if price > 0.0 { price } else { 0.0 },
+            expense: if price < 0.0 { price.abs() } else { 0.0 },
+            total: price,
+        });
+    }
+
+    Ok(AnalyticsResult { data, meta: None, warnings: None })
 }
 
 // ---------------- CATEGORY SUMMARY ----------------
@@ -305,7 +321,7 @@ pub async fn trend_summary(
     let rows = sqlx
         ::query(
             r#"
-        SELECT datetime, price FROM transactions 
+        SELECT datetime, price FROM transactions
         WHERE user_id = $1 AND datetime >= $2 AND datetime <= $3
         "#
         )
@@ -338,16 +354,15 @@ pub async fn trend_summary(
 
 // ---------------- EMI PRESSURE ----------------
 pub async fn emi_pressure(pool: &PgPool, user_id: Uuid) -> Result<EmiPressureResult, sqlx::Error> {
-    let emi_rows = sqlx
-        ::query(
-            r#"
-        SELECT datetime, principal, annual_rate, tenure_months 
-        FROM transactions 
-        WHERE user_id = $1 AND principal IS NOT NULL
+    let emi_rows = sqlx::query(
+        r#"
+        SELECT datetime, ABS(price) as emi_amount
+        FROM transactions
+        WHERE user_id = $1 AND is_recurring = true AND price < 0
         "#
-        )
-        .bind(user_id)
-        .fetch_all(pool).await?;
+    )
+    .bind(user_id)
+    .fetch_all(pool).await?;
 
     let mut dates = Vec::with_capacity(emi_rows.len());
     let mut principals = Vec::with_capacity(emi_rows.len());
@@ -356,28 +371,22 @@ pub async fn emi_pressure(pool: &PgPool, user_id: Uuid) -> Result<EmiPressureRes
 
     for r in emi_rows {
         let dt: DateTime<Utc> = r.get("datetime");
-        let principal: Option<f64> = r.get("principal");
-        let annual_rate: Option<f64> = r.get("annual_rate");
-        let tenure_months: Option<i32> = r.get("tenure_months");
+        let emi_amount: f64 = r.get("emi_amount");
 
         dates.push(dt.to_rfc3339());
-        principals.push(principal.unwrap_or(0.0));
-        rates.push(annual_rate.unwrap_or(12.0));
-        tenures.push(tenure_months.unwrap_or(12) as u32);
+        principals.push(emi_amount); // Use monthly amount directly
+        rates.push(0.0);             // Default 0 rate if precalculated
+        tenures.push(12);            // Default tenure
     }
 
     let monthly_breakdown = emi_monthly_pressure(dates, principals, rates, tenures);
-    let total_emi: f64 = monthly_breakdown
-        .iter()
-        .map(|(_, v)| v)
-        .sum();
+    let total_emi: f64 = monthly_breakdown.iter().map(|(_, v)| v).sum();
 
-    let income_row = sqlx
-        ::query(
-            r#"SELECT COALESCE(SUM(price), 0.0) as total_inc FROM transactions WHERE user_id = $1 AND price > 0"#
-        )
-        .bind(user_id)
-        .fetch_one(pool).await?;
+    let income_row = sqlx::query(
+        r#"SELECT COALESCE(SUM(price), 0.0) as total_inc FROM transactions WHERE user_id = $1 AND price > 0"#
+    )
+    .bind(user_id)
+    .fetch_one(pool).await?;
 
     let monthly_income: f64 = income_row.get("total_inc");
     let (score, label) = emi_survivability_score(monthly_income, total_emi);
@@ -401,7 +410,7 @@ pub async fn cashflow_forecast(
         ::query(
             r#"
         SELECT datetime, price, recurring_frequency::text as freq
-        FROM transactions 
+        FROM transactions
         WHERE user_id = $1 AND is_recurring = true
         "#
         )
@@ -458,13 +467,12 @@ pub async fn budget_breach_prediction(
     user_id: Uuid,
     end_date: DateTime<Utc>,
     simulations: usize
-) -> Result<BudgetBreachResult, Box<dyn std::error::Error>> {
-    let budget_opt = sqlx
-        ::query(
-            r#"SELECT amount, start_date FROM budgets WHERE user_id = $1 AND category = 'Overall' LIMIT 1"#
-        )
-        .bind(user_id)
-        .fetch_optional(pool).await?;
+) -> Result<BudgetBreachResult, sqlx::Error> { // 👈 Fixed error type
+    let budget_opt = sqlx::query(
+        r#"SELECT amount, start_date FROM budgets WHERE user_id = $1 AND category = 'Overall' LIMIT 1"#
+    )
+    .bind(user_id)
+    .fetch_optional(pool).await?;
 
     let budget = match budget_opt {
         Some(b) => b,
@@ -483,14 +491,13 @@ pub async fn budget_breach_prediction(
         .unwrap_or_else(Utc::now);
     let horizon_days = (end_date - budget_start).num_days().max(1) as u32;
 
-    let rows = sqlx
-        ::query(
-            r#"SELECT datetime, price FROM transactions WHERE user_id = $1 AND datetime >= $2 AND datetime <= $3"#
-        )
-        .bind(user_id)
-        .bind(budget_start)
-        .bind(end_date)
-        .fetch_all(pool).await?;
+    let rows = sqlx::query(
+        r#"SELECT datetime, price FROM transactions WHERE user_id = $1 AND datetime >= $2 AND datetime <= $3"#
+    )
+    .bind(user_id)
+    .bind(budget_start)
+    .bind(end_date)
+    .fetch_all(pool).await?;
 
     let mut dates = Vec::with_capacity(rows.len());
     let mut prices = Vec::with_capacity(rows.len());
@@ -507,7 +514,7 @@ pub async fn budget_breach_prediction(
         budget_amount,
         horizon_days,
         Some(simulations)
-    ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+    ).map_err(|e| sqlx::Error::Protocol(e.to_string()))?; // 👈 Fixed map_err
 
     Ok(BudgetBreachResult {
         breach_probability: safe_float(prob, 0.0),
@@ -569,61 +576,49 @@ pub async fn recurring_anomalies(
 pub async fn transaction_anomalies(
     pool: &PgPool,
     user_id: Uuid,
-    threshold: f64
+    threshold: f64,
 ) -> Result<TransactionAnomalyResult, sqlx::Error> {
-    let rows = sqlx
-        ::query(r#"SELECT datetime, price FROM transactions WHERE user_id = $1"#)
+    let rows = sqlx::query(r#"SELECT datetime, price FROM transactions WHERE user_id = $1"#)
         .bind(user_id)
-        .fetch_all(pool).await?;
+        .fetch_all(pool)
+        .await?;
 
     if rows.len() < 2 {
-        return Ok(TransactionAnomalyResult { threshold, anomalies: vec![], count: 0 });
+        return Ok(TransactionAnomalyResult {
+            threshold,
+            anomalies: vec![],
+            count: 0,
+        });
     }
 
-    let mut prices: Vec<f64> = rows
-        .iter()
-        .map(|r| r.get::<f64, _>("price"))
-        .collect();
-    prices.sort_by(|a: &f64, b: &f64| a.partial_cmp(b).unwrap());
+    let mut dates = Vec::with_capacity(rows.len());
+    let mut prices = Vec::with_capacity(rows.len());
 
-    let mid = prices.len() / 2;
-    let median = if prices.len() % 2 == 0 {
-        (prices[mid - 1] + prices[mid]) / 2.0
-    } else {
-        prices[mid]
-    };
-
-    let mut deviations: Vec<f64> = rows
-        .iter()
-        .map(|r| (r.get::<f64, _>("price") - median).abs())
-        .collect();
-    deviations.sort_by(|a: &f64, b: &f64| a.partial_cmp(b).unwrap());
-    let mad = if deviations.len() % 2 == 0 {
-        (deviations[mid - 1] + deviations[mid]) / 2.0
-    } else {
-        deviations[mid]
-    };
-
-    if mad == 0.0 {
-        return Ok(TransactionAnomalyResult { threshold, anomalies: vec![], count: 0 });
-    }
-
-    let mut anomalies = Vec::new();
     for r in rows {
-        let price: f64 = r.get("price");
         let dt: DateTime<Utc> = r.get("datetime");
-        let zscore = (price - median).abs() / mad;
-        if zscore > threshold {
-            anomalies.push(TransactionAnomaly {
-                datetime: dt.to_rfc3339(),
-                price,
-                zscore: safe_float(zscore, 0.0),
-            });
-        }
+        let price: f64 = r.get("price");
+        dates.push(dt.to_rfc3339());
+        prices.push(price);
     }
+
+    // Pass owned vectors into the updated detection function
+    let detected = detect_anomalies(dates, prices, threshold);
+
+    let anomalies = detected
+        .into_iter()
+        .map(|(datetime, price, zscore)| TransactionAnomaly {
+            datetime,
+            price: safe_float(price, 0.0),
+            zscore: safe_float(zscore, 0.0),
+        })
+        .collect::<Vec<_>>();
 
     let count = anomalies.len() as i32;
-    Ok(TransactionAnomalyResult { threshold, anomalies, count })
+    Ok(TransactionAnomalyResult {
+        threshold,
+        anomalies,
+        count,
+    })
 }
 
 // ---------------- CATEGORY DRIFT ----------------

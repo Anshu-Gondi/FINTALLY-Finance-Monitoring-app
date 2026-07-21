@@ -9,12 +9,12 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use futures_util::{stream, StreamExt};
+use futures_util::StreamExt;
 use std::{convert::Infallible, sync::Arc};
 use uuid::Uuid;
 
-use crate::auth::Claims; 
-use fintally_chatbot::chatbot_service::chatbot_orchestrator::{ChatbotOrchestrator, ChatMessage}; 
+use crate::auth::Claims;
+use fintally_chatbot::chatbot_service::chatbot_orchestrator::{ChatbotOrchestrator, ChatMessage};
 use fintally_db::chat_service::ChatHistoryService;
 
 /// Shared application state injected into the Axum pipeline
@@ -80,7 +80,7 @@ async fn chat_stream_endpoint(
 
     let _ = state.history_service.append_message(&user_id_str, "user", &payload.message, payload.session_id.as_deref(), None).await;
 
-    let mut raw_token_stream = state.orchestrator.clone().chat_stream(target_uuid, payload.message, chat_history);
+    let raw_token_stream = state.orchestrator.clone().chat_stream(target_uuid, payload.message, chat_history);
 
     // Clone references needed inside the linear async generator macro block
     let history_svc_clone = Arc::clone(&state.history_service);
@@ -108,8 +108,10 @@ async fn chat_stream_endpoint(
                     } else if !token.starts_with('[') {
                         assistant_response_accumulator.push_str(&token);
                     }
-                    
-                    yield Ok::<Event, Infallible>(Event::default().data(token));
+
+                    // Escape newlines to preserve SSE data framing standard
+                    let formatted_token = token.replace('\n', "\\n");
+                    yield Ok::<Event, Infallible>(Event::default().data(formatted_token));
                 }
                 Err(e) => {
                     yield Ok::<Event, Infallible>(Event::default().data(format!("[ERROR: {}]", e)));
@@ -117,8 +119,7 @@ async fn chat_stream_endpoint(
             }
         }
 
-        // Loop completely ended! The engine is finished yielding chunks.
-        // We write directly to the database here safely before finishing up.
+        // Write to DB after stream finishes yielding tokens
         if !assistant_response_accumulator.is_empty() {
             let mut metadata = serde_json::json!({});
             if let Some(t) = detected_tool {
@@ -137,7 +138,7 @@ async fn chat_stream_endpoint(
             ).await;
         }
 
-        // Yield terminal token block sequence safely
+        // Terminal frame signal
         yield Ok::<Event, Infallible>(Event::default().data("[DONE]"));
     };
 
@@ -155,7 +156,7 @@ async fn chat_once_endpoint(
     Json(payload): Json<ChatRequest>,
 ) -> impl IntoResponse {
     let user_id_str = claims.user_id.clone();
-    
+
     let target_uuid = match Uuid::parse_str(&user_id_str) {
         Ok(parsed) => parsed,
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid User ID format signature.").into_response(),
@@ -180,14 +181,16 @@ async fn chat_once_endpoint(
 
     tokio::pin!(complete_stream);
 
-    while let Some(Ok(chunk)) = complete_stream.next().await {
-        if chunk.starts_with("[TOOL_CALL:") {
-            tool_called = Some(chunk.trim_start_matches("[TOOL_CALL:").trim_end_matches(']').to_string());
-        } else if chunk.starts_with("[TOOL_RESULT:") {
-            let raw_json = chunk.trim_start_matches("[TOOL_RESULT:").trim_end_matches(']');
-            tool_result = serde_json::from_str::<serde_json::Value>(raw_json).ok();
-        } else if !chunk.starts_with('[') {
-            final_reply.push_str(&chunk);
+    while let Some(item) = complete_stream.next().await {
+        if let Ok(chunk) = item {
+            if chunk.starts_with("[TOOL_CALL:") {
+                tool_called = Some(chunk.trim_start_matches("[TOOL_CALL:").trim_end_matches(']').to_string());
+            } else if chunk.starts_with("[TOOL_RESULT:") {
+                let raw_json = chunk.trim_start_matches("[TOOL_RESULT:").trim_end_matches(']');
+                tool_result = serde_json::from_str::<serde_json::Value>(raw_json).ok();
+            } else if !chunk.starts_with('[') {
+                final_reply.push_str(&chunk);
+            }
         }
     }
 

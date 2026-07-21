@@ -90,7 +90,7 @@ fn calculate_single_emi(principal: f64, annual_rate: f64, months: i32) -> f64 {
 }
 
 pub async fn emi_calculate(
-    _claims: Claims, 
+    _claims: Claims,
     Json(body): Json<EmiCalculateRequest>
 ) -> impl IntoResponse {
     let emi = calculate_single_emi(body.principal, body.annual_rate, body.months);
@@ -123,9 +123,9 @@ pub async fn emi_check(
     // Fixed: Used .bind() chains and row.get("amount") extraction
     let budget_row = sqlx::query(
         r#"
-        SELECT amount FROM budgets 
+        SELECT amount FROM budgets
         WHERE user_id = $1 AND (category = $2 OR category = 'Overall')
-        ORDER BY (category = $2) DESC 
+        ORDER BY (category = $2) DESC
         LIMIT 1
         "#,
     )
@@ -142,9 +142,9 @@ pub async fn emi_check(
     // Fixed: Used .bind() chains and row.get("total") extraction
     let spent_row = sqlx::query(
         r#"
-        SELECT COALESCE(SUM(ABS(price)), 0.0) as total 
+        SELECT COALESCE(SUM(ABS(price)), 0.0) as total
         FROM transactions
-        WHERE user_id = $1 AND price < 0 
+        WHERE user_id = $1 AND price < 0
           AND ($2 = 'Overall' OR category = $2)
         "#,
     )
@@ -210,37 +210,45 @@ pub async fn emi_create(
 ) -> impl IntoResponse {
     let emi = calculate_single_emi(body.principal, body.annual_rate, body.months);
 
-    let mut tx = match ctx.pool.begin().await {
-        Ok(t) => t,
+    // Parse user_id as UUID if your DB schema uses UUIDs
+    let user_uuid = match uuid::Uuid::parse_str(&claims.user_id) {
+        Ok(u) => u,
         Err(_) => {
             return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"success": false, "error": "Database error"})),
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "success": false,
+                    "error": "Invalid User ID format (UUID expected)"
+                })),
             ).into_response();
         }
     };
 
-    // Fixed: Applied .bind() chain and row.get("amount")
+    // ─── 1. FETCH BUDGET (Outside transaction) ─────────────────────────
     let budget_row = sqlx::query(
-        r#"SELECT amount FROM budgets WHERE user_id = $1 AND (category = $2 OR category = 'Overall') ORDER BY (category = $2) DESC LIMIT 1"#,
+        r#"SELECT amount FROM budgets WHERE user_id = $1::uuid AND (category = $2 OR category = 'Overall') ORDER BY (category = $2) DESC LIMIT 1"#
     )
-    .bind(&claims.user_id)
+    .bind(&user_uuid)
     .bind(&body.category)
-    .fetch_optional(&mut *tx)
+    .fetch_optional(&ctx.pool)
     .await;
 
-    let budget_limit: Option<f64> = budget_row
-        .ok()
-        .flatten()
-        .map(|r| r.get("amount"));
+    let budget_limit: Option<f64> = match budget_row {
+        Ok(Some(row)) => Some(row.get("amount")),
+        Ok(None) => None,
+        Err(e) => {
+            eprintln!("Error fetching budget: {:?}", e);
+            None
+        }
+    };
 
-    // Fixed: Applied .bind() chain and row.get("total")
+    // ─── 2. FETCH SPENT (Outside transaction) ──────────────────────────
     let spent_row = sqlx::query(
-        r#"SELECT COALESCE(SUM(ABS(price)), 0.0) as total FROM transactions WHERE user_id = $1 AND price < 0 AND ($2 = 'Overall' OR category = $2)"#,
+        r#"SELECT COALESCE(SUM(ABS(price)), 0.0) as total FROM transactions WHERE user_id = $1::uuid AND price < 0 AND ($2 = 'Overall' OR category = $2)"#
     )
-    .bind(&claims.user_id)
+    .bind(&user_uuid)
     .bind(&body.category)
-    .fetch_one(&mut *tx)
+    .fetch_one(&ctx.pool)
     .await;
 
     let current_spent: f64 = spent_row
@@ -273,14 +281,24 @@ pub async fn emi_create(
 
     let description = format!("EMI for loan ({} months @ {}%)", body.months, body.annual_rate);
 
-    // Fixed: Removed missing emiMeta column entirely based on your visual schema inspection!
+    // ─── 3. INSERT RECORD (Now open transaction clean) ──────────────────
+    let mut tx = match ctx.pool.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"success": false, "error": format!("Database transaction error: {}", e)})),
+            ).into_response();
+        }
+    };
+
     let inserted_row = sqlx::query(
         r#"
         INSERT INTO transactions (
-            name, price, description, datetime, category, user_id, 
+            name, price, description, datetime, category, user_id,
             is_recurring, recurring_frequency
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::recurring_frequency)
+        VALUES ($1, $2, $3, $4, $5, $6::uuid, $7, $8::recurring_frequency)
         RETURNING id
         "#,
     )
@@ -289,17 +307,17 @@ pub async fn emi_create(
     .bind(&description)
     .bind(Utc::now())
     .bind(&body.category)
-    .bind(&claims.user_id)
+    .bind(&user_uuid)
     .bind(true)
     .bind(RecurringFrequency::Monthly)
     .fetch_one(&mut *tx)
     .await;
 
-    // Fixed: Extracted row.get("id") safely with types
     let row_id: i64 = match inserted_row {
         Ok(r) => r.get("id"),
         Err(e) => {
             let _ = tx.rollback().await;
+            eprintln!("Failed to insert EMI transaction: {:?}", e); // Logs exact error in terminal
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({"success": false, "error": format!("Insertion failure: {}", e)})),
@@ -307,10 +325,10 @@ pub async fn emi_create(
         }
     };
 
-    if tx.commit().await.is_err() {
+    if let Err(e) = tx.commit().await {
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"success": false, "error": "Commit failure"})),
+            Json(json!({"success": false, "error": format!("Commit failure: {}", e)})),
         ).into_response();
     }
 
@@ -334,14 +352,14 @@ pub async fn emi_create(
 pub async fn emi_delete(
     Extension(ctx): Extension<DbContext>,
     claims: Claims,
-    Path(id): Path<i32> 
+    Path(id): Path<i32>
 ) -> impl IntoResponse {
     // Fixed: Configured runtime binds matching column maps
     let result = sqlx::query(
         r#"
         DELETE FROM transactions
-        WHERE id = $1 
-          AND user_id = $2 
+        WHERE id = $1
+          AND user_id = $2
           AND is_recurring = true
         "#,
     )

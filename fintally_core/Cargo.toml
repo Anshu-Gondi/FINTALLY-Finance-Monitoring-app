@@ -4,14 +4,14 @@ members = [
     "analytics_engine",
     "fintally_finance",
     "fintally_chatbot",
-    "fintally_db", 
+    "fintally_db",
     "fintally_axum",
 ]
 
 [workspace.dependencies]
-candle-core         = "0.11.0"
-candle-nn           = "0.11.0"
-candle-transformers = "0.11.0"
+candle-core         = { version = "0.11.0", features = ["cuda"] }
+candle-nn           = { version = "0.11.0", features = ["cuda"] }
+candle-transformers = { version = "0.11.0", features = ["cuda"] }
 memmap2             = "0.9.0"
 tokenizers          = "0.22.0"
 
@@ -43,11 +43,11 @@ usearch = "2.25"
 
 [profile.release]
 opt-level = 3
-lto = "fat"          
-codegen-units = 16    
-panic = "abort"      
-strip = true         
+lto = "fat"
+codegen-units = 16
+panic = "abort"
+strip = true
 
 [profile.dev]
 incremental = true
-opt-level = 0        
+opt-level = 0

@@ -57,7 +57,7 @@ impl ChatbotOrchestrator {
         let s = try_stream! {
             // ── Phase 1: Concurrent Data Gathering ──
             let context_timeout = Duration::from_millis(4000);
-            
+
             let user_ctx_fut = get_user_context(&self.pool, user_id);
             let rag_ctx_fut = self.rag_service.search_knowledge(&user_message, 2);
 
@@ -79,9 +79,9 @@ impl ChatbotOrchestrator {
 
             // ── Phase 3: First Inference Pass (Real Token Streaming) ──
             println!("[ORCHESTRATOR] Submitting prompt structure to native Qwen Candle engine...");
-            
+
             let mut response_buffer = String::new();
-            
+
             // Calling the trait method on the engine instance safely
             let mut cancelable_stream = self.model_engine
                 .stream_generate(&prompt, 1024)
@@ -90,20 +90,20 @@ impl ChatbotOrchestrator {
             while let Some(token_res) = cancelable_stream.stream.next().await {
                 let token = token_res?;
                 response_buffer.push_str(&token);
-                
+
                 yield token;
             }
 
             // ── Phase 4: Native JSON Tool Parsing & Execution ──
             if let Some(tool_call) = self.extract_structural_tool_call(&response_buffer) {
                 yield format!("[TOOL_CALL:{}]", tool_call.tool);
-                
+
                 let tool_result = self.execute_native_financial_tool(&tool_call.tool, tool_call.args).await;
                 yield format!("[TOOL_RESULT:{}]", serde_json::to_string(&tool_result).unwrap_or_default());
 
                 // ── Phase 5: Second Inference Pass (Explanation Generation) ──
                 let explain_prompt = self.build_explain_prompt(&user_message, &tool_call.tool, &tool_result, &chat_history, &full_system_prompt);
-                
+
                 let mut explain_stream = self.model_engine
                     .stream_generate(&explain_prompt, 512)
                     .await?;
@@ -179,30 +179,37 @@ impl ChatbotOrchestrator {
         system
     }
 
+    // FIXED: now emits real Qwen2.5 ChatML tags (<|im_start|> / <|im_end|>)
+    // instead of made-up <|system|>/<|user|>/</s> tags that aren't in the
+    // tokenizer's special-token vocab and were getting mangled into garbage
+    // subword fragments. This string is now the FINAL prompt — native_engine.rs
+    // tokenizes it as-is and no longer wraps it in a second ChatML template.
     fn build_chat_template(&self, user_message: &str, chat_history: &[ChatMessage], system_prompt: &str) -> String {
-        let mut template = format!("<|system|>\n{}</s>\n", system_prompt);
+        let mut template = format!("<|im_start|>system\n{}<|im_end|>\n", system_prompt);
         let historical_slice = if chat_history.len() > 6 { &chat_history[chat_history.len() - 6..] } else { chat_history };
         for msg in historical_slice {
-            template.push_str(&format!("<|{}|>\n{}</s>\n", msg.role, msg.content));
+            // NOTE: msg.role must be exactly "user" or "assistant" for valid ChatML.
+            template.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
         }
-        template.push_str(&format!("<|user|>\n{}</s>\n<|assistant|>\n", user_message));
+        template.push_str(&format!("<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n", user_message));
         template
     }
 
+    // FIXED: same tag correction as build_chat_template above.
     fn build_explain_prompt(&self, user_message: &str, tool_name: &str, tool_result: &serde_json::Value, chat_history: &[ChatMessage], system_prompt: &str) -> String {
-        let mut template = format!("<|system|>\n{}</s>\n", system_prompt);
+        let mut template = format!("<|im_start|>system\n{}<|im_end|>\n", system_prompt);
         let historical_slice = if chat_history.len() > 4 { &chat_history[chat_history.len() - 4..] } else { chat_history };
         for msg in historical_slice {
-            template.push_str(&format!("<|{}|>\n{}</s>\n", msg.role, msg.content));
+            template.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
         }
 
         template.push_str(&format!(
-            "<|user|>\n{}</s>\n<|assistant|>\n[Calculation done]</s>\n\
-             <|user|>\nThe native financial engine tool '{}' returned the following result:\n{}\n\n\
-             Generate a standard conversational response explaining this result clearly to the user. Use ₹ for amounts. Be highly concise. Output your explanation inside the standard \"conversational_response\" JSON layout.</s>\n<|assistant|>\n",
+            "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n[Calculation done]<|im_end|>\n\
+             <|im_start|>user\nThe native financial engine tool '{}' returned the following result:\n{}\n\n\
+             Generate a standard conversational response explaining this result clearly to the user. Use ₹ for amounts. Be highly concise. Output your explanation inside the standard \"conversational_response\" JSON layout.<|im_end|>\n<|im_start|>assistant\n",
             user_message, tool_name, serde_json::to_string_pretty(tool_result).unwrap_or_default()
         ));
-        
+
         template
     }
 
@@ -219,13 +226,13 @@ impl ChatbotOrchestrator {
 
     async fn execute_native_financial_tool(&self, tool_name: &str, args: serde_json::Value) -> serde_json::Value {
         println!("[ORCHESTRATOR-TOOL] Executing financial logic module natively: {}", tool_name);
-        
+
         match tool_name {
             "calculate_emi" => {
                 let principal = args.get("principal").and_then(|v| v.as_f64()).unwrap_or(0.0);
                 let rate = args.get("annual_rate").and_then(|v| v.as_f64()).unwrap_or(0.0);
                 let months = args.get("tenure_months").and_then(|v| v.as_i64()).unwrap_or(0);
-                
+
                 let monthly_rate = (rate / 12.0) / 100.0;
                 let emi = if monthly_rate > 0.0 {
                     (principal * monthly_rate * (1.0 + monthly_rate).powi(months as i32)) / ((1.0 + monthly_rate).powi(months as i32) - 1.0)

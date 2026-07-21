@@ -161,7 +161,7 @@ export const analyticsApi = {
     get(`${BASE}/api/analytics/budget-breach?end_date=${endDate}&simulations=${simulations}`),
 
   recurringAnomalies: () => get(`${BASE}/api/analytics/anomalies/recurring`),
-  anomalies: (threshold = 2.5) =>
+  anomalies: (threshold = 1.3) =>
     get(`${BASE}/api/analytics/anomalies/transactions?threshold=${threshold}`),
 
   categoryDrift: () => get(`${BASE}/api/analytics/drift`),
@@ -195,5 +195,5 @@ export const chatApi = {
     return del(url.toString());
   },
 
-  getStreamUrl: () => `${BASE}/api/chat/`
+  getStreamUrl: () => `${BASE}/api/chat`
 };

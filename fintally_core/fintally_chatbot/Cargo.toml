@@ -64,3 +64,4 @@ anyhow = "1.0"
 
 sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json", "uuid",] }
 chrono = { version = "0.4", features = ["serde"] }
+rand = "0.10.2"
