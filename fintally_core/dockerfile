@@ -1,5 +1,8 @@
 # --- Stage 1: The Automated Factory (Builder) ---
-FROM nvidia/cuda:12.1.1-devel-bookworm AS builder
+FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 AS builder
+
+# Prevent interactive prompts during apt-get installation
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies including curl for rustup and compilation tools
 RUN apt-get update && apt-get install -y \
@@ -35,7 +38,7 @@ RUN ./target/release/download_models
 RUN cargo build --release -p fintally_axum --features cuda --bin fintally_axum
 
 # --- Stage 2: The Hardened Black Box (Runtime) ---
-FROM nvidia/cuda:12.1.1-runtime-bookworm
+FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
