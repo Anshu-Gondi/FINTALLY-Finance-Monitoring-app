@@ -31,7 +31,7 @@ chatbot-backend/llm_models/          # Cuts out deep GGUF models (tinyllama, phi
 
 # ─── Rust Workspace Crates & Native Compilations ──────────────────
 # Strips all heavy Cargo compile artifacts
-**/target/                           
+**/target/
 chatbot-backend/fintally_core/target/
 chatbot-backend/fintally_core/nextest_full.log
 chatbot-backend/fintally_core/build_errors.log
@@ -79,3 +79,9 @@ Thumbs.db
 *.7z
 .cache/
 temp/
+
+# Ignore sensitive keys and tokens
+fintally_core/.secure_vault/
+
+# Ignore local document sources
+fintally_core/trusted_docs_source/
