@@ -8,15 +8,23 @@ ENV CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP}
 # Prevent interactive prompts during apt-get installation
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies including curl for rustup and compilation tools
+# Install system dependencies, software-properties-common, and modern GCC 12/G++ 12
 RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:ubuntu-toolchain-r/test \
+    && apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     cmake \
-    g++ \
+    g++-12 \
+    gcc-12 \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Force the compiler to use GCC 12 to support advanced instruction sets (e.g., AVX512/AMX in numkong)
+ENV CC=/usr/bin/gcc-12
+ENV CXX=/usr/bin/g++-12
 
 # Install Rust toolchain manually on top of the CUDA devel image
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
