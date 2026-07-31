@@ -31,11 +31,11 @@ WORKDIR /app/fintally_core
 ENV SQLX_OFFLINE=true
 
 # 1. Compile and execute the downloader tool from the chatbot crate with CUDA features enabled
-RUN cargo build --release -p fintally_chatbot --features cuda --bin download_models
+RUN cargo build --release -p fintally_chatbot --bin download_models
 RUN ./target/release/download_models
 
 # 2. Compile your primary running Axum entry point with CUDA features enabled
-RUN cargo build --release -p fintally_axum --features cuda --bin fintally_axum
+RUN cargo build --release -p fintally_axum --bin fintally_axum
 
 # --- Stage 2: The Hardened Black Box (Runtime) ---
 FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
