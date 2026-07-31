@@ -29,19 +29,19 @@ jobs:
         run: |
           echo "=== Space before cleanup ==="
           df -h
-          
+
           # Remove heavy frameworks you don't need
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
-          
+
           # Create dedicated space on the spacious runner workspace partition
           sudo mkdir -p /home/runner/work/_temp/docker_root
-          
+
           # Point Docker's root to the new directory
           echo '{"data-root": "/home/runner/work/_temp/docker_root"}' | sudo tee /etc/docker/daemon.json
-          
+
           # Restart Docker service to pick up the new path
           sudo systemctl restart docker
-          
+
           echo "=== Space after cleanup ==="
           df -h
 
@@ -75,3 +75,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            CUDA_COMPUTE_CAP=89

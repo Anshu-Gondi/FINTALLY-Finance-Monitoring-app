@@ -1,6 +1,10 @@
 # --- Stage 1: The Automated Factory (Builder) ---
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 AS builder
 
+# Define a build argument for the GPU compute capability (default to 89 for RTX 40-series / L4)
+ARG CUDA_COMPUTE_CAP=89
+ENV CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP}
+
 # Prevent interactive prompts during apt-get installation
 ENV DEBIAN_FRONTEND=noninteractive
 
