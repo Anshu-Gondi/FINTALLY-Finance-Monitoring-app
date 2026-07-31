@@ -258,3 +258,74 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* Markdown Formatting within Chat Bubbles */
+.markdown-container {
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.markdown-container p {
+  margin-bottom: 0.75rem;
+}
+
+.markdown-container p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-container strong {
+  font-weight: 700;
+  color: #00ffcc; /* Matches theme neon accent */
+}
+
+.markdown-container h1,
+.markdown-container h2,
+.markdown-container h3 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.markdown-container ul,
+.markdown-container ol {
+  margin-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-container li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-container code {
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.88rem;
+}
+
+.markdown-container pre {
+  background-color: #121216;
+  padding: 0.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-container table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-container th,
+.markdown-container td {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.markdown-container th {
+  background-color: rgba(255, 255, 255, 0.05);
+}

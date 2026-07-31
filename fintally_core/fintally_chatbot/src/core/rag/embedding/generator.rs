@@ -6,10 +6,13 @@ use memmap2::Mmap;
 use candle_core::{Device, Tensor, DType};
 use candle_nn::VarBuilder;
 use candle_transformers::models::bert::{BertModel, Config};
-use tokenizers::Tokenizer;
+use tokenizers::{Tokenizer, TruncationParams, TruncationStrategy, TruncationDirection};
 
 use crate::core::rag::errors::RagError;
 use super::types::ChunkEmbedding;
+
+/// Maximum sequence length supported by standard BGE / BERT position embeddings
+const MAX_BERT_SEQ_LEN: usize = 512;
 
 /// Helper function to dynamically detect CUDA GPU 0 or fallback to CPU
 fn select_device() -> Result<Device, RagError> {
@@ -47,9 +50,18 @@ impl NativeEmbedder {
         let config: Config = serde_json::from_str(&config_str)
             .map_err(|e| RagError::EmbeddingError(format!("Malformed embedding configuration structural mapping: {e}")))?;
 
-        // 3. Load Tokenizer definition
-        let tokenizer = Tokenizer::from_file(&tokenizer_path)
+        // 3. Load Tokenizer definition & configure truncation guard
+        let mut tokenizer = Tokenizer::from_file(&tokenizer_path)
             .map_err(|e| RagError::EmbeddingError(format!("Failed pulling tokenizer.json engine asset: {e}")))?;
+
+        // Enforce 512 token truncation to prevent CUDA index_select position embedding crashes
+        let truncation_params = TruncationParams {
+            max_length: MAX_BERT_SEQ_LEN,
+            strategy: TruncationStrategy::LongestFirst,
+            stride: 0,
+            direction: TruncationDirection::Right,
+        };
+        let _ = tokenizer.with_truncation(Some(truncation_params));
 
         // 4. Memory Map the Safetensors Array
         let file = File::open(&weights_path)
@@ -80,15 +92,21 @@ impl NativeEmbedder {
         let tokens = self.tokenizer.encode(text, true)
             .map_err(|e| RagError::EmbeddingError(format!("Tokenizer indexing failure: {e}")))?;
 
-        let token_ids = tokens.get_ids();
-        let token_type_ids = tokens.get_type_ids();
+        let mut token_ids = tokens.get_ids().to_vec();
+        let mut token_type_ids = tokens.get_type_ids().to_vec();
+
+        // FAIL-SAFE BOUND GUARD: Hard truncate slice if tokenizer truncation settings failed
+        if token_ids.len() > MAX_BERT_SEQ_LEN {
+            token_ids.truncate(MAX_BERT_SEQ_LEN);
+            token_type_ids.truncate(MAX_BERT_SEQ_LEN);
+        }
 
         // Structure Candle tensors targeting the selected device (CUDA/CPU)
-        let input_ids = Tensor::new(token_ids, &self.device)
+        let input_ids = Tensor::new(token_ids.as_slice(), &self.device)
             .map_err(|e| RagError::EmbeddingError(format!("Failed embedding array token tensor mappings: {e}")))?
             .unsqueeze(0)?; // Pack into dimension shapes: [1, seq_len]
 
-        let token_type_ids = Tensor::new(token_type_ids, &self.device)
+        let token_type_ids = Tensor::new(token_type_ids.as_slice(), &self.device)
             .map_err(|e| RagError::EmbeddingError(format!("Failed embedding type layer tensor configurations: {e}")))?
             .unsqueeze(0)?;
 
@@ -120,9 +138,9 @@ impl NativeEmbedder {
         let mut sum_embeddings = vec![0.0f32; hidden_size];
         let mut sum_mask = 0.0f32;
 
-        // Loop over sequence elements to average out internal attention profiles
+        // Loop over sequence elements bounded by the actual embedding output matrix size
         for i in 0..seq_len {
-            let mask_val = attention_mask[i] as f32;
+            let mask_val = attention_mask.get(i).cloned().unwrap_or(1) as f32;
             sum_mask += mask_val;
 
             for j in 0..hidden_size {

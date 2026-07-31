@@ -42,9 +42,9 @@ async fn manual_rag_sync_handler(
             (
                 axum::http::StatusCode::OK,
                 Json(
-                    serde_json::json!({ 
-                "status": "success", 
-                "message": "Pure Rust Google Drive indexing completed successfully." 
+                    serde_json::json!({
+                "status": "success",
+                "message": "Pure Rust Google Drive indexing completed successfully."
             })
                 ),
             ),
@@ -52,9 +52,9 @@ async fn manual_rag_sync_handler(
             (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
                 Json(
-                    serde_json::json!({ 
-                "status": "error", 
-                "detail": format!("{:?}", err) 
+                    serde_json::json!({
+                "status": "error",
+                "detail": format!("{:?}", err)
             })
                 ),
             ),
@@ -116,7 +116,7 @@ async fn main() {
 
     // ─── 2. Execute Async Model Warmup Sequence ─────────────────────────────
     println!("🔥 Warming up LLM core engine (Compiling execution graphs / Allocating buffers)...");
-    let warmup_prompt = "<|system|>\nWarmup</s>\n<|user|>\nHi</s>\n<|assistant|>\n";
+    let warmup_prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n";
 
     match native_engine.stream_generate(warmup_prompt, 16).await {
         Ok(mut cancelable_stream) => {

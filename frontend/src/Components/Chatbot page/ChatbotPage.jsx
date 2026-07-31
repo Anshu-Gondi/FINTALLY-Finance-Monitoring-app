@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { chatApi } from "../../services/api";
 import "./Chatbot.css";
 
@@ -18,12 +20,10 @@ const ChatbotPage = () => {
   const messagesEndRef = useRef(null);
   const timerRef = useRef(null);
 
-  // Auto-scroll to bottom on new messages or status changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, systemStatus]);
 
-  // Stopwatch for CPU execution tracking
   useEffect(() => {
     if (isGenerating) {
       setElapsedTime(0);
@@ -53,7 +53,7 @@ const ChatbotPage = () => {
       { id: userMsgId, role: "user", content: userMessage },
     ]);
 
-    let currentAssistantText = "";
+    let rawAccumulator = "";
     let currentToolCall = null;
     let currentToolResult = null;
 
@@ -95,10 +95,9 @@ const ChatbotPage = () => {
           let rawPayload = cleanLine.replace(/^data:\s*/, "").trim();
           if (!rawPayload) continue;
 
-          // Unescape explicit newlines from backend string conversion
           rawPayload = rawPayload.replace(/\\n/g, "\n");
 
-          // Control Signal Handlers
+          // Control Signals
           if (rawPayload === "[DONE]") {
             setSystemStatus("");
             break;
@@ -126,8 +125,8 @@ const ChatbotPage = () => {
             continue;
           }
 
-          // Accumulate Model Text Output
-          currentAssistantText += rawPayload;
+          // Accumulate clean text streamed from backend
+          rawAccumulator += rawPayload;
           setSystemStatus("STREAMING RESPONSE TO CLIENT...");
 
           setMessages((prev) => {
@@ -137,7 +136,7 @@ const ChatbotPage = () => {
               {
                 id: assistantMsgId,
                 role: "assistant",
-                content: currentAssistantText,
+                content: rawAccumulator,
                 toolCalled: currentToolCall,
                 toolResult: currentToolResult,
               },
@@ -178,13 +177,13 @@ const ChatbotPage = () => {
             <div className="tool-metric-row">
               <span>MONTHLY EMI:</span>
               <strong className="neon-text-green">
-                ₹{result.emi?.toLocaleString("en-IN")}
+                ₹{result.monthly_emi?.toLocaleString("en-IN")}
               </strong>
             </div>
             <div className="tool-metric-row">
-              <span>TOTAL INTEREST:</span>
+              <span>TOTAL REPAYMENT:</span>
               <span className="neon-text-blue">
-                ₹{result.total_interest?.toLocaleString("en-IN")}
+                ₹{result.total_repayment?.toLocaleString("en-IN")}
               </span>
             </div>
           </div>
@@ -192,11 +191,41 @@ const ChatbotPage = () => {
       case "emergency_fund":
         return (
           <div className="chatbot-tool-card emergency-card">
-            <div className="tool-card-title">🛡️ CONTINGENCY RESERVE</div>
-            <div className="giant-neon-value">
-              ₹{result.recommended_fund?.toLocaleString("en-IN")}
+            <div className="tool-card-title">🛡️ EMERGENCY FUND RECOMMENDATION</div>
+            <div className="tool-metric-row">
+              <span>MINIMUM COVERAGE (6 Mo):</span>
+              <strong className="neon-text-green">
+                ₹{result.recommended_minimum_size?.toLocaleString("en-IN")}
+              </strong>
             </div>
-            <small className="label">RECOMMENDED RESERVE CAPACITY</small>
+            <div className="tool-metric-row">
+              <span>OPTIMAL COVERAGE (12 Mo):</span>
+              <span className="neon-text-blue">
+                ₹{result.recommended_optimal_size?.toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
+        );
+      case "generate_investment_plan":
+        return (
+          <div className="chatbot-tool-card strategy-card">
+            <div className="tool-card-title">📈 PORTFOLIO ALLOCATION STRATEGY</div>
+            {result.allocation && (
+              <div className="tool-metric-group">
+                <div className="tool-metric-row">
+                  <span>EQUITY:</span>
+                  <strong>{result.allocation.equity}</strong>
+                </div>
+                <div className="tool-metric-row">
+                  <span>DEBT:</span>
+                  <strong>{result.allocation.debt}</strong>
+                </div>
+                <div className="tool-metric-row">
+                  <span>GOLD:</span>
+                  <strong>{result.allocation.gold}</strong>
+                </div>
+              </div>
+            )}
           </div>
         );
       default:
@@ -214,12 +243,9 @@ const ChatbotPage = () => {
   return (
     <div className="chatbot-page-wrapper">
       <div className="chatbot-box-wrapper">
-        {/* Terminal Header */}
         <div className="chatbot-window-header">
           <div className="header-title-block">
-            <span
-              className={`live-dot ${isGenerating ? "processing" : ""}`}
-            ></span>
+            <span className={`live-dot ${isGenerating ? "processing" : ""}`}></span>
             <h2 className="chatbot-title">FINTALLY_CORE_ASSISTANT v1.02</h2>
           </div>
           <span className={`engine-badge ${isGenerating ? "busy" : ""}`}>
@@ -227,7 +253,6 @@ const ChatbotPage = () => {
           </span>
         </div>
 
-        {/* Messages Viewport */}
         <div className="chatbot-messages-viewport">
           {messages.map((msg) => (
             <div key={msg.id} className={`chatbot-msg-row ${msg.role}`}>
@@ -235,7 +260,34 @@ const ChatbotPage = () => {
                 <div className="msg-meta-tag">
                   {msg.role.toUpperCase()} {"//"}
                 </div>
-                <div className="msg-body-content">{msg.content}</div>
+
+                {/* Thought Accordion (if present) */}
+                {msg.thought && (
+                  <details className="thought-accordion">
+                    <summary className="thought-summary">💭 INTERNAL REASONING</summary>
+                    <p className="thought-text">{msg.thought}</p>
+                  </details>
+                )}
+
+                {/* Tool Running Indicator */}
+                {msg.toolCalled && !msg.toolResult && (
+                  <div className="tool-running-badge">
+                    <span className="pulse-dot"></span> EXECUTING ENGINE TOOL: <strong>{msg.toolCalled}</strong>
+                  </div>
+                )}
+
+                {/* Markdown Formatted Conversational Content */}
+                <div className="msg-body-content markdown-container">
+                  {msg.content ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  ) : isGenerating && msg.role === "assistant" ? (
+                    "Processing input data..."
+                  ) : null}
+                </div>
+
+                {/* Formatted Tool Card Output */}
                 {msg.toolCalled && msg.toolResult && (
                   <div className="tool-card-mount-point">
                     {renderToolDataCard(msg.toolCalled, msg.toolResult)}
@@ -245,7 +297,6 @@ const ChatbotPage = () => {
             </div>
           ))}
 
-          {/* Always Display Status Indicator When Generating */}
           {isGenerating && (
             <div className="chatbot-status-bar animate-pulse">
               <span className="status-loader">&gt;&gt;</span>{" "}
@@ -256,7 +307,6 @@ const ChatbotPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Dock */}
         <form onSubmit={handleSendMessage} className="chatbot-form-input-dock">
           <input
             type="text"
