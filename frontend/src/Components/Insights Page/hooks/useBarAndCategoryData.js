@@ -1,21 +1,30 @@
-// useBarAndCategoryData.js — rewritten to use correct endpoints via analyticsApi
 import { useState, useEffect } from "react";
 import { analyticsApi } from "../../../services/api";
 
-export default function useBarAndCategoryData({ mode, startDate, endDate, type, keyword, token }) {
-  const [barData, setBarData]       = useState([]);
+export default function useBarAndCategoryData({
+  mode,
+  startDate,
+  endDate,
+  type,
+  keyword,
+  token,
+}) {
+  const [barData, setBarData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Skip if user is unauthenticated
     if (!token) return;
+
+    let isSubscribed = true;
     setLoading(true);
     setError(null);
 
     const fetchData = async () => {
       try {
-        // ── Bar data ──────────────────────────────────────────────
+        // ── 1. Fetch Bar Data ──────────────────────────────────────────
         let barRes;
         if (mode === "daily") {
           barRes = await analyticsApi.dailySummary();
@@ -24,32 +33,48 @@ export default function useBarAndCategoryData({ mode, startDate, endDate, type, 
         } else if (mode === "max" || mode === "min") {
           barRes = await analyticsApi.minMaxTransaction();
         } else {
-          // "weekly" | "monthly"
+          // Default: "weekly" | "monthly"
           barRes = await analyticsApi.periodSummary(mode);
         }
 
         let bars = barRes?.data ?? [];
-        if (mode === "max") bars = bars.filter(x => x.total > 0);
-        if (mode === "min") bars = bars.filter(x => x.total < 0);
 
-        // ── Category data ─────────────────────────────────────────
+        // Apply local filtering for min/max modes if needed
+        if (mode === "max") bars = bars.filter((x) => (x.total ?? 0) > 0);
+        if (mode === "min") bars = bars.filter((x) => (x.total ?? 0) < 0);
+
+        // ── 2. Fetch Category Data ──────────────────────────────────────
         const catRes = await analyticsApi.categorySummary({
-          start:   startDate ? new Date(startDate).toISOString().split("T")[0] : undefined,
-          end:     endDate   ? new Date(endDate).toISOString().split("T")[0]   : undefined,
-          type:    type !== "all" ? type : undefined,
-          keyword: keyword || undefined,
+          start: startDate ? new Date(startDate).toISOString().split("T")[0] : undefined,
+          end: endDate ? new Date(endDate).toISOString().split("T")[0] : undefined,
+          type: type !== "all" ? type : undefined,
+          keyword: keyword?.trim() || undefined,
         });
 
-        setBarData(bars);
-        setCategoryData(catRes?.data ?? []);
+        if (isSubscribed) {
+          setBarData(bars);
+          setCategoryData(catRes?.data ?? []);
+        }
       } catch (err) {
-        setError(err.message);
+        if (isSubscribed) {
+          console.error("Failed to fetch analytics bar & category data:", err);
+          setError(err?.message || "Error loading dashboard metrics.");
+          setBarData([]);
+          setCategoryData([]);
+        }
       } finally {
-        setLoading(false);
+        if (isSubscribed) {
+          setLoading(false);
+        }
       }
     };
 
     fetchData();
+
+    // Cleanup switch for rapid filter adjustments
+    return () => {
+      isSubscribed = false;
+    };
   }, [mode, startDate, endDate, type, keyword, token]);
 
   return { barData, categoryData, loading, error };

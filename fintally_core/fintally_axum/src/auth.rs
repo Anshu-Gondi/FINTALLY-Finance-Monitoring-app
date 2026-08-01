@@ -9,21 +9,36 @@ use axum_extra::{
     headers::{authorization::Bearer, Authorization},
     TypedHeader,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::sync::OnceLock;
+use tracing::{error, warn};
 
-const DEFAULT_JWT_SECRET: &str = "secret123";
+/// 1. Strict Secret Management
+/// Caches the JWT secret in memory on first use.
+/// REMOVED the hardcoded "secret123" fallback - deploying with default secrets is a critical security risk.
+static JWT_SECRET: OnceLock<Vec<u8>> = OnceLock::new();
 
-// 1. Define the structural shape of your Python/Node shared JWT payload
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Claims {
-    #[serde(rename = "userId")] // Maps perfectly to your original Python key "userId"
-    pub user_id: String,
-    pub exp: u64,               // Expiration check is verified automatically by jsonwebtoken crate
+fn get_jwt_secret() -> &'static [u8] {
+    JWT_SECRET.get_or_init(|| {
+        std::env::var("JWT_SECRET")
+            .expect("🚨 FATAL SECURITY ERROR: JWT_SECRET environment variable is missing. Application refuses to start in an insecure state.")
+            .into_bytes()
+    })
 }
 
-// 2. Define clear, descriptive API Error payloads for security transparency
+/// 2. Strict Payload Definitions (Claims)
+/// Defines the exact structural shape of the JWT. Added `iat` (Issued At) to monitor token age.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claims {
+    #[serde(rename = "userId")]
+    pub user_id: String,
+    pub exp: u64, // Expiration timestamp (Mandatory)
+    pub iat: u64, // Issued At timestamp (Mandatory for strict compliance)
+}
+
+/// 3. Standardized Security Responses
+/// Prevents leaking sensitive stack traces or cryptographic hints to potential attackers.
 #[derive(Serialize)]
 struct AuthErrorResponse {
     error: String,
@@ -36,13 +51,13 @@ pub enum AuthError {
     ExpiredToken,
 }
 
-// Map internal structural variant states directly to strict HTTP Client codes
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, detail) = match self {
             AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing or malformed Authorization header."),
-            AuthError::ExpiredToken => (StatusCode::FORBIDDEN, "Token has expired."),
-            AuthError::InvalidToken => (StatusCode::FORBIDDEN, "Invalid signature or token payload parsing error."),
+            AuthError::ExpiredToken => (StatusCode::UNAUTHORIZED, "Token has expired. Please re-authenticate."),
+            // We purposefully return 401 Unauthorized (not 403) and obscure the exact crypto failure
+            AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid authentication credentials."),
         };
 
         let body = Json(AuthErrorResponse {
@@ -54,7 +69,9 @@ impl IntoResponse for AuthError {
     }
 }
 
-// 3. Make Claims act as a high-performance, automatic Axum Extractor gate
+/// 4. DPDPA-Compliant High-Performance Auth Extractor
+/// Acts as a secure gatekeeper. Automatically intercepts requests, validates cryptographically,
+/// and logs malicious/failed access attempts for compliance auditing.
 #[async_trait]
 impl<S> FromRequestParts<S> for Claims
 where
@@ -63,23 +80,56 @@ where
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        // Extract the raw typed Bearer authorization header seamlessly using Axum extra-headers
+        let uri_path = parts.uri.path().to_string();
+
+        // FIXED E0502: Add .to_string() here so we own the string and stop borrowing `parts`
+        let client_ip = parts
+            .headers
+            .get("x-forwarded-for")
+            .and_then(|h| h.to_str().ok())
+            .unwrap_or("direct/unknown")
+            .to_string();
+
+        // Step A: Extract the Bearer Token
         let TypedHeader(Authorization(bearer)) = TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
             .await
-            .map_err(|_| AuthError::MissingToken)?;
+            .map_err(|_| {
+                warn!(
+                    target: "dpdpa_auth_audit",
+                    "🔒 [AUTH ALERT] Missing or malformed token | Path: {} | IP: {}",
+                    uri_path, client_ip
+                );
+                AuthError::MissingToken
+            })?;
 
-        // Fetch secret securely from environment variable matching your legacy system
-        let secret = env::var("JWT_SECRET").unwrap_or_else(|_| DEFAULT_JWT_SECRET.to_string());
-        
-        // Define decoding keys and default validation checks (verifies expiration date dynamically)
-        let decoding_key = DecodingKey::from_secret(secret.as_bytes());
-        let validation = Validation::new(jsonwebtoken::Algorithm::HS256);
+        // Step B: Configure Strict Cryptographic Validation
+        let secret = get_jwt_secret();
+        let decoding_key = DecodingKey::from_secret(secret);
 
-        // Parse token string
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.leeway = 0;
+        validation.validate_exp = true;
+        validation.set_required_spec_claims(&["exp", "iat", "userId"]);
+
+        // Step C: Decode and Validate
         let token_data = decode::<Claims>(bearer.token(), &decoding_key, &validation)
             .map_err(|err| match err.kind() {
-                jsonwebtoken::errors::ErrorKind::ExpiredSignature => AuthError::ExpiredToken,
-                _ => AuthError::InvalidToken,
+                jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                    warn!(
+                        target: "dpdpa_auth_audit",
+                        "🕒 [AUTH ALERT] Expired token attempt | Path: {} | IP: {}",
+                        uri_path, client_ip
+                    );
+                    AuthError::ExpiredToken
+                }
+                _ => {
+                    error!(
+                        target: "dpdpa_auth_audit",
+                        "🚨 [SECURITY VIOLATION] Forged/Invalid token rejected! Reason: {:?} | Path: {} | IP: {}",
+                        err.kind(), uri_path, client_ip
+                    );
+                    AuthError::InvalidToken
+                }
             })?;
 
         Ok(token_data.claims)

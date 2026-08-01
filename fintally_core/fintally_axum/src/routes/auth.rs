@@ -71,22 +71,34 @@ impl IntoResponse for AuthRouteError {
 }
 
 // --- JWT Generation Utility ---
-fn make_token(user_id: &str) -> Result<String, String> {
-    let secret = env::var("JWT_SECRET").unwrap_or_else(|_| "secret123".to_string());
-    
-    let start = SystemTime::now();
-    let since_the_epoch = start.duration_since(UNIX_EPOCH)
-        .map_err(|_| "Time error".to_string())?;
-    
-    let exp = since_the_epoch.as_secs() + (7 * 24 * 60 * 60);
+pub fn make_token(user_id: &str) -> Result<String, String> {
+    // 1. Fetch secret (fail closed if missing, matching auth.rs)
+    let secret = env::var("JWT_SECRET")
+        .map_err(|_| "JWT_SECRET environment variable is not configured".to_string())?;
 
+    // 2. Fetch current Unix timestamp safely
+    let iat = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| "System time precedes UNIX epoch".to_string())?
+        .as_secs();
+
+    // 3. Set expiration (e.g., 7 days = 604,800 seconds)
+    let exp = iat + (7 * 24 * 60 * 60);
+
+    // 4. Construct Claims using the correct variable names
     let claims = crate::auth::Claims {
         user_id: user_id.to_string(),
+        iat,
         exp,
     };
 
-    encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes()))
-        .map_err(|e| e.to_string())
+    // 5. Mint and sign token
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+    .map_err(|e| format!("Failed to sign authentication token: {e}"))
 }
 
 // --- Route Handlers ---
@@ -190,7 +202,7 @@ pub async fn google_auth(
         None => {
             let new_user = sqlx::query!(
                 "INSERT INTO users (name, email, password, auth_provider) VALUES ($1, $2, '', 'google') RETURNING id",
-                name, 
+                name,
                 email
             )
             .fetch_one(&db_ctx.pool)

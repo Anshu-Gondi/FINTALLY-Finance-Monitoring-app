@@ -11,12 +11,12 @@
 
 .chatbot-box-wrapper {
   width: 100%;
-  max-width: 800px;
-  height: 75vh;
-  background: rgba(5, 5, 15, 0.9);
+  max-width: 900px;
+  height: 80vh;
+  background: rgba(5, 5, 15, 0.95);
   border: 2px solid #00f0ff;
-  border-radius: 20px;
-  box-shadow: 0 0 30px rgba(0, 240, 255, 0.25), inset 0 0 40px rgba(0, 119, 153, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 0 30px rgba(0, 240, 255, 0.25), inset 0 0 40px rgba(0, 119, 153, 0.2);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -30,6 +30,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .header-title-block {
@@ -113,7 +114,7 @@
 .chatbot-msg-bubble {
   max-width: 85%;
   padding: 15px 20px;
-  border-radius: 16px;
+  border-radius: 14px;
   font-size: 0.95rem;
   line-height: 1.6;
 }
@@ -182,14 +183,6 @@
   margin-bottom: 4px;
 }
 
-.giant-neon-value {
-  font-size: 1.8rem;
-  font-weight: 900;
-  color: #39ff14;
-  text-shadow: 0 0 10px #39ff14;
-  margin: 6px 0;
-}
-
 .neon-text-green { color: #39ff14; text-shadow: 0 0 6px #39ff14; }
 .neon-text-blue { color: #00f0ff; text-shadow: 0 0 6px #00f0ff; }
 
@@ -200,10 +193,18 @@
   border-top: 2px solid #00f0ff;
   display: flex;
   gap: 15px;
+  flex-shrink: 0;
 }
 
 .chatbot-form-input-dock .neonInput {
   flex: 1;
+  background-color: #000;
+  border-color: #00f0ff;
+  color: #00f0ff;
+}
+
+.chatbot-form-input-dock .neonInput::placeholder {
+  color: rgba(0, 240, 255, 0.4);
 }
 
 .chatbot-submit-btn {
@@ -211,7 +212,7 @@
   background: #001833;
   border: 2px solid #39ff14;
   color: #39ff14;
-  border-radius: 15px;
+  border-radius: 10px;
   font-weight: 900;
   cursor: pointer;
   box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
@@ -230,6 +231,7 @@
   color: #ff0055;
   cursor: not-allowed;
   box-shadow: none;
+  background: rgba(255, 0, 85, 0.05);
 }
 
 /* Status Monitor Stream indicators */
@@ -275,7 +277,7 @@
 
 .markdown-container strong {
   font-weight: 700;
-  color: #00ffcc; /* Matches theme neon accent */
+  color: #00ffcc;
 }
 
 .markdown-container h1,

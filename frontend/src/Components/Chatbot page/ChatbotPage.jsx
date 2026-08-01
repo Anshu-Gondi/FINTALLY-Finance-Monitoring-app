@@ -1,3 +1,5 @@
+import Navbar from "../../Shared Components/Navbar/Navbar";
+import Footer from "../../Shared Components/Footer/Footer";
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -20,10 +22,12 @@ const ChatbotPage = () => {
   const messagesEndRef = useRef(null);
   const timerRef = useRef(null);
 
+  // Auto-scroll to bottom of chat window
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, systemStatus]);
 
+  // Generation timer tracker
   useEffect(() => {
     if (isGenerating) {
       setElapsedTime(0);
@@ -107,13 +111,13 @@ const ChatbotPage = () => {
             continue;
           }
           if (rawPayload.startsWith("[TOOL_CALL:")) {
-            currentToolCall = rawPayload.slice(11, -1);
+            currentToolCall = rawPayload.slice(11, -1).trim();
             setSystemStatus(`RUNNING RUST TOOL ENGINE: ${currentToolCall.toUpperCase()}...`);
             continue;
           }
           if (rawPayload.startsWith("[TOOL_RESULT:")) {
             try {
-              currentToolResult = JSON.parse(rawPayload.slice(13, -1));
+              currentToolResult = JSON.parse(rawPayload.slice(13, -1).trim());
               setSystemStatus("TOOL DATA RECEIVED. SYNTHESIZING RESPONSE...");
             } catch (err) {
               console.error("Tool result parse error:", err);
@@ -241,92 +245,96 @@ const ChatbotPage = () => {
   };
 
   return (
-    <div className="chatbot-page-wrapper">
-      <div className="chatbot-box-wrapper">
-        <div className="chatbot-window-header">
-          <div className="header-title-block">
-            <span className={`live-dot ${isGenerating ? "processing" : ""}`}></span>
-            <h2 className="chatbot-title">FINTALLY_CORE_ASSISTANT v1.02</h2>
+    <>
+      <Navbar />
+      <div className="chatbot-page-wrapper">
+        <div className="chatbot-box-wrapper">
+          <div className="chatbot-window-header">
+            <div className="header-title-block">
+              <span className={`live-dot ${isGenerating ? "processing" : ""}`}></span>
+              <h2 className="chatbot-title">FINTALLY_CORE_ASSISTANT v1.02</h2>
+            </div>
+            <span className={`engine-badge ${isGenerating ? "busy" : ""}`}>
+              {isGenerating ? `CPU_BUSY [${elapsedTime}s]` : "RUST_ENGINE_ACTIVE"}
+            </span>
           </div>
-          <span className={`engine-badge ${isGenerating ? "busy" : ""}`}>
-            {isGenerating ? `CPU_BUSY [${elapsedTime}s]` : "RUST_ENGINE_ACTIVE"}
-          </span>
-        </div>
 
-        <div className="chatbot-messages-viewport">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`chatbot-msg-row ${msg.role}`}>
-              <div className="chatbot-msg-bubble">
-                <div className="msg-meta-tag">
-                  {msg.role.toUpperCase()} {"//"}
-                </div>
-
-                {/* Thought Accordion (if present) */}
-                {msg.thought && (
-                  <details className="thought-accordion">
-                    <summary className="thought-summary">💭 INTERNAL REASONING</summary>
-                    <p className="thought-text">{msg.thought}</p>
-                  </details>
-                )}
-
-                {/* Tool Running Indicator */}
-                {msg.toolCalled && !msg.toolResult && (
-                  <div className="tool-running-badge">
-                    <span className="pulse-dot"></span> EXECUTING ENGINE TOOL: <strong>{msg.toolCalled}</strong>
+          <div className="chatbot-messages-viewport">
+            {messages.map((msg) => (
+              <div key={msg.id} className={`chatbot-msg-row ${msg.role}`}>
+                <div className="chatbot-msg-bubble">
+                  <div className="msg-meta-tag">
+                    {msg.role.toUpperCase()} {"//"}
                   </div>
-                )}
 
-                {/* Markdown Formatted Conversational Content */}
-                <div className="msg-body-content markdown-container">
-                  {msg.content ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
-                  ) : isGenerating && msg.role === "assistant" ? (
-                    "Processing input data..."
-                  ) : null}
-                </div>
+                  {/* Thought Accordion */}
+                  {msg.thought && (
+                    <details className="thought-accordion">
+                      <summary className="thought-summary">💭 INTERNAL REASONING</summary>
+                      <p className="thought-text">{msg.thought}</p>
+                    </details>
+                  )}
 
-                {/* Formatted Tool Card Output */}
-                {msg.toolCalled && msg.toolResult && (
-                  <div className="tool-card-mount-point">
-                    {renderToolDataCard(msg.toolCalled, msg.toolResult)}
+                  {/* Tool Running Indicator */}
+                  {msg.toolCalled && !msg.toolResult && (
+                    <div className="tool-running-badge">
+                      <span className="pulse-dot"></span> EXECUTING ENGINE TOOL: <strong>{msg.toolCalled}</strong>
+                    </div>
+                  )}
+
+                  {/* Markdown Formatted Conversational Content */}
+                  <div className="msg-body-content markdown-container">
+                    {msg.content ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : isGenerating && msg.role === "assistant" ? (
+                      "Processing input data..."
+                    ) : null}
                   </div>
-                )}
+
+                  {/* Formatted Tool Card Output */}
+                  {msg.toolCalled && msg.toolResult && (
+                    <div className="tool-card-mount-point">
+                      {renderToolDataCard(msg.toolCalled, msg.toolResult)}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {isGenerating && (
-            <div className="chatbot-status-bar animate-pulse">
-              <span className="status-loader">&gt;&gt;</span>{" "}
-              {systemStatus || "PROCESSING QUERY ON CPU..."}{" "}
-              <span className="status-timer">({elapsedTime}s)</span>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+            {isGenerating && (
+              <div className="chatbot-status-bar animate-pulse">
+                <span className="status-loader">&gt;&gt;</span>{" "}
+                {systemStatus || "PROCESSING QUERY ON CPU..."}{" "}
+                <span className="status-timer">({elapsedTime}s)</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          <form onSubmit={handleSendMessage} className="chatbot-form-input-dock">
+            <input
+              type="text"
+              className="neonInput input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="ENTER FINANCIAL QUERY..."
+              disabled={isGenerating}
+              maxLength={2000}
+            />
+            <button
+              type="submit"
+              className="chatbot-submit-btn button"
+              disabled={isGenerating || !input.trim()}
+            >
+              {isGenerating ? `${elapsedTime}s...` : "EXECUTE"}
+            </button>
+          </form>
         </div>
-
-        <form onSubmit={handleSendMessage} className="chatbot-form-input-dock">
-          <input
-            type="text"
-            className="neonInput"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="ENTER FINANCIAL QUERY..."
-            disabled={isGenerating}
-            maxLength={2000}
-          />
-          <button
-            type="submit"
-            className="chatbot-submit-btn"
-            disabled={isGenerating || !input.trim()}
-          >
-            {isGenerating ? `${elapsedTime}s...` : "EXECUTE"}
-          </button>
-        </form>
       </div>
-    </div>
+      <Footer />
+    </>
   );
 };
 

@@ -22,7 +22,7 @@ use analytics_engine::analytics_service::{
 
 // --- CUSTOM DESERIALIZERS FOR QUERY PARAMS ---
 
-/// Helper to parse flexible date formats: "YYYY-MM-DD" or full RFC3339 / ISO-8601 strings.
+/// Helper to parse non-optional flexible date formats: "YYYY-MM-DD" or full RFC3339 / ISO-8601 strings.
 fn parse_flexible_date<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: Deserializer<'de>,
@@ -44,6 +44,21 @@ where
     Err(de::Error::custom(format!(
         "Invalid date format for '{s}'. Expected 'YYYY-MM-DD' or RFC3339 string."
     )))
+}
+
+/// Helper to parse optional flexible date formats for Option<DateTime<Utc>> fields.
+fn parse_flexible_option_date<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    match opt {
+        Some(s) if !s.trim().is_empty() => {
+            let de = serde::de::value::StringDeserializer::new(s);
+            parse_flexible_date(de).map(Some)
+        }
+        _ => Ok(None),
+    }
 }
 
 /// Helper to parse flexible query parameters for `horizons`:
@@ -91,8 +106,12 @@ pub struct PeriodQuery {
 
 #[derive(Deserialize)]
 pub struct CategoryQuery {
+    #[serde(default, deserialize_with = "parse_flexible_option_date")]
     pub start: Option<DateTime<Utc>>,
+
+    #[serde(default, deserialize_with = "parse_flexible_option_date")]
     pub end: Option<DateTime<Utc>>,
+
     pub tx_type: Option<String>,
     pub keyword: Option<String>,
     pub limit: Option<usize>,
