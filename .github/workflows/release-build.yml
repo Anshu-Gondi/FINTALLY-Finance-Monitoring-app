@@ -18,20 +18,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 🚀 MAXIMIZE DISK SPACE: Reclaims pre-allocated disk partitions to provide ~75GB+ free space
-      - name: Maximize Build Disk Space
-        uses: easimon/maximize-build-space@v5
-        with:
-          root-reserve-mb: 2048
-          swap-size-mb: 1024
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-
       - name: Checkout Source Code Repository
         uses: actions/checkout@v4
+
+      # 🧹 AGGRESSIVE DISK CLEANUP: Reclaims ~40GB on the root partition (/)
+      - name: Free Up Runner Disk Space
+        run: |
+          echo "=== Space before cleanup ==="
+          df -h
+
+          # Remove heavy pre-installed packages & frameworks from root partition
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /opt/hostedtoolcache
+          sudo docker image prune --all --force
+
+          echo "=== Space after cleanup ==="
+          df -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -62,8 +67,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          # 💡 Optimization: 'mode=min' caches only the final resulting image layers,
-          # preventing giant intermediate CUDA/Rust build layers from filling the runner disk.
           cache-to: type=gha,mode=min
           build-args: |
             CUDA_COMPUTE_CAP=89
