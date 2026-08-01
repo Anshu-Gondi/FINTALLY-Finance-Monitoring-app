@@ -18,32 +18,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 🚀 MAXIMIZE DISK SPACE: Reclaims pre-allocated disk partitions to provide ~75GB+ free space
+      - name: Maximize Build Disk Space
+        uses: easimon/maximize-build-space@v5
+        with:
+          root-reserve-mb: 2048
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+
       - name: Checkout Source Code Repository
         uses: actions/checkout@v4
-
-      # 🧠 DISK & DOCKER OPTIMIZATION:
-      # 1. Wipes out ~30GB+ of pre-installed software frameworks.
-      # 2. Configures Docker to use the massive workspace volume for its layers and temp images.
-      # 3. Restarts the daemon to safely apply the changes before Buildx spins up.
-      - name: Free Disk Space & Redirect Docker Storage
-        run: |
-          echo "=== Space before cleanup ==="
-          df -h
-
-          # Remove heavy frameworks you don't need
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost
-
-          # Create dedicated space on the spacious runner workspace partition
-          sudo mkdir -p /home/runner/work/_temp/docker_root
-
-          # Point Docker's root to the new directory
-          echo '{"data-root": "/home/runner/work/_temp/docker_root"}' | sudo tee /etc/docker/daemon.json
-
-          # Restart Docker service to pick up the new path
-          sudo systemctl restart docker
-
-          echo "=== Space after cleanup ==="
-          df -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -74,6 +62,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # 💡 Optimization: 'mode=min' caches only the final resulting image layers,
+          # preventing giant intermediate CUDA/Rust build layers from filling the runner disk.
+          cache-to: type=gha,mode=min
           build-args: |
             CUDA_COMPUTE_CAP=89
