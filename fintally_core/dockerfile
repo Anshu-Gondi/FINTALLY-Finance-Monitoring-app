@@ -50,7 +50,7 @@ WORKDIR /app/fintally_core
 COPY --from=planner /app/fintally_core/recipe.json recipe.json
 
 # 2. Build dependencies - THIS LAYER GETS CACHED!
-RUN cargo chef cook --release --features cuda --recipe-path recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
 
 # 3. NOW copy your actual source code.
 # (If you change your code, Docker starts from here, keeping dependencies cached!)
