@@ -1,47 +1,52 @@
 # FINTALLY - Finance Monitoring App 💰
 
-**A high-performance full-stack finance monitoring system powered by FastAPI, React, and Rust (PyO3).**
+**A high-performance full-stack finance monitoring and AI insights system powered by Pure Rust, C++ FFI, and React.**
 
 * **Author:** Anshu Gondi
-* **Repository:** https://github.com/Anshu-Gondi/FINTALLY-Finance-Monitoring-app
+* **Repository:** [https://github.com/Anshu-Gondi/FINTALLY-Finance-Monitoring-app](https://github.com/Anshu-Gondi/FINTALLY-Finance-Monitoring-app)
 * **Status:** Active Development 🚀
 
 ---
 
 ## 📱 Project Overview
 
-**FINTALLY** is a full-stack finance monitoring platform designed for:
+**FINTALLY** is a high-performance, privacy-focused finance monitoring platform engineered for ultra-fast analytics and AI-assisted financial planning:
 
 * Expense & income tracking
-* Budget management
-* EMI planning
-* AI-powered financial insights
-
-The system is optimized for **performance-critical workloads** using a Rust core integrated via PyO3.
+* Smart budget management & EMI planning
+* On-device RAG engine & local LLM chatbot
+* Real-time financial analytics & math engine
 
 ---
 
-## ⚠️ Migration Notice (IMPORTANT)
+## ⚠️ Architecture Evolution & Migration Notice
 
-This project has been **fully migrated from a multi-backend architecture (Node.js + Django + C++) to a unified FastAPI backend**.
+This project has been upgraded to a **pure Rust Cargo Workspace with C++ FFI integration** and an **Axum async web server**.
 
-### Why this change?
+### Key Improvements
 
-* Reduced architectural complexity
-* Better async performance (FastAPI)
-* Cleaner integration with Rust (PyO3)
-* Easier deployment and scaling
-
-👉 Legacy Node.js and Django services have been **removed**.
+* **Zero Python Overhead:** Removed FastAPI, Python runtime, and PyO3 bindings in favor of a native, memory-safe Rust workspace.
+* **Direct C++ FFI & CUDA Acceleration:** Native C++ integrations for vision engine execution, fast buffer handling, and CUDA-accelerated tensor computation (Candle).
+* **Unified Workspace:** Monorepo architecture separating web API, database, finance math, vector search, and LLM chatbot engines into specialized crates.
 
 ---
 
-## 🏗️ Current Architecture
+## 🏗️ Architecture
 
-Frontend (React)
-→ FastAPI Backend (Python)
-→ Rust Core (PyO3 bindings)
-→ Database (MongoDB / future extensible)
+```text
+[ React JS Frontend (Vite + pnpm) ]
+               │
+               ▼ (HTTP / WebSockets)
+[ Axum Web Server (`fintally_axum`) ]
+               │
+ ┌─────────────┼────────────────────────┬────────────────────────┐
+ ▼             ▼                        ▼                        ▼
+[`fintally_chatbot`]  [`fintally_finance`]  [`analytics_engine`]  [`fintally_db`]
+ ├── RAG / Vector Engine (USearch)
+ ├── LLM / Candle CUDA
+ └── C++ FFI (Vision Engine & PDF Binarization)
+
+```
 
 ---
 
@@ -49,139 +54,111 @@ Frontend (React)
 
 ### Frontend
 
-* React (Vite)
-* Chart.js, Recharts
-* pnpm
+* **Framework:** React JS (Vite)
+* **Visualization:** Chart.js, Recharts
+* **Package Manager:** `pnpm`
 
-### Backend (Unified)
+### Backend (`fintally_core` Workspace)
 
-* FastAPI (Python)
-* Async-first architecture
-* Modular routers (auth, transaction, analytics, chatbot)
-
-### Rust Core (PyO3) 🚀
-
-Location: `chatbot-backend/fintally_core/`
-
-* High-performance financial computations
-* LLM + analytics engine
-* Memory-safe, CPU-efficient execution
-* Python bindings via PyO3
+* **Web Framework:** Axum (`tokio` async runtime)
+* **Machine Learning / AI:** Candle (`candle-core`, `candle-transformers` with CUDA enabled)
+* **Vector Store & RAG:** USearch, custom hybrid chunking & TF-IDF/Cosine scoring
+* **C++ Integration:** C++ FFI bindings (Vision engine, PDF processing, high-performance memory buffers)
+* **Database:** `fintally_db`
 
 ---
 
-## 📁 Project Structure (Simplified)
+## 📁 Project Structure
 
-```
-frontend/
-chatbot-backend/
-  ├── main.py
-  ├── routers/
-  ├── services/
-  ├── schemas/
-  ├── fintally_core/   # Rust (PyO3)
-```
+```text
+FINTALLY-Finance-Monitoring-app/
+├── .github/
+│   └── workflows/
+│       ├── lint.yml
+│       └── release-build.yml
+├── fintally_core/               # Pure Rust Workspace Backend
+│   ├── analytics_engine/        # High-performance financial analytics
+│   ├── fintally_axum/           # Axum REST API & WebSocket service
+│   ├── fintally_chatbot/        # RAG, LLM engine, USearch, C++ FFI
+│   ├── fintally_db/             # Persistence & state management
+│   ├── fintally_finance/        # Core budget, cashflow, & EMI rules
+│   └── Cargo.toml               # Workspace root manifest
+├── frontend/                    # React JS Frontend
+├── .dockerignore
+├── .gitignore
+├── LICENSE                      # Proprietary Software License
+└── README.md
 
----
-
-## 🚀 Installation
-
-### 1. Clone
-
-```bash
-git clone https://github.com/Anshu-Gondi/FINTALLY-Finance-Monitoring-app.git
-cd FINTALLY-Finance-Monitoring-app
 ```
 
 ---
 
-### 2. Backend (FastAPI)
+## 🚀 Getting Started
 
-```bash
-cd chatbot-backend
-python -m venv venv
-venv\Scripts\activate   # Windows
+### Prerequisites
 
-pip install -r requirements.txt
-```
+1. **Rust Toolchain:** Install via [rustup.rs](https://rustup.rs/) (edition 2021)
+2. **Node.js & pnpm:** For frontend dependency management
+3. **C++ Compiler & CUDA Toolkit** (Optional, required for GPU acceleration & FFI extensions)
 
 ---
 
-### 3. Rust Setup (REQUIRED for PyO3)
-
-Install Rust:
-https://rustup.rs/
-
-Verify:
+### 1. Build and Run Backend (Rust)
 
 ```bash
-rustc --version
-```
-
-Build PyO3 modules:
-
-```bash
+# Navigate to the Rust workspace
 cd fintally_core
-maturin develop
+
+# Run test suite (using cargo nextest or standard cargo test)
+cargo test
+
+# Run the Axum web server
+cargo run -p fintally_axum --release
+
 ```
 
 ---
 
-### 4. Run Backend
+### 2. Build and Run Frontend (React)
 
 ```bash
-cd chatbot-backend
-uvicorn main:app --reload
-```
-
----
-
-### 5. Frontend
-
-```bash
+# Navigate to frontend directory
 cd frontend
+
+# Install dependencies
 pnpm install
+
+# Start development server
 pnpm dev
+
 ```
 
 ---
 
-## ⚡ Performance Focus
+## ⚡ Performance & Quality Safeguards
 
-* Rust core for compute-heavy operations
-* Async FastAPI for I/O efficiency
-* Minimal overhead architecture
-
----
-
-## 📌 Notes
-
-* Ensure Rust toolchain is installed before running PyO3 modules
-* Virtual environment recommended (venv / conda)
-* Docker setup is planned for future releases
-
----
-
-## 🎯 Future Enhancements
-
-* Dockerized deployment
-* GPU acceleration for ML
-* Advanced financial analytics
-* Real-time streaming
+* **Parallelized Test Runner:** Tested via `cargo-nextest` across all 5 workspace crates.
+* **SIMD & Quantization:** Q4_0 and Q8_0 vector quantization for efficient memory utilization.
+* **Release Profile:** LTO (`fat`), opt-level 3, binary stripping enabled for zero-cost abstraction runtime performance.
 
 ---
 
 ## 📄 License
 
-MIT License
+**Proprietary Software License** - All Rights Reserved.
+
+Copyright (c) 2026 **Anshu Gondi**.
+
+*Unlawful copying, distribution, modification, or disassembling of this software is strictly prohibited.*
 
 ---
 
 ## 👤 Author
 
-Anshu Gondi
-GitHub: https://github.com/Anshu-Gondi
+**Anshu Gondi**
+
+* GitHub: [@Anshu-Gondi](https://github.com/Anshu-Gondi)
 
 ---
 
-**Version:** 3.0 (FastAPI + Rust Unified Architecture)
+**Version:** 4.0 (Pure Rust Workspace + C++ FFI + Axum + React JS)

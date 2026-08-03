@@ -1,12 +1,10 @@
 [package]
 name        = "fintally_chatbot"
-version     = "0.1.0"
-edition     = "2021"
-description = "LLM chatbot extension for FinTally (personal finance assistant)"
-license     = "MIT OR Apache-2.0"
-repository  = "https://github.com/yourusername/fintally"
-readme      = "README.md"
-publish = false
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+license-file.workspace = true
 
 [lib]
 name = "fintally_chatbot"
@@ -67,3 +65,7 @@ chrono = { version = "0.4", features = ["serde"] }
 rand = "0.10.2"
 lopdf = "0.35"
 unicode-normalization = "0.1"
+
+[build-dependencies]
+cc = "1.0"
+bindgen = "0.72"

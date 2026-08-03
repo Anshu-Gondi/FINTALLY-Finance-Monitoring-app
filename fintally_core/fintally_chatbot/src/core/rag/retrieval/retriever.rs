@@ -74,7 +74,7 @@ mod tests {
     use super::*;
     use crate::core::rag::vectorstore::{UsearchStore, MemoryVectorStore};
     use crate::core::rag::embedding::types::DocumentChunk;
-    use std::collections::BTreeMap;
+    
 
     /// Inline helper to generate standard document chunks matching system schemas
     fn make_mock_chunk(id: u64, text: &str) -> DocumentChunk {

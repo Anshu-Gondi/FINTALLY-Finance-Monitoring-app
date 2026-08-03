@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-use chrono::{ DateTime, Utc, Duration, Datelike, Timelike };
+use chrono::{ DateTime, Utc, Duration, Datelike };
 use sqlx::{ PgPool, Row };
 use uuid::Uuid; // Assuming IDs are UUIDs or Strings in Postgres. Change type if needed.
-use serde::{Serialize, Deserialize};
 
 // Import domain models from your crate
 use fintally_db::models::{
@@ -37,7 +36,6 @@ use crate::analytics_aggregator::{
     aggregate_by_interval,
     aggregate_by_category,
     aggregate_by_day,
-    aggregate_by_month,
     aggregate_trend,
     find_min_max,
     predict_budget_breach,

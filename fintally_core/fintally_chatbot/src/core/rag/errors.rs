@@ -93,7 +93,10 @@ mod tests {
         }
 
         let embedder = Arc::new(NativeEmbedder::load_from_vault(BGE_VAULT_PATH).ok()?);
-        let test_usearch_store = UsearchStore::new(4, 100)
+
+        // FIX: Match the dimensions of the BGE model instead of hardcoding `4`.
+        // 384 is standard for bge-small. Use 768 if you are using bge-base.
+        let test_usearch_store = UsearchStore::new(384, 100)
             .expect("Failed to initialize test USearch storage layout");
 
         Some(RagService::new(
@@ -102,7 +105,7 @@ mod tests {
             MemoryVectorStore::new(),
             EmbeddingGenerator::new(embedder),
             VectorRetriever::new(0.5),
-            5, 
+            5,
             idx_path,
             chk_path
         ))
@@ -132,7 +135,7 @@ mod tests {
         } else {
             panic!("Expected RagError::VectorStoreError variant");
         }
-        
+
         let candle_err = candle_core::Error::Msg("Shape mismatch during unsqueeze".to_string());
         let rag_err_from_candle: RagError = candle_err.into();
         if let RagError::CandleError(ref err) = rag_err_from_candle {

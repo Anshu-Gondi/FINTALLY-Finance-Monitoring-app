@@ -87,7 +87,7 @@ impl MemoryVectorStore {
 mod tests {
     use super::*;
     use crate::core::rag::embedding::types::DocumentChunk;
-    use std::collections::BTreeMap;
+    
 
     /// Helper to easily spawn dummy document chunks matching your schema fields
     fn make_mock_chunk(id: u64, text: &str) -> DocumentChunk {

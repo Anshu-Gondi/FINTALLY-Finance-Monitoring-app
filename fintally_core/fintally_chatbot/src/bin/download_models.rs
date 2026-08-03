@@ -1,18 +1,29 @@
 use anyhow::{Context, Result};
 use hf_hub::api::sync::ApiBuilder;
+use std::env;
 use std::fs;
 use std::path::Path;
 
 fn download_hf_repo(
     repo_id: &str,
     target_path_str: &str,
-    target_gguf_file: Option<&str>,
+    target_file_filter: Option<&str>,
 ) -> Result<()> {
     println!("\n📦 Connection initialized for: {}", repo_id);
 
-    // Set up HF API with progress bar and retry allowance
-    let api = ApiBuilder::new()
-        .with_progress(true)
+    // Read your custom environment variable name for the Hugging Face token
+    let token = env::var("hugging_face_read_only_key")
+        .or_else(|_| env::var("HF_TOKEN"))
+        .ok();
+
+    // Set up HF API with progress bar and optional token
+    let mut api_builder = ApiBuilder::new().with_progress(true);
+
+    if let Some(t) = token {
+        api_builder = api_builder.with_token(Some(t));
+    }
+
+    let api = api_builder
         .build()
         .context("Failed to initialize Hugging Face client")?;
 
@@ -25,20 +36,17 @@ fn download_hf_repo(
     for sibling in repo_info.siblings {
         let filename = &sibling.rfilename;
 
-        // Match case-insensitively for the requested GGUF target file
-        let is_matched = match target_gguf_file {
-            Some(gguf_target) => {
-                filename.eq_ignore_ascii_case(gguf_target)
-                    || filename.ends_with(".json")
-                    || filename.ends_with(".txt")
-                    || filename.starts_with("tokenizer")
-            }
-            None => {
-                filename.ends_with(".safetensors")
-                    || filename.ends_with(".json")
-                    || filename.ends_with(".txt")
-                    || filename.starts_with("tokenizer")
-            }
+        // Match files based on target filter or default safe asset extensions
+        let is_matched = match target_file_filter {
+            Some(filter) => filename.eq_ignore_ascii_case(filter)
+                || filename.ends_with(".json")
+                || filename.ends_with(".txt")
+                || filename.starts_with("tokenizer"),
+            None => filename.ends_with(".safetensors")
+                || filename.ends_with(".json")
+                || filename.ends_with(".txt")
+                || filename.starts_with("tokenizer")
+                || filename.ends_with(".model"),
         };
 
         if is_matched {
@@ -56,7 +64,7 @@ fn download_hf_repo(
 
             println!("📥 Syncing file: {}", filename);
 
-            // Retry loop to handle transient "Peer disconnected" drops
+            // Retry loop to handle transient drops
             let mut retries = 3;
             let mut cached_path = None;
 
@@ -69,7 +77,10 @@ fn download_hf_repo(
                     Err(e) => {
                         retries -= 1;
                         if retries == 0 {
-                            return Err(e).context(format!("Download failed after retries for file: {}", filename));
+                            return Err(e).context(format!(
+                                "Download failed after retries for file: {}",
+                                filename
+                            ));
                         }
                         println!("⚠️ Network glitch ({e}). Retrying ({retries} attempts left)...");
                         std::thread::sleep(std::time::Duration::from_secs(2));
@@ -94,35 +105,17 @@ fn download_hf_repo(
     Ok(())
 }
 
-fn ensure_tokenizer_files(fallback_repo_id: &str, target_path_str: &str) -> Result<()> {
-    let out_path = Path::new(target_path_str);
-    let tokenizer_path = out_path.join("tokenizer.json");
-
-    if !tokenizer_path.exists() {
-        println!(
-            "\n🔍 `tokenizer.json` missing in GGUF repo. Fetching tokenizers from base repo: {}",
-            fallback_repo_id
-        );
-        download_hf_repo(fallback_repo_id, target_path_str, None)?;
-    }
-
-    Ok(())
-}
-
 fn main() -> Result<()> {
-    println!("🏁 Direct Rust pipeline starting up context mirrors...");
+    println!("🏁 Direct Rust pipeline starting up lightweight context mirrors...");
 
     let qwen_target_dir = "llm_models/chat/qwen_safetensors_output";
 
-    // Task 1: Download Qwen 2.5 1.5B Instruct Q8_0 GGUF variant (Case-insensitive check handles uppercase filenames automatically)
+    // Task 1: Download Qwen 2.5 1.5B Instruct Q8_0 GGUF variant
     download_hf_repo(
         "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
         qwen_target_dir,
         Some("qwen2.5-1.5b-instruct-q8_0.gguf"),
     )?;
-
-    // Fallback check for missing tokenizer files
-    ensure_tokenizer_files("Qwen/Qwen2.5-1.5B-Instruct", qwen_target_dir)?;
 
     // Task 2: Download BGE Small Embeddings
     download_hf_repo(
@@ -131,6 +124,15 @@ fn main() -> Result<()> {
         None,
     )?;
 
-    println!("\n🎉 Pipeline complete! All model binaries are securely stored.");
+    // Task 3: Download Lightweight Vision-Language Model (Microsoft Florence-2-base)
+    // At ~0.23B parameters, this is ultra-lightweight for T4 GPUs and handles high-speed OCR/chart parse.
+    let florence_target_dir = "llm_models/ocr/florence2_base_output";
+    download_hf_repo(
+        "microsoft/Florence-2-base",
+        florence_target_dir,
+        None,
+    )?;
+
+    println!("\n🎉 Pipeline complete! Lightweight T4-optimized model binaries ready.");
     Ok(())
 }

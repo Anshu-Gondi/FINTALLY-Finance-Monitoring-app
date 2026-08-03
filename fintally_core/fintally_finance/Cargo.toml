@@ -1,9 +1,11 @@
 # fintally_core/fintally_finance/Cargo.toml
 [package]
 name    = "fintally_finance"
-version = "1.0.0"
-edition = "2021"
-publish = false
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+license-file.workspace = true
 
 [lib]
 name       = "fintally_finance"

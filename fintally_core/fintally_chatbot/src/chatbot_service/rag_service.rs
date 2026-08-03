@@ -1,5 +1,5 @@
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -8,8 +8,7 @@ use tokio::time::interval;
 
 // Native Google Drive ecosystem imports
 use google_drive3::hyper_rustls::HttpsConnectorBuilder;
-use google_drive3::hyper_util::rt::TokioExecutor;
-use google_drive3::{api::File as DriveFile, DriveHub};
+use google_drive3::DriveHub;
 use http_body_util::BodyExt;
 use yup_oauth2::{InstalledFlowAuthenticator, InstalledFlowReturnMethod};
 

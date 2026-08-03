@@ -6,3 +6,4 @@ pub mod finance;
 pub mod utils;
 pub mod math;
 pub mod rag;
+pub mod vision;

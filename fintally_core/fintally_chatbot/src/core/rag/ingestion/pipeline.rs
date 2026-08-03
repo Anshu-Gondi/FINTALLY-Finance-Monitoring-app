@@ -74,7 +74,7 @@ mod tests {
     use std::fs;
     use std::env;
     use std::path::PathBuf;
-    use std::hash::{Hash, Hasher, BuildHasher};
+    use std::hash::{Hash, Hasher};
     use std::collections::hash_map::DefaultHasher;
 
     /// Helper for unique test file naming
