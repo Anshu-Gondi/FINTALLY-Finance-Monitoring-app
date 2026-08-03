@@ -14,8 +14,33 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-secure-export:
+  build-and-push-cuda:
+    name: Build CUDA (${{ matrix.gpu_tier }})
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # NVIDIA T4 (GCP Starter - Turing Architecture)
+          - gpu_tier: "t4"
+            cuda_cap: "75"
+            tag_suffix: "-t4"
+
+          # NVIDIA A10G / A100 / RTX 30xx (Ampere Architecture)
+          - gpu_tier: "ampere"
+            cuda_cap: "86"
+            tag_suffix: "-ampere"
+
+          # NVIDIA L4 / L40 / RTX 40xx (Ada Lovelace Architecture)
+          - gpu_tier: "ada"
+            cuda_cap: "89"
+            tag_suffix: "-ada"
+
+          # NVIDIA H100 (Hopper Architecture)
+          - gpu_tier: "hopper"
+            cuda_cap: "90"
+            tag_suffix: "-hopper"
 
     steps:
       - name: Checkout Source Code Repository
@@ -54,11 +79,12 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=sha,prefix=sha-,format=short
+            type=ref,event=branch,suffix=${{ matrix.tag_suffix }}
+            type=semver,pattern={{version}},suffix=${{ matrix.tag_suffix }}
+            type=sha,prefix=sha-,format=short,suffix=${{ matrix.tag_suffix }}
+            type=raw,value=latest${{ matrix.tag_suffix }},enable=${{ github.ref == 'refs/heads/main' }}
 
-      - name: Build, Bake and Push Protected Production Docker Container Image
+      - name: Build and Push Docker Container Image (${{ matrix.gpu_tier }})
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -66,7 +92,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
+          cache-from: type=gha,scope=${{ matrix.gpu_tier }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.gpu_tier }}
           build-args: |
-            CUDA_COMPUTE_CAP=89
+            CUDA_COMPUTE_CAP=${{ matrix.cuda_cap }}
