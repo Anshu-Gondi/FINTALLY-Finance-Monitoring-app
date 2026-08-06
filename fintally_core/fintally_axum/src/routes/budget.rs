@@ -4,21 +4,20 @@ use axum::{
     response::IntoResponse,
     Extension, Json,
 };
-use chrono::{DateTime, Utc};
 use fintally_db::DbContext;
 use fintally_finance::budget_projection_batch;
-use serde::Deserialize; // Removed unused Serialize
-use uuid::Uuid; // Used to parse the string IDs
+use serde::Deserialize;
+use time::OffsetDateTime;
 
 use crate::auth::Claims;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BudgetCreate {
-    pub amount: f64, 
+    pub amount: f64,
     pub category: String,
-    pub start_date: Option<DateTime<Utc>>,
-    pub end_date: Option<DateTime<Utc>>,
+    pub start_date: Option<OffsetDateTime>,
+    pub end_date: Option<OffsetDateTime>,
     pub is_recurring: bool,
 }
 
@@ -47,23 +46,23 @@ pub async fn create_or_update_budget(
     claims: Claims,
     Json(body): Json<BudgetCreate>,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    let user_uuid = Uuid::parse_str(&claims.user_id)
-        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID: {}", e)))?;
+    let user_id = claims.user_id.parse::<i64>()
+        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User ID: {}", e)))?;
 
-    let start = body.start_date.unwrap_or_else(Utc::now);
-    let end = body.end_date;
+    let start = body.start_date.unwrap_or_else(OffsetDateTime::now_utc).unix_timestamp();
+    let end = body.end_date.map(|dt| dt.unix_timestamp());
 
     // Check for an overlapping existing budget setup
     let existing = sqlx::query!(
         r#"
-        SELECT id FROM budgets 
-        WHERE user_id = $1 
-          AND category = $2 
-          AND start_date <= COALESCE($3, NOW())
+        SELECT id FROM budgets
+        WHERE user_id = $1
+          AND category = $2
+          AND start_date <= COALESCE($3, EXTRACT(EPOCH FROM NOW())::BIGINT)
           AND (end_date IS NULL OR end_date >= $4)
         LIMIT 1
         "#,
-        user_uuid, 
+        user_id,
         body.category,
         end,
         start
@@ -75,25 +74,32 @@ pub async fn create_or_update_budget(
     if let Some(record) = existing {
         let updated = sqlx::query!(
             r#"
-            UPDATE budgets 
+            UPDATE budgets
             SET amount = $1, start_date = $2, end_date = $3, is_recurring = $4
             WHERE id = $5
             RETURNING id, category, amount, start_date, end_date, is_recurring
             "#,
-            body.amount, start, end, body.is_recurring, record.id
+            body.amount,
+            start,
+            end,
+            body.is_recurring,
+            record.id
         )
         .fetch_one(&db_ctx.pool)
         .await
         .map_err(|e| BudgetApiError::DatabaseError(e.to_string()))?;
 
-        return Ok((StatusCode::OK, Json(serde_json::json!({ 
-            "success": true, 
+        let start_dt = updated.start_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+        let end_dt = updated.end_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+
+        return Ok((StatusCode::OK, Json(serde_json::json!({
+            "success": true,
             "data": {
                 "id": updated.id,
                 "category": updated.category,
                 "amount": updated.amount,
-                "startDate": updated.start_date,
-                "endDate": updated.end_date,
+                "startDate": start_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
+                "endDate": end_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
                 "is_recurring": updated.is_recurring
             }
         }))));
@@ -105,20 +111,28 @@ pub async fn create_or_update_budget(
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, category, amount, start_date, end_date, is_recurring
         "#,
-        user_uuid, body.amount, body.category, start, end, body.is_recurring
+        user_id,
+        body.amount,
+        body.category,
+        start,
+        end,
+        body.is_recurring
     )
     .fetch_one(&db_ctx.pool)
     .await
     .map_err(|e| BudgetApiError::DatabaseError(e.to_string()))?;
 
-    Ok((StatusCode::CREATED, Json(serde_json::json!({ 
-        "success": true, 
+    let start_dt = inserted.start_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+    let end_dt = inserted.end_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+
+    Ok((StatusCode::CREATED, Json(serde_json::json!({
+        "success": true,
         "data": {
             "id": inserted.id,
             "category": inserted.category,
             "amount": inserted.amount,
-            "startDate": inserted.start_date,
-            "endDate": inserted.end_date,
+            "startDate": start_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
+            "endDate": end_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
             "is_recurring": inserted.is_recurring
         }
     }))))
@@ -131,25 +145,28 @@ pub async fn get_budgets(
     Extension(db_ctx): Extension<DbContext>,
     claims: Claims,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    let user_uuid = Uuid::parse_str(&claims.user_id)
-        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID: {}", e)))?;
+    let user_id = claims.user_id.parse::<i64>()
+        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User ID: {}", e)))?;
 
     let rows = sqlx::query!(
-        r#"SELECT id, category, amount, start_date, end_date, is_recurring 
+        r#"SELECT id, category, amount, start_date, end_date, is_recurring
            FROM budgets WHERE user_id = $1 ORDER BY id DESC"#,
-        user_uuid
+        user_id
     )
     .fetch_all(&db_ctx.pool)
     .await
     .map_err(|e| BudgetApiError::DatabaseError(e.to_string()))?;
 
     let response_data: Vec<_> = rows.into_iter().map(|r| {
+        let start_dt = r.start_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+        let end_dt = r.end_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+
         serde_json::json!({
             "id": r.id,
             "category": r.category,
             "amount": r.amount,
-            "startDate": r.start_date,
-            "endDate": r.end_date,
+            "startDate": start_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
+            "endDate": end_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
             "is_recurring": r.is_recurring
         })
     }).collect();
@@ -164,12 +181,12 @@ pub async fn budget_summary(
     Extension(db_ctx): Extension<DbContext>,
     claims: Claims,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    let user_uuid = Uuid::parse_str(&claims.user_id)
-        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID: {}", e)))?;
+    let user_id = claims.user_id.parse::<i64>()
+        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User ID: {}", e)))?;
 
     let user_budgets = sqlx::query!(
         r#"SELECT category, amount, start_date, end_date FROM budgets WHERE user_id = $1"#,
-        user_uuid
+        user_id
     )
     .fetch_all(&db_ctx.pool)
     .await
@@ -180,9 +197,9 @@ pub async fn budget_summary(
     }
 
     let expense_rows = sqlx::query!(
-        r#"SELECT category as "category!", COALESCE(SUM(ABS(price)), 0.0) as "total!" 
+        r#"SELECT category as "category!", COALESCE(SUM(ABS(price)), 0.0) as "total!"
            FROM transactions WHERE user_id = $1 AND price < 0 GROUP BY category"#,
-        user_uuid
+        user_id
     )
     .fetch_all(&db_ctx.pool)
     .await
@@ -212,8 +229,16 @@ pub async fn budget_summary(
     let mut summaries = Vec::with_capacity(user_budgets.len());
 
     for (i, b) in user_budgets.into_iter().enumerate() {
-        let start_str = b.start_date.map(|dt| dt.format("%Y-%m-%d").to_string()).unwrap_or_else(|| "N/A".to_string());
-        let end_str = b.end_date.map(|dt| dt.format("%Y-%m-%d").to_string()).unwrap_or_else(|| "Ongoing".to_string());
+        let start_dt = b.start_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+        let end_dt = b.end_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+
+        let start_str = start_dt
+            .map(|dt| format!("{}-{:02}-{:02}", dt.year(), u8::from(dt.month()), dt.day()))
+            .unwrap_or_else(|| "N/A".to_string());
+        let end_str = end_dt
+            .map(|dt| format!("{}-{:02}-{:02}", dt.year(), u8::from(dt.month()), dt.day()))
+            .unwrap_or_else(|| "Ongoing".to_string());
+
         let remaining = (b.amount - spent_per_budget[i]).max(0.0);
         let flag_index = rust_result.warning_flag[i] as usize;
 
@@ -237,15 +262,15 @@ pub async fn budget_summary(
 pub async fn delete_budget(
     Extension(db_ctx): Extension<DbContext>,
     claims: Claims,
-    Path(budget_id): Path<i64>, 
+    Path(budget_id): Path<i64>,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    let user_uuid = Uuid::parse_str(&claims.user_id)
-        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User UUID: {}", e)))?;
+    let user_id = claims.user_id.parse::<i64>()
+        .map_err(|e| BudgetApiError::EngineError(format!("Invalid User ID: {}", e)))?;
 
     let result = sqlx::query!(
         "DELETE FROM budgets WHERE id = $1 AND user_id = $2",
         budget_id,
-        user_uuid
+        user_id
     )
     .execute(&db_ctx.pool)
     .await

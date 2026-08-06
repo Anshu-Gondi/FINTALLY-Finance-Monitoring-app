@@ -1,6 +1,5 @@
 use std::sync::Arc;
 use std::time::Duration;
-use uuid::Uuid;
 use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
 use futures_util::Stream;
@@ -48,7 +47,7 @@ impl ChatbotOrchestrator {
 
     pub fn chat_stream(
         self: Arc<Self>,
-        user_id: Uuid,
+        user_id: i64,
         user_message: String,
         chat_history: Vec<ChatMessage>,
     ) -> impl Stream<Item = Result<String, AppError>> {
@@ -73,7 +72,7 @@ impl ChatbotOrchestrator {
 
             let prompt = Prompt::build(&raw_prompt_str, None)?;
 
-            // ── Phase 3: First Inference Pass (Silently Accumulated) ──
+            // ── Phase 3: First Inference Pass ──
             let mut response_buffer = String::new();
             let stream_result = self.model_engine.stream_generate(&prompt, 1024).await;
 
@@ -81,10 +80,7 @@ impl ChatbotOrchestrator {
                 Ok(mut cancelable_stream) => {
                     while let Some(token_res) = cancelable_stream.stream.next().await {
                         match token_res {
-                            Ok(token) => {
-                                // Accumulate tokens internally; NEVER yield to UI here
-                                response_buffer.push_str(&token);
-                            }
+                            Ok(token) => response_buffer.push_str(&token),
                             Err(e) => {
                                 eprintln!("[ORCHESTRATOR ERROR] Token error: {:?}", e);
                                 yield format!("[ERROR: Token generation failed]");
@@ -102,36 +98,50 @@ impl ChatbotOrchestrator {
 
             // ── Phase 4: Native JSON Tool Parsing & Execution ──
             if let Some(tool_call) = self.extract_structural_tool_call(&response_buffer) {
-                println!("[ORCHESTRATOR] Identified tool call: {}", tool_call.tool);
+                println!("[ORCHESTRATOR] Identified tool call: {} with args: {:?}", tool_call.tool, tool_call.args);
 
                 let tool_result = match Planner::execute(&tool_call.tool, tool_call.args).await {
                     Ok(res) => res,
                     Err(err) => serde_json::json!({ "error": err.to_string() }),
                 };
 
-                // ── Phase 5: Second Pass (Explanation Generation) ──
-                let explain_prompt_str = self.build_explain_prompt(&user_message, &tool_call.tool, &tool_result, &chat_history, &full_system_prompt);
-                let explain_prompt = Prompt::build(&explain_prompt_str, None)?;
+                let is_error = tool_result.get("error").is_some() || tool_result.get("CALC_ERR").is_some();
 
-                match self.model_engine.stream_generate(&explain_prompt, 1024).await {
-                    Ok(mut explain_stream) => {
-                        let mut explain_buffer = String::new();
-                        while let Some(token_res) = explain_stream.stream.next().await {
-                            if let Ok(token) = token_res {
-                                explain_buffer.push_str(&token);
+                yield format!("[TOOL_CALL:{}]", tool_call.tool);
+                yield format!("[TOOL_RESULT:{}]", serde_json::to_string(&tool_result).unwrap_or_default());
+
+                if is_error {
+                    let err_msg = tool_result
+                        .get("error")
+                        .or_else(|| tool_result.get("CALC_ERR"))
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Invalid input values.");
+
+                    yield format!("I couldn't process that calculation: {}. Please double check the details provided.", err_msg);
+                } else {
+                    // ── Phase 5: Second Pass (Streamlined Explanation Generation) ──
+                    let explain_prompt_str = self.build_explain_prompt(&user_message, &tool_call.tool, &tool_result, &chat_history);
+                    let explain_prompt = Prompt::build(&explain_prompt_str, None)?;
+
+                    match self.model_engine.stream_generate(&explain_prompt, 1024).await {
+                        Ok(mut explain_stream) => {
+                            let mut explain_buffer = String::new();
+                            while let Some(token_res) = explain_stream.stream.next().await {
+                                if let Ok(token) = token_res {
+                                    explain_buffer.push_str(&token);
+                                }
                             }
-                        }
 
-                        let text_out = self.extract_conversational_text(&explain_buffer);
-                        yield text_out;
-                    }
-                    Err(e) => {
-                        eprintln!("[ORCHESTRATOR ERROR] Explanation generation failed: {:?}", e);
-                        yield "I calculated the financial data, but encountered an error formatting the final explanation.".to_string();
+                            let text_out = self.extract_conversational_text(&explain_buffer);
+                            yield text_out;
+                        }
+                        Err(e) => {
+                            eprintln!("[ORCHESTRATOR ERROR] Explanation generation failed: {:?}", e);
+                            yield "I calculated the financial data, but encountered an error formatting the summary.".to_string();
+                        }
                     }
                 }
             } else {
-                // ── No Tool Executed: Extract Conversational Text Safely ──
                 let text_out = self.extract_conversational_text(&response_buffer);
                 yield text_out;
             }
@@ -140,38 +150,131 @@ impl ChatbotOrchestrator {
         s
     }
 
-    /// Safely extracts conversational output without leaking JSON syntax
+    fn build_system_prompt(&self, user_context: &str, rag_context: &str) -> String {
+        let mut system = String::from(
+            "You are FinTally, an AI personal finance assistant for Indian users.\n\
+             Communicate clearly using strict JSON output formatting.\n\n\
+             Your response MUST strictly adhere to this JSON format:\n\
+             {\n\
+               \"thought\": \"Step-by-step reasoning summarizing conversation history and parameter extraction\",\n\
+               \"tool_call\": {\n\
+                 \"tool\": \"EXACT_TOOL_NAME\",\n\
+                 \"args\": {}\n\
+               },\n\
+               \"conversational_response\": \"Conversational reply or polite request for missing inputs\"\n\
+             }\n\n\
+             CRITICAL SYSTEM RULES:\n\
+             1. CONTEXT SYNTHESIS: Read the ENTIRE chat history to collect missing parameters.\n\
+             2. ANNUAL TO MONTHLY CONVERSION: Divide annual amounts by 12.\n\
+             3. STRICT ENUM VALUES: You MUST use exact string enum values specified below.\n\
+             4. NO HALLUCINATED LIMITATIONS: Never claim you cannot calculate large numbers.\n\
+             5. TOOL EXECUTION: When executing a tool call, set \"conversational_response\": null.\n\n\
+             6. MATHEMATICAL FORMULA FORMATTING:\n\
+                - ALWAYS wrap inline variables with single dollar signs: `$P$`, `$r$`, `$n$`.\n\
+                - ALWAYS wrap standalone equations with double dollar signs:\n\
+                  $$\n\
+                  \\text{Profit} = \\text{Revenue} - \\text{Expenses}\n\
+                  $$\n\
+                - NEVER use square brackets `[ ... ]` or parenthesis `( P )` for math.\n\
+                - NEVER use raw LaTeX bracket delimiters `\\[ ... \\]` or `\\( ... \\)`.\n\
+                - NEVER add standalone or trailing backslashes `\\` before or after equations.\n\n
+             AVAILABLE TOOLS & REQUIRED ARGUMENTS:\n\
+             - `generate_budget`: `monthly_income` (number), `profile` (\"family_with_dependents\", \"young_professional\", \"single_parent\", \"retiree_income_focused\")\n\
+             - `calculate_emi`: `principal` (number), `annual_rate` (number), `tenure_months` (integer)\n\
+             - `assess_loan`: `request` (object), `policy` (\"salaried\" or \"self_employed\")\n\
+             - `emergency_fund`: `monthly_expense` (number)\n\
+             - `calculate_tax`: `amount` (number), `profile` (\"salaried\" or \"self_employed\")\n"
+        );
+
+        if !user_context.trim().is_empty() {
+            let truncated_ctx: String = user_context.chars().take(500).collect();
+            system.push_str(&format_context_for_prompt(&truncated_ctx));
+        }
+
+        if !rag_context.trim().is_empty() {
+            let truncated_rag: String = rag_context.chars().take(800).collect();
+            system.push_str(&format!(
+                "\n=== REFERENCE CONTEXT ===\n{}\n=== END REFERENCE CONTEXT ===\n",
+                truncated_rag
+            ));
+        }
+
+        system
+    }
+
+    /// Trims chat history dynamically using a character budget to prevent context overflow.
+    fn format_chat_history(&self, chat_history: &[ChatMessage], max_chars: usize) -> String {
+        let mut history_str = String::new();
+        let mut current_len = 0;
+
+        // Iterate backwards from recent messages
+        for msg in chat_history.iter().rev() {
+            let clean_content = self.extract_conversational_text(&msg.content);
+            let formatted = format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, clean_content);
+
+            if current_len + formatted.len() > max_chars {
+                break;
+            }
+
+            current_len += formatted.len();
+            history_str.insert_str(0, &formatted);
+        }
+
+        history_str
+    }
+
+    fn build_chat_template(&self, user_message: &str, chat_history: &[ChatMessage], system_prompt: &str) -> String {
+        // Enforce a maximum of ~2500 characters for chat history (roughly 600-800 tokens)
+        let formatted_history = self.format_chat_history(chat_history, 2500);
+
+        format!(
+            "<|im_start|>system\n{}<|im_end|>\n{}<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+            system_prompt, formatted_history, user_message
+        )
+    }
+
+    fn build_explain_prompt(
+        &self,
+        user_message: &str,
+        _tool_name: &str,
+        tool_result: &serde_json::Value,
+        chat_history: &[ChatMessage],
+    ) -> String {
+        // Lightweight system prompt for Phase 5 to avoid context blowup
+        let explain_system = "You are FinTally, an AI personal finance assistant for Indian users. \
+        Explain calculation results clearly and warmly using Indian Rupees (₹). Keep responses concise.";
+
+        let formatted_history = self.format_chat_history(chat_history, 1200);
+        let compact_json = serde_json::to_string(tool_result).unwrap_or_default();
+
+        format!(
+            "<|im_start|>system\n{}<|im_end|>\n{}<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n[Calculation completed successfully]\n\
+             <|im_start|>user\nCalculation details:\n{}\n\nProvide a friendly summary of this result in Indian Rupees (₹).<|im_end|>\n<|im_start|>assistant\n",
+            explain_system, formatted_history, user_message, compact_json
+        )
+    }
+
     fn extract_conversational_text(&self, text: &str) -> String {
         let cleaned = self.strip_markdown(text);
 
-        // 1. Try standard JSON parsing
         if let Ok(parsed) = serde_json::from_str::<NativeLlmResponse>(cleaned) {
             if let Some(resp) = parsed.conversational_response {
                 if !resp.trim().is_empty() {
                     return resp;
                 }
             }
-            if let Some(thought) = parsed.thought {
-                if !thought.trim().is_empty() {
-                    return thought;
+        }
+
+        if let Ok(value) = serde_json::from_str::<serde_json::Value>(cleaned) {
+            if let Some(msg) = value.get("conversational_response").or_else(|| value.get("message")).and_then(|v| v.as_str()) {
+                if !msg.trim().is_empty() {
+                    return msg.to_string();
                 }
             }
         }
 
-        // 2. Try partial regex/substring parsing if JSON was cut off or malformed
-        if let Some(pos) = cleaned.find("\"conversational_response\":") {
-            let slice = &cleaned[pos + 26..];
-            let trimmed = slice.trim().trim_start_matches('"');
-            if let Some(end) = trimmed.find("\",") {
-                return trimmed[..end].replace("\\n", "\n").replace("\\\"", "\"").to_string();
-            } else if let Some(end) = trimmed.rfind('"') {
-                return trimmed[..end].replace("\\n", "\n").replace("\\\"", "\"").to_string();
-            }
-        }
-
-        // 3. Fallback: If it's pure raw JSON that couldn't be parsed, do not yield raw JSON
         if cleaned.starts_with('{') && cleaned.contains("\"thought\"") {
-            return "I have analyzed your query and structured your financial request. Please provide any additional missing context if required.".to_string();
+            return "Could you please clarify your monthly income and financial goal so I can calculate this for you?".to_string();
         }
 
         cleaned.to_string()
@@ -186,131 +289,14 @@ impl ChatbotOrchestrator {
             .trim()
     }
 
-    fn build_system_prompt(&self, user_context: &str, rag_context: &str) -> String {
-        let mut system = String::from(
-            "You are FinTally, a highly capable personal finance assistant explicitly optimized for Indian users.\n\
-             You speak plainly, use ₹ for amounts, provide practical localized advice, and communicate structurally using strict JSON formatting.\n\n\
-             Your output must ALWAYS be a valid JSON object matching this exact schema:\n\
-             {\n\
-               \"thought\": \"Brief step-by-step internal reasoning or context validation\",\n\
-               \"tool_call\": {\n\
-                 \"tool\": \"TOOL_NAME\",\n\
-                 \"args\": {}\n\
-               },\n\
-               \"conversational_response\": \"Plaintext conversational response, financial explanation, or null if executing a tool\"\n\
-             }\n\n\
-             RULES FOR TOOL CALLS:\n\
-             1. Use EXACT tool names (e.g. `generate_investment_plan`, NOT `generate investment plan`).\n\
-             2. When a tool call is needed, set \"conversational_response\" to null.\n\n\
-             Available Tools:\n\
-             - `calculate_emi`: Computes loan repayment. Requires: principal (number), annual_rate (number), tenure_months (integer).\n\
-             - `assess_loan`: Evaluates loan eligibility matrices. Requires: request (object), policy (\"salaried\"|\"self_employed\").\n\
-             - `emergency_fund`: Recommends safety net buffers. Requires: monthly_expense (number).\n\
-             - `savings_projection`: Models growth over timeline. Requires: months (integer).\n\
-             - `calculate_tax`: Estimates Indian income tax liability. Requires: amount (number), profile (\"salaried\"|\"self_employed\").\n\
-             - `generate_investment_plan`: Deploys risk-allocated portfolios. Requires: investable_amount (number), profile (\"young_professional\"|\"family_with_dependents\"|\"retiree_income_focused\"|\"single_parent\").\n\
-             - `generate_cashflow`: Extrapolates monthly inflows/outflows. Requires: monthly_income (number), profile.\n\
-             - `generate_budget`: Drafts a contextual budget layout. Requires: monthly_income (number), profile.\n\
-             - `stat_analysis`: Computes peer benchmark parameters. Requires: profile.\n\n\
-             RULES FOR GENERAL QUESTIONS:\n\
-             If no calculation tool is required, set \"tool_call\": null and write the response in \"conversational_response\".\n\n\
-             EXAMPLES:\n\
-             User: EMI for 5 lakh at 8.5% for 5 years?\n\
-             Assistant:\n\
-             {\n\
-               \"thought\": \"Calculating EMI for 500,000 at 8.5% over 60 months.\",\n\
-               \"tool_call\": { \"tool\": \"calculate_emi\", \"args\": { \"principal\": 500000, \"annual_rate\": 8.5, \"tenure_months\": 60 } },\n\
-               \"conversational_response\": null\n\
-             }\n"
-        );
-
-        if !user_context.trim().is_empty() {
-            system.push_str(&format_context_for_prompt(user_context));
-        }
-
-        if !rag_context.trim().is_empty() {
-            system.push_str(&format!(
-                "\nIMPORTANT: You have access to real-time updated reference documents below. \
-                Use these documents as your primary source of truth. Ignore any past pre-training knowledge cutoffs if the documents state newer information.\n\n\
-                === RELEVANT DOCUMENT REFERENCE CONTEXT ===\n{}\n=== END DOCUMENT REFERENCE ===\n",
-                rag_context
-            ));
-        }
-
-        system
-    }
-
-    fn build_chat_template(&self, user_message: &str, chat_history: &[ChatMessage], system_prompt: &str) -> String {
-        let mut template = format!("<|im_start|>system\n{}<|im_end|>\n", system_prompt);
-        let historical_slice = if chat_history.len() > 6 { &chat_history[chat_history.len() - 6..] } else { chat_history };
-        for msg in historical_slice {
-            template.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
-        }
-        template.push_str(&format!("<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n", user_message));
-        template
-    }
-
-    fn build_explain_prompt(
-        &self,
-        user_message: &str,
-        tool_name: &str,
-        tool_result: &serde_json::Value,
-        chat_history: &[ChatMessage],
-        system_prompt: &str
-    ) -> String {
-        let mut template = format!("<|im_start|>system\n{}<|im_end|>\n", system_prompt);
-
-        let historical_slice = if chat_history.len() > 4 {
-            &chat_history[chat_history.len() - 4..]
-        } else {
-            chat_history
-        };
-
-        for msg in historical_slice {
-            template.push_str(&format!("<|im_start|>{}\n{}<|im_end|>\n", msg.role, msg.content));
-        }
-
-        template.push_str(&format!(
-            "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n[Calculation complete]<|im_end|>\n\
-             <|im_start|>user\nHere is the verified financial calculation data:\n{}\n\n\
-INSTRUCTIONS FOR YOUR RESPONSE:
-1. Provide direct financial advice formatted nicely for the user.
-2. DO NOT mention internal terms like 'tool', 'tool_call', or function name '{}'.
-3. Present all amounts formatted in Rupees (₹).
-4. Return your output inside the \"conversational_response\" JSON key.<|im_end|>\n<|im_start|>assistant\n",
-            user_message,
-            serde_json::to_string_pretty(tool_result).unwrap_or_default(),
-            tool_name
-        ));
-
-        template
-    }
-
     fn extract_structural_tool_call(&self, text: &str) -> Option<ToolCallPayload> {
         let cleaned = self.strip_markdown(text);
 
-        // Attempt direct JSON deserialize
         if let Ok(parsed) = serde_json::from_str::<NativeLlmResponse>(cleaned) {
             if let Some(mut tool) = parsed.tool_call {
                 if !tool.tool.is_empty() && tool.tool != "null" {
-                    // Standardize tool name in case model substituted spaces for underscores
                     tool.tool = tool.tool.replace(' ', "_");
                     return Some(tool);
-                }
-            }
-        }
-
-        // Manual extraction fallback if JSON token stream was cut short
-        if let Some(tool_pos) = cleaned.find("\"tool\":") {
-            let slice = &cleaned[tool_pos + 7..];
-            let trimmed = slice.trim().trim_start_matches('"');
-            if let Some(end) = trimmed.find('"') {
-                let tool_name = trimmed[..end].replace(' ', "_");
-                if !tool_name.is_empty() && tool_name != "null" {
-                    return Some(ToolCallPayload {
-                        tool: tool_name,
-                        args: serde_json::json!({}),
-                    });
                 }
             }
         }

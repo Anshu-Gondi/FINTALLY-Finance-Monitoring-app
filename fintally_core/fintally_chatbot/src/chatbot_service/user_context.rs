@@ -1,5 +1,4 @@
 use std::time::Duration;
-use uuid::Uuid;
 use sqlx::PgPool;
 
 // Import your underlying analytical database engines and their concrete result types
@@ -47,7 +46,7 @@ where
 }
 
 /// Compiles concurrent metrics into a single natural language block for systemic model injection.
-pub async fn get_user_context(pool: &PgPool, user_id: Uuid) -> String {
+pub async fn get_user_context(pool: &PgPool, user_id: i64) -> String {
     // 1. Core structural futures definitions passing explicit structural fallbacks
     let health_fut = run_safe_fetch("health_score", financial_health_score(pool, user_id), FinancialHealthScoreResult {
         score: 0.0,

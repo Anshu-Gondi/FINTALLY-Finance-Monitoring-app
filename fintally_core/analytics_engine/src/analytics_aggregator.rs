@@ -1,8 +1,46 @@
 use std::collections::HashMap;
-use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Timelike, Utc};
+use time::{Date, Duration, OffsetDateTime, PrimitiveDateTime};
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 use fintally_db::models::RecurringFrequency;
+
+/// Helper to parse datetime strings across various formats (RFC3339, custom UTC format, or simple dates)
+fn parse_datetime(s: &str) -> Option<OffsetDateTime> {
+    // 1. Try standard RFC3339 / ISO8601
+    if let Ok(dt) = OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339) {
+        return Some(dt);
+    }
+
+    // 2. Try "YYYY-MM-DD HH:MM:SS.fff UTC" / "YYYY-MM-DD HH:MM:SS UTC"
+    let fmt_utc_sub = time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond] UTC");
+    if let Ok(p) = PrimitiveDateTime::parse(s, &fmt_utc_sub) {
+        return Some(p.assume_utc());
+    }
+
+    let fmt_utc = time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second] UTC");
+    if let Ok(p) = PrimitiveDateTime::parse(s, &fmt_utc) {
+        return Some(p.assume_utc());
+    }
+
+    // 3. Try "YYYY-MM-DD HH:MM:SS.fff +0000" / "YYYY-MM-DD HH:MM:SS +0000"
+    let fmt_offset_sub = time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond] [offset_hour][offset_minute]");
+    if let Ok(dt) = OffsetDateTime::parse(s, &fmt_offset_sub) {
+        return Some(dt);
+    }
+
+    let fmt_offset = time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour][offset_minute]");
+    if let Ok(dt) = OffsetDateTime::parse(s, &fmt_offset) {
+        return Some(dt);
+    }
+
+    // 4. Fallback to simple date "YYYY-MM-DD"
+    let fmt_date = time::macros::format_description!("[year]-[month]-[day]");
+    if let Ok(d) = Date::parse(s, &fmt_date) {
+        return Some(d.midnight().assume_utc());
+    }
+
+    None
+}
 
 /// Aggregates timestamps + prices into N-minute buckets (low memory version)
 pub fn aggregate_by_interval(
@@ -15,9 +53,9 @@ pub fn aggregate_by_interval(
     let bucket_size = interval_minutes.max(1); // avoid zero division
 
     for (ts, price) in timestamps.iter().zip(prices.iter()) {
-        if let Ok(dt) = ts.parse::<DateTime<Utc>>() {
-            let hour = dt.hour();
-            let bucket = (dt.minute() / bucket_size) * bucket_size; // group into N-minute intervals
+        if let Some(dt) = parse_datetime(ts) {
+            let hour = dt.hour() as u32;
+            let bucket = ((dt.minute() as u32) / bucket_size) * bucket_size; // group into N-minute intervals
             let entry = map.entry((hour, bucket)).or_insert((0.0, 0.0));
 
             if *price > 0.0 {
@@ -82,18 +120,12 @@ pub fn aggregate_by_day(
     prices: Vec<f64>,
     bucket_days: Option<u32>,
 ) -> Vec<(String, f64, f64, f64)> {
-    let mut map: HashMap<NaiveDate, (f64, f64)> = HashMap::new();
+    let mut map: HashMap<Date, (f64, f64)> = HashMap::new();
+    let ymd_fmt = time::macros::format_description!("[year]-[month]-[day]");
 
     for (ds, price) in dates.iter().zip(prices.iter()) {
-        let dt_utc = DateTime::parse_from_rfc3339(ds)
-            .map(|dt| dt.with_timezone(&Utc))
-            .or_else(|_| {
-                NaiveDateTime::parse_from_str(ds, "%Y-%m-%d %H:%M:%S%.f UTC")
-                    .map(|naive| DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc))
-            });
-
-        if let Ok(dt) = dt_utc {
-            let date = dt.date_naive();
+        if let Some(dt) = parse_datetime(ds) {
+            let date = dt.date();
             let entry = map.entry(date).or_insert((0.0, 0.0));
 
             if *price > 0.0 {
@@ -135,7 +167,8 @@ pub fn aggregate_by_day(
         dates_sorted
             .into_iter()
             .map(|(d, (inc, exp))| {
-                (d.format("%Y-%m-%d").to_string(), inc, exp.abs(), inc + exp.abs())
+                let date_str = d.format(&ymd_fmt).unwrap_or_default();
+                (date_str, inc, exp.abs(), inc + exp.abs())
             })
             .collect()
     }
@@ -146,11 +179,8 @@ pub fn aggregate_by_month(dates: Vec<String>, prices: Vec<f64>) -> Vec<(String, 
     let mut map: HashMap<String, (f64, f64)> = HashMap::new();
 
     for (date_str, price) in dates.iter().zip(prices.iter()) {
-        if let Ok(dt) = DateTime::parse_from_rfc3339(date_str).or_else(|_| {
-            DateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S%.f %z")
-        }) {
-            let dt_utc = dt.with_timezone(&Utc);
-            let key = format!("{}-{:02}", dt_utc.year(), dt_utc.month());
+        if let Some(dt) = parse_datetime(date_str) {
+            let key = format!("{}-{:02}", dt.year(), u8::from(dt.month()));
 
             let entry = map.entry(key).or_insert((0.0, 0.0));
             if *price > 0.0 {
@@ -210,16 +240,14 @@ pub fn aggregate_trend(
     let mut map: HashMap<String, (f64, f64)> = HashMap::new();
 
     for (date_str, price) in dates.iter().zip(prices.iter()) {
-        if let Ok(dt) = DateTime::parse_from_rfc3339(date_str).or_else(|_| {
-            DateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S%.f %z")
-        }) {
-            let dt_utc = dt.with_timezone(&Utc);
+        if let Some(dt) = parse_datetime(date_str) {
             let key = match mode {
                 "weekly" => {
-                    let week_info = dt_utc.iso_week();
-                    format!("{}-W{:02}", week_info.year(), week_info.week())
+                    let year = dt.year();
+                    let week = dt.iso_week();
+                    format!("{}-W{:02}", year, week)
                 }
-                _ => format!("{}-{:02}", dt_utc.year(), dt_utc.month()),
+                _ => format!("{}-{:02}", dt.year(), u8::from(dt.month())),
             };
 
             let entry = map.entry(key).or_insert((0.0, 0.0));
@@ -316,11 +344,8 @@ pub fn emi_monthly_pressure(
         .zip(principals.iter())
         .zip(annual_rates.iter().zip(tenures.iter()))
     {
-        if let Ok(dt) = DateTime::parse_from_rfc3339(date_str).or_else(|_| {
-            DateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S%.f %z")
-        }) {
-            let dt = dt.with_timezone(&Utc);
-            let key = format!("{}-{:02}", dt.year(), dt.month());
+        if let Some(dt) = parse_datetime(date_str) {
+            let key = format!("{}-{:02}", dt.year(), u8::from(dt.month()));
 
             let r = rate / 12.0 / 100.0;
             let n = *tenure as f64;
@@ -339,7 +364,6 @@ pub fn emi_monthly_pressure(
     out
 }
 
-/// Detects anomalous transactions using robust MAD method
 /// Detects anomalous transactions using robust MAD method with mean fallback
 pub fn detect_anomalies(
     dates: Vec<String>,
@@ -408,18 +432,17 @@ pub fn predict_budget_breach(
     let sims = simulations.unwrap_or(10_000).max(1);
     let horizon_days = horizon_days.max(1) as usize;
 
-    let mut daily_map: HashMap<NaiveDate, f64> = HashMap::new();
+    let mut daily_map: HashMap<Date, f64> = HashMap::new();
 
     for (ds, price) in dates.iter().zip(prices.iter()) {
         if *price >= 0.0 {
             continue;
         }
 
-        let dt: DateTime<Utc> = ds
-            .parse()
-            .map_err(|e| format!("Invalid date parsing: {}", e))?;
+        let dt = parse_datetime(ds)
+            .ok_or_else(|| format!("Invalid date parsing: {}", ds))?;
 
-        let day = dt.date_naive();
+        let day = dt.date();
         *daily_map.entry(day).or_insert(0.0) += price.abs();
     }
 
@@ -486,20 +509,19 @@ pub fn cashflow_forecast(
     horizon_days: u32,
 ) -> Vec<(String, f64, f64, f64)> {
     let mut map: HashMap<String, (f64, f64)> = HashMap::new();
-    let now = Utc::now();
+    let now = OffsetDateTime::now_utc();
+    let ymd_fmt = time::macros::format_description!("[year]-[month]-[day]");
 
     for ((date_str, price), freq) in start_dates.iter().zip(prices.iter()).zip(frequencies.iter()) {
-        let Ok(dt_fixed) = DateTime::parse_from_rfc3339(date_str).or_else(|_| {
-            DateTime::parse_from_str(date_str, "%Y-%m-%d %H:%M:%S%.f %z")
-        }) else {
+        let Some(mut dt) = parse_datetime(date_str) else {
             continue;
         };
 
-        let mut dt: DateTime<Utc> = dt_fixed.with_timezone(&Utc);
+        let end_time = now + Duration::days(horizon_days as i64);
 
-        while dt <= now + chrono::Duration::days(horizon_days as i64) {
+        while dt <= end_time {
             if dt >= now {
-                let key = dt.format("%Y-%m-%d").to_string();
+                let key = dt.date().format(&ymd_fmt).unwrap_or_default();
                 let entry = map.entry(key).or_insert((0.0, 0.0));
 
                 if *price > 0.0 {
@@ -510,9 +532,9 @@ pub fn cashflow_forecast(
             }
 
             dt = match freq {
-                RecurringFrequency::Daily => dt + chrono::Duration::days(1),
-                RecurringFrequency::Weekly => dt + chrono::Duration::weeks(1),
-                RecurringFrequency::Monthly => dt + chrono::Duration::days(30),
+                RecurringFrequency::Daily => dt + Duration::days(1),
+                RecurringFrequency::Weekly => dt + Duration::weeks(1),
+                RecurringFrequency::Monthly => dt + Duration::days(30),
             };
         }
     }
@@ -554,13 +576,13 @@ pub fn detect_recurring_anomalies(
     tolerance_pct: f64,
 ) -> Vec<(String, String)> {
     let mut anomalies = vec![];
-    let mut prev_date: Option<DateTime<Utc>> = None;
+    let mut prev_date: Option<OffsetDateTime> = None;
     let mut prev_price: Option<f64> = None;
 
     for (ds, price) in dates.iter().zip(prices.iter()) {
-        if let Ok(dt) = ds.parse::<DateTime<Utc>>() {
+        if let Some(dt) = parse_datetime(ds) {
             if let Some(pd) = prev_date {
-                let gap = (dt - pd).num_days().abs() as u32;
+                let gap = (dt - pd).whole_days().abs() as u32;
                 if gap > expected_frequency_days + 2 {
                     anomalies.push((ds.clone(), "Missed recurrence".into()));
                 }

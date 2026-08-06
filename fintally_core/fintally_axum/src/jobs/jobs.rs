@@ -1,8 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
-use chrono::{DateTime, Datelike, Utc};
+
+// Replace chrono with the time crate
+use time::{Duration as TimeDuration, OffsetDateTime, Time};
 use sqlx::{PgPool, Postgres, Transaction};
-use tracing::{info, error, warn};
+use tracing::{error, info, warn};
 
 use fintally_chatbot::chatbot_service::rag_service::RagService;
 use fintally_db::models::RecurringFrequency;
@@ -11,16 +13,16 @@ use fintally_db::models::RecurringFrequency;
 // Period Boundary Check Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn is_due(frequency: &RecurringFrequency, last_generated: DateTime<Utc>, now: DateTime<Utc>) -> bool {
+fn is_due(frequency: &RecurringFrequency, last_generated: OffsetDateTime, now: OffsetDateTime) -> bool {
     match frequency {
         RecurringFrequency::Daily => {
-            now >= last_generated + chrono::Duration::days(1)
+            now >= last_generated + TimeDuration::days(1)
         }
         RecurringFrequency::Weekly => {
-            now >= last_generated + chrono::Duration::weeks(1)
+            now >= last_generated + TimeDuration::weeks(1)
         }
         RecurringFrequency::Monthly => {
-            now >= last_generated + chrono::Duration::days(28)
+            now >= last_generated + TimeDuration::days(28)
                 && (last_generated.year(), last_generated.month()) != (now.year(), now.month())
         }
     }
@@ -31,7 +33,8 @@ fn is_due(frequency: &RecurringFrequency, last_generated: DateTime<Utc>, now: Da
 // ─────────────────────────────────────────────────────────────────────────────
 
 async fn generate_recurring_transactions(pool: &PgPool) -> Result<(), sqlx::Error> {
-    let now = Utc::now();
+    let now_dt = OffsetDateTime::now_utc();
+    let now_i64 = now_dt.unix_timestamp(); // Storing as i64 in the DB
 
     let active_txns = sqlx::query!(
         r#"
@@ -61,9 +64,12 @@ async fn generate_recurring_transactions(pool: &PgPool) -> Result<(), sqlx::Erro
             None => continue,
         };
 
-        let last_generated = row.last_generated_at.unwrap_or(row.datetime);
+        // DB returns i64 timestamps, fallback to transaction's datetime if last_generated_at is missing
+        let last_generated_i64 = row.last_generated_at.unwrap_or(row.datetime);
+        let last_generated_dt = OffsetDateTime::from_unix_timestamp(last_generated_i64)
+            .unwrap_or(now_dt);
 
-        if !is_due(&freq, last_generated, now) {
+        if !is_due(&freq, last_generated_dt, now_dt) {
             continue;
         }
 
@@ -77,7 +83,7 @@ async fn generate_recurring_transactions(pool: &PgPool) -> Result<(), sqlx::Erro
             row.name,
             row.price,
             row.description,
-            now,
+            now_i64, // Extracted i64
             row.category,
             row.receipt_url
         )
@@ -106,7 +112,7 @@ async fn generate_recurring_transactions(pool: &PgPool) -> Result<(), sqlx::Erro
                 recurring_frequency = $4::recurring_frequency
             WHERE id = $5
             "#,
-            now,
+            now_i64, // Extracted i64
             next_tenure,
             next_is_recurring,
             next_freq as Option<RecurringFrequency>,
@@ -168,18 +174,22 @@ pub fn start_scheduler(pool: PgPool, rag_service: Arc<RagService>) {
 
         // Continue with the standard daily scheduled loop (02:30 AM UTC)
         loop {
-            let now = Utc::now();
+            let now = OffsetDateTime::now_utc();
 
-            let target_time = chrono::NaiveTime::from_hms_opt(2, 30, 0).unwrap();
-            let mut target_datetime = now.date_naive().and_time(target_time).and_utc();
+            // Set target time to 02:30:00 UTC
+            let target_time = Time::from_hms(2, 30, 0).unwrap();
+            let mut target_datetime = now.replace_time(target_time);
 
+            // If 2:30 AM has already passed today, target 2:30 AM tomorrow
             if now >= target_datetime {
-                target_datetime += chrono::Duration::days(1);
+                target_datetime += TimeDuration::days(1);
             }
 
-            let duration_to_sleep = match (target_datetime - now).to_std() {
-                Ok(d) => d,
-                Err(_) => Duration::from_secs(60),
+            let diff = target_datetime - now;
+            let duration_to_sleep = if diff.is_positive() {
+                Duration::from_secs(diff.whole_seconds() as u64)
+            } else {
+                Duration::from_secs(60) // Fallback just in case
             };
 
             info!("[RAG-SCHEDULER] Next indexing sync scheduled in {:.2} hours.", duration_to_sleep.as_secs_f64() / 3600.0);

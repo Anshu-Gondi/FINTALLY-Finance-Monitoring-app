@@ -25,9 +25,10 @@ jsonwebtoken = "9.3"
 axum-extra = { version = "0.9", features = ["typed-header", "query"] }
 bcrypt = "0.15"
 google-jwt-signin = { version = "0.4", features = ["async"] }
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json", "uuid",] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json", "uuid", "time"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 genpdf = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 tracing.workspace = true
 async-stream       = { workspace = true }
+time = { version = "0.3", features = ["formatting", "parsing"] }

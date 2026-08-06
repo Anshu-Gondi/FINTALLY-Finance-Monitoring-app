@@ -3,21 +3,49 @@ import Footer from "../../Shared Components/Footer/Footer";
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css"; // Required for rendering math formulas
 import { chatApi } from "../../services/api";
 import "./Chatbot.css";
+
+// LaTeX preprocessor to convert bracketed formulas into KaTeX blocks
+const preprocessMarkdown = (content) => {
+  if (!content) return "";
+
+  return content
+    // 1. Convert standard LaTeX block delimiters \[ equation \] -> $$ equation $$
+    .replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, "\n\n$$$1$$\n\n")
+
+    // 2. Convert standard LaTeX inline delimiters \( variable \) -> $ variable $
+    .replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, "$$1$")
+
+    // 3. Remove orphaned backslashes sitting on their own lines
+    .replace(/^[ \t]*\\+[ \t]*$/gm, "")
+
+    // 4. Remove trailing backslashes inside math blocks before closing dollar signs
+    .replace(/\\+(\s*(\$\$|\$))/g, "$1")
+
+    // 5. Convert raw bracketed formulas [ ... ] into KaTeX $$ blocks
+    .replace(/\[\s*([\s\S]*?(?:\\times|\\frac|\\text|=|\\approx|\^|\/|\+|\{|\})[\s\S]*?)\s*\]/g, "\n\n$$$1$$\n\n")
+
+    // 6. Convert single letter parenthesized variables "( P )" -> "$P$"
+    .replace(/\(\s*([a-zA-Z0-9])\s*\)/g, "$$$1$");
+};
 
 const ChatbotPage = () => {
   const [messages, setMessages] = useState([
     {
       id: "welcome",
       role: "assistant",
-      content: "SYSTEM ONLINE // FINTALLY AI READY. ENTER FINANCIAL QUERY_",
+      content: "SYSTEM ONLINE // FINTALLY AI READY. ENTER FINANCIAL QUERY OR SELECT A QUICK COMMAND BELOW_",
     },
   ]);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [systemStatus, setSystemStatus] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [showGuidelines, setShowGuidelines] = useState(false);
 
   const messagesEndRef = useRef(null);
   const timerRef = useRef(null);
@@ -40,11 +68,11 @@ const ChatbotPage = () => {
     return () => clearInterval(timerRef.current);
   }, [isGenerating]);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || isGenerating) return;
+  const handleSendMessage = async (e, customPrompt = null) => {
+    if (e) e.preventDefault();
+    const userMessage = (customPrompt || input).trim();
+    if (!userMessage || isGenerating) return;
 
-    const userMessage = input.trim();
     setInput("");
     setIsGenerating(true);
     setSystemStatus("INITIALIZING CONNECTION TO RUST BACKEND...");
@@ -86,9 +114,10 @@ const ChatbotPage = () => {
 
       while (true) {
         const { value, done } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done });
+
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
@@ -101,7 +130,6 @@ const ChatbotPage = () => {
 
           rawPayload = rawPayload.replace(/\\n/g, "\n");
 
-          // Control Signals
           if (rawPayload === "[DONE]") {
             setSystemStatus("");
             break;
@@ -129,7 +157,6 @@ const ChatbotPage = () => {
             continue;
           }
 
-          // Accumulate clean text streamed from backend
           rawAccumulator += rawPayload;
           setSystemStatus("STREAMING RESPONSE TO CLIENT...");
 
@@ -249,16 +276,60 @@ const ChatbotPage = () => {
       <Navbar />
       <div className="chatbot-page-wrapper">
         <div className="chatbot-box-wrapper">
+          {/* Header Panel */}
           <div className="chatbot-window-header">
             <div className="header-title-block">
               <span className={`live-dot ${isGenerating ? "processing" : ""}`}></span>
               <h2 className="chatbot-title">FINTALLY_CORE_ASSISTANT v1.02</h2>
             </div>
-            <span className={`engine-badge ${isGenerating ? "busy" : ""}`}>
-              {isGenerating ? `CPU_BUSY [${elapsedTime}s]` : "RUST_ENGINE_ACTIVE"}
-            </span>
+            <div className="header-actions">
+              <button
+                type="button"
+                className="guidelines-toggle-btn"
+                onClick={() => setShowGuidelines(!showGuidelines)}
+              >
+                {showGuidelines ? "✖ CLOSE GUIDELINES" : "📜 LLM GUIDELINES"}
+              </button>
+              <span className={`engine-badge ${isGenerating ? "busy" : ""}`}>
+                {isGenerating ? `CPU_BUSY [${elapsedTime}s]` : "RUST_ENGINE_ACTIVE"}
+              </span>
+            </div>
           </div>
 
+          {/* LLM Guidelines Accordion/Drawer */}
+          {showGuidelines && (
+            <div className="llm-guidelines-drawer">
+              <h3 className="guidelines-title">⚡ SYSTEM GUIDELINES & CAPABILITIES</h3>
+              <div className="guidelines-grid">
+                <div className="guideline-card">
+                  <h4>💡 Prompting Guidelines</h4>
+                  <ul>
+                    <li>Specify exact numeric inputs for precise calculations.</li>
+                    <li>For EMI: provide principal, annual interest rate, and tenure in months.</li>
+                    <li>For Budgeting: mention monthly income and profile type.</li>
+                  </ul>
+                </div>
+                <div className="guideline-card">
+                  <h4>🛠️ Integrated Engine Tools</h4>
+                  <ul>
+                    <li><code>calculate_emi</code> - Loan EMI & repayment schedule</li>
+                    <li><code>generate_budget</code> - Income allocation & savings</li>
+                    <li><code>emergency_fund</code> - 6 to 12 month coverage analysis</li>
+                    <li><code>calculate_tax</code> - Tax liability under Indian regimes</li>
+                  </ul>
+                </div>
+                <div className="guideline-card">
+                  <h4>📐 Math Formatting</h4>
+                  <ul>
+                    <li>Inline math uses <code>$variable$</code> formatting.</li>
+                    <li>Block equations use standard KaTeX <code>$$ equation $$</code>.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Viewport Display Panel */}
           <div className="chatbot-messages-viewport">
             {messages.map((msg) => (
               <div key={msg.id} className={`chatbot-msg-row ${msg.role}`}>
@@ -282,11 +353,14 @@ const ChatbotPage = () => {
                     </div>
                   )}
 
-                  {/* Markdown Formatted Conversational Content */}
+                  {/* Markdown & LaTeX Formatted Content */}
                   <div className="msg-body-content markdown-container">
                     {msg.content ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.content}
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {preprocessMarkdown(msg.content)}
                       </ReactMarkdown>
                     ) : isGenerating && msg.role === "assistant" ? (
                       "Processing input data..."
@@ -313,6 +387,29 @@ const ChatbotPage = () => {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Quick Command Suggestion Chips */}
+          <div className="quick-commands-bar">
+            <button
+              disabled={isGenerating}
+              onClick={(e) => handleSendMessage(e, "Calculate EMI for ₹5,00,000 loan at 8.5% interest for 36 months")}
+            >
+              📊 EMI Calculator
+            </button>
+            <button
+              disabled={isGenerating}
+              onClick={(e) => handleSendMessage(e, "Calculate recommended emergency fund for ₹35,000 monthly expense")}
+            >
+              🛡️ Emergency Fund
+            </button>
+            <button
+              disabled={isGenerating}
+              onClick={(e) => handleSendMessage(e, "Generate monthly budget for ₹65,000 income as a young professional")}
+            >
+              💼 Monthly Budget
+            </button>
+          </div>
+
+          {/* Input Dock */}
           <form onSubmit={handleSendMessage} className="chatbot-form-input-dock">
             <input
               type="text"

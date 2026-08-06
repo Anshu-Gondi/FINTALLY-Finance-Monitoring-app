@@ -3,10 +3,9 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use chrono::{DateTime, NaiveDate, Utc};
 use serde::{de, Deserialize, Deserializer, Serialize};
 use sqlx::PgPool;
-use uuid::Uuid;
+use time::{format_description::well_known::Rfc3339, Date, OffsetDateTime, PrimitiveDateTime, Time};
 
 // Import your Claims middleware extractor
 use crate::auth::Claims;
@@ -23,21 +22,22 @@ use analytics_engine::analytics_service::{
 // --- CUSTOM DESERIALIZERS FOR QUERY PARAMS ---
 
 /// Helper to parse non-optional flexible date formats: "YYYY-MM-DD" or full RFC3339 / ISO-8601 strings.
-fn parse_flexible_date<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+fn parse_flexible_date<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
 where
     D: Deserializer<'de>,
 {
     let s = String::deserialize(deserializer)?;
 
     // 1. Try parsing full RFC3339 / ISO 8601 format (e.g. "2026-08-19T00:00:00Z")
-    if let Ok(dt) = DateTime::parse_from_rfc3339(&s) {
-        return Ok(dt.with_timezone(&Utc));
+    if let Ok(dt) = OffsetDateTime::parse(&s, &Rfc3339) {
+        return Ok(dt);
     }
 
     // 2. Fallback to simple date format ("YYYY-MM-DD")
-    if let Ok(date) = NaiveDate::parse_from_str(&s, "%Y-%m-%d") {
-        if let Some(naive_dt) = date.and_hms_opt(23, 59, 59) {
-            return Ok(DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc));
+    let date_format = time::macros::format_description!("[year]-[month]-[day]");
+    if let Ok(date) = Date::parse(&s, &date_format) {
+        if let Ok(t) = Time::from_hms(23, 59, 59) {
+            return Ok(PrimitiveDateTime::new(date, t).assume_utc());
         }
     }
 
@@ -46,8 +46,8 @@ where
     )))
 }
 
-/// Helper to parse optional flexible date formats for Option<DateTime<Utc>> fields.
-fn parse_flexible_option_date<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
+/// Helper to parse optional flexible date formats for Option<OffsetDateTime> fields.
+fn parse_flexible_option_date<'de, D>(deserializer: D) -> Result<Option<OffsetDateTime>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -107,10 +107,10 @@ pub struct PeriodQuery {
 #[derive(Deserialize)]
 pub struct CategoryQuery {
     #[serde(default, deserialize_with = "parse_flexible_option_date")]
-    pub start: Option<DateTime<Utc>>,
+    pub start: Option<OffsetDateTime>,
 
     #[serde(default, deserialize_with = "parse_flexible_option_date")]
-    pub end: Option<DateTime<Utc>>,
+    pub end: Option<OffsetDateTime>,
 
     pub tx_type: Option<String>,
     pub keyword: Option<String>,
@@ -131,7 +131,7 @@ pub struct CashflowQuery {
 #[derive(Deserialize)]
 pub struct BudgetBreachQuery {
     #[serde(deserialize_with = "parse_flexible_date")]
-    pub end_date: DateTime<Utc>,
+    pub end_date: OffsetDateTime,
     pub simulations: Option<usize>,
 }
 
@@ -162,7 +162,7 @@ impl IntoResponse for ApiError {
         let (status, msg): (axum::http::StatusCode, String) = match self {
             ApiError::InvalidUserId => (
                 axum::http::StatusCode::BAD_REQUEST,
-                "The User ID payload cannot be parsed into a valid UUID format.".to_string(),
+                "The User ID payload cannot be parsed into a valid integer format.".to_string(),
             ),
             ApiError::DatabaseError(err) => (
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -174,9 +174,9 @@ impl IntoResponse for ApiError {
     }
 }
 
-// Helper to convert internal claims string to Uuid efficiently
-fn parse_user_id(claims: &Claims) -> Result<Uuid, ApiError> {
-    Uuid::parse_str(&claims.user_id).map_err(|_| ApiError::InvalidUserId)
+// Helper to convert internal claims string to i64 efficiently
+fn parse_user_id(claims: &Claims) -> Result<i64, ApiError> {
+    claims.user_id.parse::<i64>().map_err(|_| ApiError::InvalidUserId)
 }
 
 // --- HANDLERS ---

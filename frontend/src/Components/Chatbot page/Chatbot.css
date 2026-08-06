@@ -12,7 +12,7 @@
 .chatbot-box-wrapper {
   width: 100%;
   max-width: 900px;
-  height: 80vh;
+  height: 85vh;
   background: rgba(5, 5, 15, 0.95);
   border: 2px solid #00f0ff;
   border-radius: 16px;
@@ -37,6 +37,90 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.guidelines-toggle-btn {
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid #00f0ff;
+  color: #00f0ff;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-family: 'Consolas', monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.guidelines-toggle-btn:hover {
+  background: #00f0ff;
+  color: #000;
+  box-shadow: 0 0 10px #00f0ff;
+}
+
+/* LLM Guidelines Drawer Styling */
+.llm-guidelines-drawer {
+  background: #020b18;
+  border-bottom: 1px solid #00f0ff;
+  padding: 15px 20px;
+  font-family: 'Consolas', monospace;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.guidelines-title {
+  color: #39ff14;
+  font-size: 0.85rem;
+  margin-top: 0;
+  margin-bottom: 10px;
+  letter-spacing: 0.05rem;
+  text-shadow: 0 0 6px #39ff14;
+}
+
+.guidelines-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.guideline-card {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.guideline-card h4 {
+  margin: 0 0 6px 0;
+  font-size: 0.75rem;
+  color: #00f0ff;
+}
+
+.guideline-card ul {
+  margin: 0;
+  padding-left: 15px;
+  font-size: 0.7rem;
+  color: #a0f0ff;
+}
+
+.guideline-card li {
+  margin-bottom: 4px;
+}
+
+.guideline-card code {
+  color: #39ff14;
+  background: rgba(57, 255, 20, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 
 .live-dot {
@@ -119,7 +203,6 @@
   line-height: 1.6;
 }
 
-/* Fix for font symbol overlapping (Rupee symbol ₹) */
 .msg-body-content {
   font-family: 'Cascadia Code', 'Fira Code', 'Consolas', system-ui, sans-serif;
   letter-spacing: 0.3px;
@@ -151,6 +234,40 @@
   margin-bottom: 6px;
   letter-spacing: 0.05rem;
   font-family: monospace;
+}
+
+/* Quick Commands Bar */
+.quick-commands-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 20px;
+  background: #00050d;
+  border-top: 1px solid rgba(0, 240, 255, 0.2);
+  overflow-x: auto;
+}
+
+.quick-commands-bar button {
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  color: #00f0ff;
+  font-size: 0.72rem;
+  font-family: 'Consolas', monospace;
+  padding: 4px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-commands-bar button:hover:not(:disabled) {
+  background: rgba(57, 255, 20, 0.15);
+  border-color: #39ff14;
+  color: #39ff14;
+}
+
+.quick-commands-bar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* Embedded Micro-Cards Layout */
@@ -188,7 +305,7 @@
 
 /* Input Dock panel adjustments */
 .chatbot-form-input-dock {
-  padding: 20px;
+  padding: 15px 20px;
   background: #000814;
   border-top: 2px solid #00f0ff;
   display: flex;
@@ -330,4 +447,21 @@
 
 .markdown-container th {
   background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* KaTeX Math Styling Adjustments for Dark Theme */
+.markdown-container .katex {
+  color: #39ff14 !important;
+  font-size: 1.1em;
+}
+
+.markdown-container .katex-display {
+  margin: 1em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0;
+}
+
+.markdown-container .katex-display > .katex {
+  color: #00f0ff !important;
 }

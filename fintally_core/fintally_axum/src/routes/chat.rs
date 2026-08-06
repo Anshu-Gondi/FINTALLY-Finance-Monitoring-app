@@ -11,7 +11,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use futures_util::StreamExt;
 use std::{convert::Infallible, sync::Arc};
-use uuid::Uuid;
 
 use crate::auth::Claims;
 use fintally_chatbot::chatbot_service::chatbot_orchestrator::{ChatbotOrchestrator, ChatMessage};
@@ -26,7 +25,7 @@ pub struct ChatState {
 #[derive(Debug, Deserialize)]
 pub struct ChatRequest {
     pub message: String,
-    pub session_id: Option<String>,
+    pub session_id: Option<i64>,
     #[serde(default = "default_max_tokens")]
     pub max_tokens: i64,
 }
@@ -60,17 +59,17 @@ async fn chat_stream_endpoint(
     claims: Claims,
     Json(payload): Json<ChatRequest>,
 ) -> impl IntoResponse {
-    let user_id_str = claims.user_id.clone();
-    let session_id = payload.session_id.clone().unwrap_or_else(|| "default".to_string());
-
-    let target_uuid = match Uuid::parse_str(&user_id_str) {
+    let target_user_id = match claims.user_id.parse::<i64>() {
         Ok(parsed) => parsed,
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid User ID format signature.").into_response(),
     };
 
-    let history_rows = match state.history_service.get_history(&user_id_str, payload.session_id.as_deref(), 20).await {
+    let history_rows = match state.history_service.get_history(target_user_id, payload.session_id, 20).await {
         Ok(h) => h,
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        Err(err) => {
+            eprintln!("[DATABASE ERROR] Failed to fetch history: {:?}", err);
+            Vec::new()
+        }
     };
 
     let chat_history: Vec<ChatMessage> = history_rows
@@ -78,16 +77,14 @@ async fn chat_stream_endpoint(
         .map(|m| ChatMessage { role: m.role, content: m.content })
         .collect();
 
-    let _ = state.history_service.append_message(&user_id_str, "user", &payload.message, payload.session_id.as_deref(), None).await;
+    if let Err(err) = state.history_service.append_message(target_user_id, "user", &payload.message, payload.session_id, None).await {
+        eprintln!("[DATABASE ERROR] Failed to record user message: {:?}", err);
+    }
 
-    let raw_token_stream = state.orchestrator.clone().chat_stream(target_uuid, payload.message, chat_history);
-
-    // Clone references needed inside the linear async generator macro block
+    let raw_token_stream = state.orchestrator.clone().chat_stream(target_user_id, payload.message, chat_history);
     let history_svc_clone = Arc::clone(&state.history_service);
-    let user_id_clone = user_id_str.clone();
-    let session_id_clone = session_id.clone();
+    let session_id = payload.session_id;
 
-    // LOCK-FREE: Use async_stream macro to linearize processing on local stack memory
     let sse_stream = async_stream::stream! {
         let mut assistant_response_accumulator = String::new();
         let mut detected_tool: Option<String> = None;
@@ -109,17 +106,16 @@ async fn chat_stream_endpoint(
                         assistant_response_accumulator.push_str(&token);
                     }
 
-                    // Escape newlines to preserve SSE data framing standard
                     let formatted_token = token.replace('\n', "\\n");
                     yield Ok::<Event, Infallible>(Event::default().data(formatted_token));
                 }
                 Err(e) => {
+                    eprintln!("[ORCHESTRATOR STREAM ERROR]: {:?}", e);
                     yield Ok::<Event, Infallible>(Event::default().data(format!("[ERROR: {}]", e)));
                 }
             }
         }
 
-        // Write to DB after stream finishes yielding tokens
         if !assistant_response_accumulator.is_empty() {
             let mut metadata = serde_json::json!({});
             if let Some(t) = detected_tool {
@@ -130,15 +126,14 @@ async fn chat_stream_endpoint(
             }
 
             let _ = history_svc_clone.append_message(
-                &user_id_clone,
+                target_user_id,
                 "assistant",
                 &assistant_response_accumulator,
-                Some(&session_id_clone),
+                session_id,
                 Some(metadata)
             ).await;
         }
 
-        // Terminal frame signal
         yield Ok::<Event, Infallible>(Event::default().data("[DONE]"));
     };
 
@@ -155,14 +150,12 @@ async fn chat_once_endpoint(
     claims: Claims,
     Json(payload): Json<ChatRequest>,
 ) -> impl IntoResponse {
-    let user_id_str = claims.user_id.clone();
-
-    let target_uuid = match Uuid::parse_str(&user_id_str) {
+    let target_user_id = match claims.user_id.parse::<i64>() {
         Ok(parsed) => parsed,
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid User ID format signature.").into_response(),
     };
 
-    let history_rows = match state.history_service.get_history(&user_id_str, payload.session_id.as_deref(), 20).await {
+    let history_rows = match state.history_service.get_history(target_user_id, payload.session_id, 20).await {
         Ok(h) => h,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
@@ -172,9 +165,9 @@ async fn chat_once_endpoint(
         .map(|m| ChatMessage { role: m.role, content: m.content })
         .collect();
 
-    let _ = state.history_service.append_message(&user_id_str, "user", &payload.message, payload.session_id.as_deref(), None).await;
+    let _ = state.history_service.append_message(target_user_id, "user", &payload.message, payload.session_id, None).await;
 
-    let complete_stream = state.orchestrator.clone().chat_stream(target_uuid, payload.message, chat_history);
+    let complete_stream = state.orchestrator.clone().chat_stream(target_user_id, payload.message, chat_history);
     let mut final_reply = String::new();
     let mut tool_called = None;
     let mut tool_result = None;
@@ -198,7 +191,7 @@ async fn chat_once_endpoint(
     if let Some(ref t) = tool_called { metadata["tool_called"] = serde_json::Value::String(t.clone()); }
     if let Some(ref r) = tool_result { metadata["tool_result"] = r.clone(); }
 
-    let _ = state.history_service.append_message(&user_id_str, "assistant", &final_reply, payload.session_id.as_deref(), Some(metadata)).await;
+    let _ = state.history_service.append_message(target_user_id, "assistant", &final_reply, payload.session_id, Some(metadata)).await;
 
     Json(ChatOnceResponse {
         reply: final_reply,
@@ -212,7 +205,7 @@ async fn chat_once_endpoint(
 // ──────────────────────────────────────────────────────────────────────────────
 #[derive(Deserialize)]
 struct HistoryQuery {
-    session_id: Option<String>,
+    session_id: Option<i64>,
     #[serde(default = "default_limit")]
     limit: i64,
 }
@@ -223,7 +216,12 @@ async fn get_chat_history_endpoint(
     claims: Claims,
     Query(query): Query<HistoryQuery>,
 ) -> impl IntoResponse {
-    match state.history_service.get_full_history(&claims.user_id, query.session_id.as_deref(), query.limit).await {
+    let user_id: i64 = match claims.user_id.parse() {
+        Ok(id) => id,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    match state.history_service.get_full_history(user_id, query.session_id, query.limit).await {
         Ok(history) => {
             let count = history.len();
             (StatusCode::OK, Json(serde_json::json!({ "history": history, "count": count }))).into_response()
@@ -236,7 +234,12 @@ async fn get_sessions_endpoint(
     State(state): State<Arc<ChatState>>,
     claims: Claims,
 ) -> impl IntoResponse {
-    match state.history_service.get_all_sessions(&claims.user_id).await {
+    let user_id: i64 = match claims.user_id.parse() {
+        Ok(id) => id,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    match state.history_service.get_all_sessions(user_id).await {
         Ok(sessions) => (StatusCode::OK, Json(serde_json::json!({ "sessions": sessions }))).into_response(),
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
@@ -247,7 +250,12 @@ async fn clear_chat_history_endpoint(
     claims: Claims,
     Query(query): Query<HistoryQuery>,
 ) -> impl IntoResponse {
-    match state.history_service.clear_history(&claims.user_id, query.session_id.as_deref()).await {
+    let user_id: i64 = match claims.user_id.parse() {
+        Ok(id) => id,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    match state.history_service.clear_history(user_id, query.session_id).await {
         Ok(_) => (StatusCode::OK, Json(serde_json::json!({ "message": "Chat history cleared successfully" }))).into_response(),
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
