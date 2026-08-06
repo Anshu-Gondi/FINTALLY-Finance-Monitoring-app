@@ -21,12 +21,12 @@
       {
         "ordinal": 3,
         "name": "start_date",
-        "type_info": "Timestamptz"
+        "type_info": "Int8"
       },
       {
         "ordinal": 4,
         "name": "end_date",
-        "type_info": "Timestamptz"
+        "type_info": "Int8"
       },
       {
         "ordinal": 5,
@@ -36,11 +36,11 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
+        "Int8",
         "Float8",
         "Varchar",
-        "Timestamptz",
-        "Timestamptz",
+        "Int8",
+        "Int8",
         "Bool"
       ]
     },

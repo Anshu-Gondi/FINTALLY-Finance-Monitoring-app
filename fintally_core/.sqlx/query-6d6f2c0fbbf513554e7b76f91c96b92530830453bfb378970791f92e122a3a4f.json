@@ -5,11 +5,11 @@
     "columns": [],
     "parameters": {
       "Left": [
-        "Uuid",
+        "Int8",
         "Varchar",
         "Float8",
         "Text",
-        "Timestamptz",
+        "Int8",
         "Varchar",
         "Text"
       ]

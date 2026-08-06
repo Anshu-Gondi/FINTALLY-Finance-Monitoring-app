@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO transactions (user_id, name, price, description, datetime, category, is_recurring, recurring_frequency, receipt_url) \n          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::recurring_frequency, $9) RETURNING id",
+  "query": "INSERT INTO transactions (user_id, name, price, description, datetime, category, is_recurring, recurring_frequency, receipt_url)\n          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::recurring_frequency, $9) RETURNING id",
   "describe": {
     "columns": [
       {
@@ -11,11 +11,11 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
+        "Int8",
         "Varchar",
         "Float8",
         "Text",
-        "Timestamptz",
+        "Int8",
         "Varchar",
         "Bool",
         {
@@ -37,5 +37,5 @@
       false
     ]
   },
-  "hash": "5224201b68679b7a1f318f3b02f61edab21ae6a0944905aa58cd339b661d8c20"
+  "hash": "2fc8400647746285ca78bcb731229d2b3239981fd014ecabf947261b6645f79e"
 }

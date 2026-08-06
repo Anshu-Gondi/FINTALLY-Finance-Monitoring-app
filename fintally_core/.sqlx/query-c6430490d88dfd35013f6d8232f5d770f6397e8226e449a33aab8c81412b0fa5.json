@@ -11,7 +11,7 @@
       {
         "ordinal": 1,
         "name": "user_id",
-        "type_info": "Uuid"
+        "type_info": "Int8"
       },
       {
         "ordinal": 2,
@@ -31,7 +31,7 @@
       {
         "ordinal": 5,
         "name": "datetime",
-        "type_info": "Timestamptz"
+        "type_info": "Int8"
       },
       {
         "ordinal": 6,
@@ -57,7 +57,7 @@
       {
         "ordinal": 8,
         "name": "last_generated_at",
-        "type_info": "Timestamptz"
+        "type_info": "Int8"
       },
       {
         "ordinal": 9,

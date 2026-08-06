@@ -1,4 +1,3 @@
-// fintally_db/src/bin/check_db.rs
 use fintally_db::DbContext;
 use fintally_db::chat_service::ChatHistoryService;
 
@@ -30,27 +29,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("📝 Testing read/write operations on chat log tables...");
     let chat_service = ChatHistoryService::new(db_ctx);
 
+    // Define test integer IDs matching `i64`
+    let test_user_id: i64 = 12345;
+    let test_session_id: Option<i64> = Some(101);
+
     // Write a mock entry
     chat_service.append_message(
-        "test_user_123", 
-        "user", 
-        "Hello Supabase from my N4020 machine!", 
-        Some("test_session"), 
+        test_user_id,
+        "user",
+        "Hello Supabase from my N4020 machine!",
+        test_session_id,
         None
     ).await?;
     println!("✅ Wrote test message to `chat_messages` table.");
 
     // Read it back
-    let history = chat_service.get_history("test_user_123", Some("test_session"), 5).await?;
+    let history = chat_service.get_history(test_user_id, test_session_id, 5).await?;
     println!("✅ Read history back safely. Record count: {}", history.len());
     if let Some(msg) = history.first() {
-        println!("   Message content: \"{}\"", msg.content);
+        println!("    Message content: \"{}\"", msg.content);
     }
 
     // Clean up our test footprint
-    chat_service.clear_history("test_user_123", Some("test_session")).await?;
+    chat_service.clear_history(test_user_id, test_session_id).await?;
     println!("🗑️ Cleaned up test rows successfully.");
-    
+
     println!("\n🎉 Everything is fully operational! Database is ready for Axum routing.");
     Ok(())
 }

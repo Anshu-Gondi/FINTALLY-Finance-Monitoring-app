@@ -16,17 +16,17 @@
       {
         "ordinal": 2,
         "name": "start_date",
-        "type_info": "Timestamptz"
+        "type_info": "Int8"
       },
       {
         "ordinal": 3,
         "name": "end_date",
-        "type_info": "Timestamptz"
+        "type_info": "Int8"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Int8"
       ]
     },
     "nullable": [

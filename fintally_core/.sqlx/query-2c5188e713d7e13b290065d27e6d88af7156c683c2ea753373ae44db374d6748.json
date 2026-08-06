@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE budgets \n            SET amount = $1, start_date = $2, end_date = $3, is_recurring = $4\n            WHERE id = $5\n            RETURNING id, category, amount, start_date, end_date, is_recurring\n            ",
+  "query": "SELECT id, category, amount, start_date, end_date, is_recurring\n           FROM budgets WHERE user_id = $1 ORDER BY id DESC",
   "describe": {
     "columns": [
       {
@@ -21,12 +21,12 @@
       {
         "ordinal": 3,
         "name": "start_date",
-        "type_info": "Timestamptz"
+        "type_info": "Int8"
       },
       {
         "ordinal": 4,
         "name": "end_date",
-        "type_info": "Timestamptz"
+        "type_info": "Int8"
       },
       {
         "ordinal": 5,
@@ -36,10 +36,6 @@
     ],
     "parameters": {
       "Left": [
-        "Float8",
-        "Timestamptz",
-        "Timestamptz",
-        "Bool",
         "Int8"
       ]
     },
@@ -52,5 +48,5 @@
       false
     ]
   },
-  "hash": "138270449444339dead131ac7648fcc6cb466c2cc4505ff85940a9fda3311cdf"
+  "hash": "2c5188e713d7e13b290065d27e6d88af7156c683c2ea753373ae44db374d6748"
 }
