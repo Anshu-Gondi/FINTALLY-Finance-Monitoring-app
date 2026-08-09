@@ -1,131 +1,114 @@
-use fintally_chatbot::core::vision::engine::{DocumentInput, VisionEngine};
-use std::fs::{self, File};
-use std::io::Write;
+use fintally_chatbot::core::vision::engine::*;
 use std::path::Path;
 
-/// Helper to set up mock florence2 model files in local directory structure
-fn setup_mock_model_assets(model_dir: &Path) -> anyhow::Result<()> {
-    fs::create_dir_all(model_dir)?;
+/// Generates a valid uncompressed 24-bit RGB BMP image in memory (no external image libraries needed)
+fn create_synthetic_bmp_bytes(width: u32, height: u32) -> Vec<u8> {
+    let row_stride = ((width * 3 + 3) / 4) * 4;
+    let image_size = row_stride * height;
+    let file_size = 54 + image_size;
 
-    // 1. Create minimal PaliGemma compatible config.json
-    let config_path = model_dir.join("config.json");
-    let config_json = serde_json::json!({
-        // Root-level fields expected by Candle's paligemma::Config
-        "projection_dim": 2048,
-        "hidden_size": 2048,
-        "vocab_size": 257152,
-        "ignore_index": -100,
-        "image_token_id": 257152,
-        "text_config": {
-            "vocab_size": 257152,
-            "hidden_size": 2048,
-            "intermediate_size": 16384,
-            "num_hidden_layers": 18,
-            "num_attention_heads": 8,
-            "num_key_value_heads": 1,
-            "head_dim": 256,
-            "hidden_act": "gelu_pytorch_tanh",
-            "max_position_embeddings": 8192,
-            "initializer_range": 0.02,
-            "rms_norm_eps": 1e-6,
-            "use_cache": true,
-            "pad_token_id": 0,
-            "eos_token_id": 1,
-            "bos_token_id": 2,
-            "rope_theta": 10000.0,
-            "attention_bias": false
-        },
-        "vision_config": {
-            "hidden_size": 1152,
-            "intermediate_size": 4304,
-            "num_hidden_layers": 27,
-            "num_attention_heads": 16,
-            "image_size": 224,
-            "patch_size": 14,
-            "projection_dim": 2048,
-            "attention_bias": false,
-            "num_channels": 3
+    let mut bmp = Vec::with_capacity(file_size as usize);
+
+    // 14-byte Bitmap File Header
+    bmp.extend_from_slice(b"BM");
+    bmp.extend_from_slice(&(file_size as u32).to_le_bytes());
+    bmp.extend_from_slice(&0u32.to_le_bytes());
+    bmp.extend_from_slice(&54u32.to_le_bytes());
+
+    // 40-byte DIB Header (BITMAPINFOHEADER)
+    bmp.extend_from_slice(&40u32.to_le_bytes());
+    bmp.extend_from_slice(&(width as i32).to_le_bytes());
+    bmp.extend_from_slice(&(height as i32).to_le_bytes());
+    bmp.extend_from_slice(&1u16.to_le_bytes()); // Color planes
+    bmp.extend_from_slice(&24u16.to_le_bytes()); // 24 bits per pixel (RGB)
+    bmp.extend_from_slice(&0u32.to_le_bytes()); // Uncompressed
+    bmp.extend_from_slice(&(image_size as u32).to_le_bytes());
+    bmp.extend_from_slice(&2835u32.to_le_bytes()); // 72 DPI
+    bmp.extend_from_slice(&2835u32.to_le_bytes());
+    bmp.extend_from_slice(&0u32.to_le_bytes());
+    bmp.extend_from_slice(&0u32.to_le_bytes());
+
+    // Fill pixel data with a synthetic gradient/chart grid pattern
+    let padding = (row_stride - width * 3) as usize;
+    for y in 0..height {
+        for x in 0..width {
+            let r = ((x * 255) / width) as u8;
+            let g = ((y * 255) / height) as u8;
+            let b = 128u8;
+            bmp.extend_from_slice(&[b, g, r]); // BMP stores BGR format
         }
-    });
-    let mut file = File::create(&config_path)?;
-    file.write_all(config_json.to_string().as_bytes())?;
+        bmp.extend(std::iter::repeat(0).take(padding));
+    }
 
-    // 2. Create minimal tokenizer.json
-    let tokenizer_path = model_dir.join("tokenizer.json");
-    let tokenizer_json = serde_json::json!({
-        "version": "1.0",
-        "truncation": null,
-        "padding": null,
-        "added_tokens": [
-            {"id": 0, "content": "<pad>", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true},
-            {"id": 1, "content": "</s>", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true},
-            {"id": 2, "content": "<s>", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true}
-        ],
-        "normalizer": null,
-        "pre_tokenizer": null,
-        "post_processor": null,
-        "decoder": null,
-        "model": {
-            "type": "BPE",
-            "dropout": null,
-            "unk_token": null,
-            "continuing_subword_prefix": null,
-            "end_of_word_suffix": null,
-            "fuse_unk": false,
-            "vocab": {
-                "<pad>": 0,
-                "</s>": 1,
-                "<s>": 2,
-                "Extract": 3,
-                "Text": 4
-            },
-            "merges": []
-        }
-    });
-    let mut file = File::create(&tokenizer_path)?;
-    file.write_all(tokenizer_json.to_string().as_bytes())?;
+    bmp
+}
 
-    // 3. Create mock safetensors binary file header
-    let weights_path = model_dir.join("model.safetensors");
-    let mut file = File::create(&weights_path)?;
-    let header_str = "{}";
-    let header_bytes = header_str.as_bytes();
-    let header_len = header_bytes.len() as u64;
-
-    file.write_all(&header_len.to_le_bytes())?;
-    file.write_all(header_bytes)?;
-
-    Ok(())
+/// Generates a valid minimal PDF byte stream in memory
+fn create_synthetic_pdf_bytes() -> Vec<u8> {
+    b"%PDF-1.4
+1 0 obj <</Type /Catalog /Pages 2 0 R>> endobj
+2 0 obj <</Type /Pages /Kids [3 0 R] /Count 1>> endobj
+3 0 obj <</Type /Page /Parent 2 0 R /MediaBox [0 0 300 300]>> endobj
+xref
+0 4
+0000000000 65535 f
+0000000009 00000 n
+0000000052 00000 n
+0000000102 00000 n
+trailer <</Size 4 /Root 1 0 R>>
+startxref
+168
+%%EOF"
+        .to_vec()
 }
 
 #[test]
-fn test_vision_engine_creation_and_inference() {
-    let mock_dir = Path::new("target/test_models/florence2_mock");
-    setup_mock_model_assets(mock_dir).expect("Failed to construct mock model directory assets");
-
-    let mut engine = VisionEngine::from_model_dir(mock_dir)
-        .expect("Failed to construct VisionEngine instance from mock assets");
-
-    let sample_bytes = vec![200u8; 1024];
-
-    // 1. Test Raw Image Processing
-    let raw_res = engine.process_input(
-        DocumentInput::RawImageBytes(&sample_bytes),
-        "Extract Text",
+fn test_thermal_metrics_api() {
+    let metrics = VisionEngine::get_thermal_metrics();
+    println!(
+        "Thermal Status: {:?}, Max Temp: {:.1}°C",
+        metrics.status, metrics.max_temp_celsius
     );
-    assert!(raw_res.is_ok(), "Raw image processing failed: {:?}", raw_res.err());
+    assert!(metrics.max_temp_celsius >= -50.0);
+}
 
-    // 2. Test PDF Page Processing
-    let pdf_res = engine.process_input(
-        DocumentInput::PdfDocumentBytes(&sample_bytes),
-        "Extract Text",
-    );
-    assert!(pdf_res.is_ok(), "PDF page processing failed: {:?}", pdf_res.err());
+#[test]
+fn test_vision_engine_synthetic_inputs() {
+    let model_dir = Path::new("llm_models/ocr/florence2_base_output");
 
-    // 3. Test Financial Chart Processing
-    let chart_res = engine.process_input(
-        DocumentInput::FinancialChartBytes(&sample_bytes),
-        "Extract Text",
+    // Skip weight loading assertions if local HuggingFace weights aren't downloaded yet
+    if !model_dir.join("tokenizer.json").exists() {
+        println!("Skipping full model inference test: model_dir assets not present");
+        return;
+    }
+
+    let mut engine = VisionEngine::from_model_dir(model_dir)
+        .expect("Failed to construct VisionEngine from model directory");
+
+    // 1. Test Raw Synthetic Image Input
+    let synthetic_image = create_synthetic_bmp_bytes(640, 480);
+    let img_result = engine.process_input(
+        DocumentInput::RawImageBytes(&synthetic_image),
+        "Extract text",
     );
-    assert!(chart_res.is_ok(), "Financial chart processing failed: {:?}", chart_res.err());
+    assert!(img_result.is_ok(), "Image processing failed: {:?}", img_result.err());
+
+    // 2. Test Synthetic PDF Stream Input
+    let synthetic_pdf = create_synthetic_pdf_bytes();
+    let pdf_result = engine.process_input(
+        DocumentInput::PdfDocumentBytes(&synthetic_pdf),
+        "Parse financial table",
+    );
+    assert!(pdf_result.is_ok(), "PDF processing failed: {:?}", pdf_result.err());
+
+    // 3. Test Synthetic Financial Chart Input with custom target dimensions
+    let synthetic_chart = create_synthetic_bmp_bytes(1024, 768);
+    let chart_result = engine.process_input_with_dims(
+        DocumentInput::FinancialChartBytes(&synthetic_chart),
+        "Analyze chart trend",
+        1280,
+        720,
+        3,
+    );
+    assert!(chart_result.is_ok(), "Chart processing failed: {:?}", chart_result.err());
 }

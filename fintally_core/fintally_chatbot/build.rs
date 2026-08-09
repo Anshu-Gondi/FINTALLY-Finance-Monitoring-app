@@ -15,6 +15,7 @@ fn main() {
         .extra_warnings(false)
         .file("cpp_engine/src/ffi_bridge.cpp")
         .file("cpp_engine/src/ocr_pipeline.cpp")
+        .file("cpp_engine/src/thermal_sensor.cpp") // <--- ADD THIS LINE
         .include("cpp_engine/include");
 
     // Configure compiler flags based on target OS & architecture
@@ -40,15 +41,13 @@ fn main() {
         if target_arch == "x86_64" {
             build.flag_if_supported("-msse4.2");
             build.flag_if_supported("-mavx2");
-            // Un-comment below if targeting dedicated AVX-512 server hardware
-            // build.flag_if_supported("-mavx512f").flag_if_supported("-mavx512bw");
         }
     }
 
     // Compile static library libfin_ocr_native.a / fin_ocr_native.lib
     build.compile("fin_ocr_native");
 
-    // 2. Explicitly link the underlying C++ Standard Library to prevent missing symbol errors
+    // 2. Explicitly link the underlying C++ Standard Library
     if target_os == "linux" {
         println!("cargo:rustc-link-lib=dylib=stdc++");
     } else if target_os == "macos" {
@@ -58,8 +57,10 @@ fn main() {
     // 3. Recompilation Watch Triggers
     println!("cargo:rerun-if-changed={}", cpp_header);
     println!("cargo:rerun-if-changed=cpp_engine/include/tensor_ops.hpp");
+    println!("cargo:rerun-if-changed=cpp_engine/include/thermal_sensor.hpp"); // Recommended
     println!("cargo:rerun-if-changed=cpp_engine/src/ffi_bridge.cpp");
     println!("cargo:rerun-if-changed=cpp_engine/src/ocr_pipeline.cpp");
+    println!("cargo:rerun-if-changed=cpp_engine/src/thermal_sensor.cpp");  // <--- ADD THIS LINE
 
     // 4. Automated FFI Binding Generation
     let bindings = bindgen::Builder::default()

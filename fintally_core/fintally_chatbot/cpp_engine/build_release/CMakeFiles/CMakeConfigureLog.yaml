@@ -1687,8 +1687,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-LTUcuw"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-LTUcuw"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-ow9P60"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-ow9P60"
     cmakeVariables:
       CMAKE_C_FLAGS: ""
       CMAKE_C_FLAGS_DEBUG: "-g"
@@ -1697,13 +1697,13 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-LTUcuw'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-ow9P60'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_0e2b6/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_0e2b6.dir/build.make CMakeFiles/cmTC_0e2b6.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-LTUcuw'
-        Building C object CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o
-        /usr/bin/cc   -v -o CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-4.2/Modules/CMakeCCompilerABI.c
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_086c8/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_086c8.dir/build.make CMakeFiles/cmTC_086c8.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-ow9P60'
+        Building C object CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -v -o CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-4.2/Modules/CMakeCCompilerABI.c
         Using built-in specs.
         COLLECT_GCC=/usr/bin/cc
         OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
@@ -1713,8 +1713,8 @@ events:
         Thread model: posix
         Supported LTO compression algorithms: zlib zstd
         gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) 
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_0e2b6.dir/'
-         /usr/libexec/gcc/x86_64-linux-gnu/15/cc1 -quiet -v -imultiarch x86_64-linux-gnu /usr/share/cmake-4.2/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_0e2b6.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccKzAubq.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_086c8.dir/'
+         /usr/libexec/gcc/x86_64-linux-gnu/15/cc1 -quiet -v -imultiarch x86_64-linux-gnu /usr/share/cmake-4.2/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_086c8.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccc9FFkk.s
         GNU C23 (Ubuntu 15.2.0-16ubuntu1) version 15.2.0 (x86_64-linux-gnu)
         	compiled by GNU C version 15.2.0, GMP version 6.3.0, MPFR version 4.2.2, MPC version 1.3.1, isl version isl-0.27-GMP
         
@@ -1731,14 +1731,14 @@ events:
          /usr/include
         End of search list.
         Compiler executable checksum: edd70396dcc669433a92073f97309866
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_0e2b6.dir/'
-         /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o /tmp/ccKzAubq.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_086c8.dir/'
+         /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o /tmp/ccc9FFkk.s
         GNU assembler version 2.46 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.46
         COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/
         LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.'
-        Linking C executable cmTC_0e2b6
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0e2b6.dir/link.txt --verbose=1
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.'
+        Linking C executable cmTC_086c8
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_086c8.dir/link.txt --verbose=1
         Using built-in specs.
         COLLECT_GCC=/usr/bin/cc
         COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper
@@ -1751,14 +1751,14 @@ events:
         gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) 
         COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/
         LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_0e2b6' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_0e2b6.'
-         /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccriTBv3.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_0e2b6 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_086c8' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_086c8.'
+         /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBsdQlL.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_086c8 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
         collect2 version 15.2.0
-        /usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccriTBv3.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_0e2b6 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
+        /usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBsdQlL.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_086c8 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
         GNU ld (GNU Binutils for Ubuntu) 2.46
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_0e2b6' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_0e2b6.'
-        /usr/bin/cc  -v -Wl,-v CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o -o cmTC_0e2b6
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-LTUcuw'
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_086c8' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_086c8.'
+        /usr/bin/cc  -v -Wl,-v CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o -o cmTC_086c8
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-ow9P60'
         
       exitCode: 0
   -
@@ -1793,13 +1793,13 @@ events:
       Parsed C implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)))("|,| |$)]
-        ignore line: [Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-LTUcuw']
+        ignore line: [Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-ow9P60']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_0e2b6/fast]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_0e2b6.dir/build.make CMakeFiles/cmTC_0e2b6.dir/build]
-        ignore line: [gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-LTUcuw']
-        ignore line: [Building C object CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o]
-        ignore line: [/usr/bin/cc   -v -o CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-4.2/Modules/CMakeCCompilerABI.c]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_086c8/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_086c8.dir/build.make CMakeFiles/cmTC_086c8.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-ow9P60']
+        ignore line: [Building C object CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -v -o CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o -c /usr/share/cmake-4.2/Modules/CMakeCCompilerABI.c]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/cc]
         ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
@@ -1809,8 +1809,8 @@ events:
         ignore line: [Thread model: posix]
         ignore line: [Supported LTO compression algorithms: zlib zstd]
         ignore line: [gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) ]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_0e2b6.dir/']
-        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/cc1 -quiet -v -imultiarch x86_64-linux-gnu /usr/share/cmake-4.2/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_0e2b6.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccKzAubq.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_086c8.dir/']
+        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/cc1 -quiet -v -imultiarch x86_64-linux-gnu /usr/share/cmake-4.2/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_086c8.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccc9FFkk.s]
         ignore line: [GNU C23 (Ubuntu 15.2.0-16ubuntu1) version 15.2.0 (x86_64-linux-gnu)]
         ignore line: [	compiled by GNU C version 15.2.0  GMP version 6.3.0  MPFR version 4.2.2  MPC version 1.3.1  isl version isl-0.27-GMP]
         ignore line: []
@@ -1827,14 +1827,14 @@ events:
         ignore line: [ /usr/include]
         ignore line: [End of search list.]
         ignore line: [Compiler executable checksum: edd70396dcc669433a92073f97309866]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_0e2b6.dir/']
-        ignore line: [ /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o /tmp/ccKzAubq.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_086c8.dir/']
+        ignore line: [ /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o /tmp/ccc9FFkk.s]
         ignore line: [GNU assembler version 2.46 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.46]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.']
-        ignore line: [Linking C executable cmTC_0e2b6]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0e2b6.dir/link.txt --verbose=1]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.']
+        ignore line: [Linking C executable cmTC_086c8]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_086c8.dir/link.txt --verbose=1]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/cc]
         ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper]
@@ -1847,13 +1847,13 @@ events:
         ignore line: [gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) ]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_0e2b6' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_0e2b6.']
-        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccriTBv3.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_0e2b6 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_086c8' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_086c8.']
+        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBsdQlL.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_086c8 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
           arg [/usr/libexec/gcc/x86_64-linux-gnu/15/collect2] ==> ignore
           arg [-plugin] ==> ignore
           arg [/usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so] ==> ignore
           arg [-plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper] ==> ignore
-          arg [-plugin-opt=-fresolution=/tmp/ccriTBv3.res] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccBsdQlL.res] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
           arg [-plugin-opt=-pass-through=-lc] ==> ignore
@@ -1871,7 +1871,7 @@ events:
           arg [-znow] ==> ignore
           arg [-zrelro] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_0e2b6] ==> ignore
+          arg [cmTC_086c8] ==> ignore
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o]
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o]
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o]
@@ -1886,7 +1886,7 @@ events:
           arg [-L/lib] ==> dir [/lib]
           arg [-L/usr/lib] ==> dir [/usr/lib]
           arg [-v] ==> ignore
-          arg [CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o] ==> ignore
           arg [-lgcc] ==> lib [gcc]
           arg [--push-state] ==> ignore
           arg [--as-needed] ==> ignore
@@ -1901,7 +1901,7 @@ events:
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o]
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
         ignore line: [collect2 version 15.2.0]
-        ignore line: [/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccriTBv3.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_0e2b6 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_0e2b6.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
+        ignore line: [/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBsdQlL.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_086c8 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_086c8.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
         linker tool for 'C': /usr/bin/ld
         collapse obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o] ==> [/usr/lib/x86_64-linux-gnu/Scrt1.o]
         collapse obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o] ==> [/usr/lib/x86_64-linux-gnu/crti.o]
@@ -1941,8 +1941,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-RCaZNv"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-RCaZNv"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dfA2fy"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dfA2fy"
     cmakeVariables:
       CMAKE_CXX_FLAGS: ""
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -1952,13 +1952,13 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-RCaZNv'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dfA2fy'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_3ca30/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_3ca30.dir/build.make CMakeFiles/cmTC_3ca30.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-RCaZNv'
-        Building CXX object CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o
-        /usr/bin/c++   -v -o CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-4.2/Modules/CMakeCXXCompilerABI.cpp
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_13742/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_13742.dir/build.make CMakeFiles/cmTC_13742.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dfA2fy'
+        Building CXX object CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o
+        /usr/bin/c++   -v -o CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-4.2/Modules/CMakeCXXCompilerABI.cpp
         Using built-in specs.
         COLLECT_GCC=/usr/bin/c++
         OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
@@ -1968,8 +1968,8 @@ events:
         Thread model: posix
         Supported LTO compression algorithms: zlib zstd
         gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) 
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_3ca30.dir/'
-         /usr/libexec/gcc/x86_64-linux-gnu/15/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /usr/share/cmake-4.2/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_3ca30.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccHKW42l.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_13742.dir/'
+         /usr/libexec/gcc/x86_64-linux-gnu/15/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /usr/share/cmake-4.2/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_13742.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccJ0G4ZG.s
         GNU C++17 (Ubuntu 15.2.0-16ubuntu1) version 15.2.0 (x86_64-linux-gnu)
         	compiled by GNU C version 15.2.0, GMP version 6.3.0, MPFR version 4.2.2, MPC version 1.3.1, isl version isl-0.27-GMP
         
@@ -1990,14 +1990,14 @@ events:
          /usr/include
         End of search list.
         Compiler executable checksum: b661a74662ad7cf413c4193391ab5290
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_3ca30.dir/'
-         /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccHKW42l.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_13742.dir/'
+         /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccJ0G4ZG.s
         GNU assembler version 2.46 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.46
         COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/
         LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.'
-        Linking CXX executable cmTC_3ca30
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3ca30.dir/link.txt --verbose=1
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.'
+        Linking CXX executable cmTC_13742
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_13742.dir/link.txt --verbose=1
         Using built-in specs.
         COLLECT_GCC=/usr/bin/c++
         COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper
@@ -2010,14 +2010,14 @@ events:
         gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) 
         COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/
         LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_3ca30' '-foffload-options=-l_GCC_stdc++' '-foffload-options=-l_GCC_m' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_3ca30.'
-         /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccfPPA0i.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_3ca30 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_13742' '-foffload-options=-l_GCC_stdc++' '-foffload-options=-l_GCC_m' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_13742.'
+         /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccfKn8Qa.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_13742 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
         collect2 version 15.2.0
-        /usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccfPPA0i.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_3ca30 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
+        /usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccfKn8Qa.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_13742 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
         GNU ld (GNU Binutils for Ubuntu) 2.46
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_3ca30' '-foffload-options=-l_GCC_stdc++' '-foffload-options=-l_GCC_m' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_3ca30.'
-        /usr/bin/c++  -v -Wl,-v CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_3ca30
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-RCaZNv'
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_13742' '-foffload-options=-l_GCC_stdc++' '-foffload-options=-l_GCC_m' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_13742.'
+        /usr/bin/c++  -v -Wl,-v CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_13742
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dfA2fy'
         
       exitCode: 0
   -
@@ -2058,13 +2058,13 @@ events:
       Parsed CXX implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)))("|,| |$)]
-        ignore line: [Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-RCaZNv']
+        ignore line: [Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dfA2fy']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_3ca30/fast]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_3ca30.dir/build.make CMakeFiles/cmTC_3ca30.dir/build]
-        ignore line: [gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-RCaZNv']
-        ignore line: [Building CXX object CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o]
-        ignore line: [/usr/bin/c++   -v -o CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-4.2/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_13742/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_13742.dir/build.make CMakeFiles/cmTC_13742.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dfA2fy']
+        ignore line: [Building CXX object CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o]
+        ignore line: [/usr/bin/c++   -v -o CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-4.2/Modules/CMakeCXXCompilerABI.cpp]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/c++]
         ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
@@ -2074,8 +2074,8 @@ events:
         ignore line: [Thread model: posix]
         ignore line: [Supported LTO compression algorithms: zlib zstd]
         ignore line: [gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) ]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_3ca30.dir/']
-        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /usr/share/cmake-4.2/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_3ca30.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccHKW42l.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_13742.dir/']
+        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /usr/share/cmake-4.2/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_13742.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccJ0G4ZG.s]
         ignore line: [GNU C++17 (Ubuntu 15.2.0-16ubuntu1) version 15.2.0 (x86_64-linux-gnu)]
         ignore line: [	compiled by GNU C version 15.2.0  GMP version 6.3.0  MPFR version 4.2.2  MPC version 1.3.1  isl version isl-0.27-GMP]
         ignore line: []
@@ -2096,14 +2096,14 @@ events:
         ignore line: [ /usr/include]
         ignore line: [End of search list.]
         ignore line: [Compiler executable checksum: b661a74662ad7cf413c4193391ab5290]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_3ca30.dir/']
-        ignore line: [ /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccHKW42l.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_13742.dir/']
+        ignore line: [ /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o /tmp/ccJ0G4ZG.s]
         ignore line: [GNU assembler version 2.46 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.46]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.']
-        ignore line: [Linking CXX executable cmTC_3ca30]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_3ca30.dir/link.txt --verbose=1]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.']
+        ignore line: [Linking CXX executable cmTC_13742]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_13742.dir/link.txt --verbose=1]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/c++]
         ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper]
@@ -2116,13 +2116,13 @@ events:
         ignore line: [gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) ]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_3ca30' '-foffload-options=-l_GCC_stdc++' '-foffload-options=-l_GCC_m' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_3ca30.']
-        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccfPPA0i.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_3ca30 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_13742' '-foffload-options=-l_GCC_stdc++' '-foffload-options=-l_GCC_m' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_13742.']
+        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccfKn8Qa.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_13742 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
           arg [/usr/libexec/gcc/x86_64-linux-gnu/15/collect2] ==> ignore
           arg [-plugin] ==> ignore
           arg [/usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so] ==> ignore
           arg [-plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper] ==> ignore
-          arg [-plugin-opt=-fresolution=/tmp/ccfPPA0i.res] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccfKn8Qa.res] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
           arg [-plugin-opt=-pass-through=-lc] ==> ignore
@@ -2140,7 +2140,7 @@ events:
           arg [-znow] ==> ignore
           arg [-zrelro] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_3ca30] ==> ignore
+          arg [cmTC_13742] ==> ignore
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o]
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o]
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o]
@@ -2155,7 +2155,7 @@ events:
           arg [-L/lib] ==> dir [/lib]
           arg [-L/usr/lib] ==> dir [/usr/lib]
           arg [-v] ==> ignore
-          arg [CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
           arg [-lstdc++] ==> lib [stdc++]
           arg [-lm] ==> lib [m]
           arg [-lgcc_s] ==> lib [gcc_s]
@@ -2166,7 +2166,7 @@ events:
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o]
           arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
         ignore line: [collect2 version 15.2.0]
-        ignore line: [/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccfPPA0i.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_3ca30 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_3ca30.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
+        ignore line: [/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccfKn8Qa.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_13742 /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_13742.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
         linker tool for 'CXX': /usr/bin/ld
         collapse obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o] ==> [/usr/lib/x86_64-linux-gnu/Scrt1.o]
         collapse obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o] ==> [/usr/lib/x86_64-linux-gnu/crti.o]
@@ -5422,8 +5422,8 @@ events:
     checks:
       - "Performing Test CMAKE_HAVE_LIBC_PTHREAD"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-80NJxX"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-80NJxX"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-1gvxBa"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-1gvxBa"
     cmakeVariables:
       CMAKE_C_FLAGS: ""
       CMAKE_C_FLAGS_DEBUG: "-g"
@@ -5432,17 +5432,17 @@ events:
       variable: "CMAKE_HAVE_LIBC_PTHREAD"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-80NJxX'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-1gvxBa'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_12e09/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_12e09.dir/build.make CMakeFiles/cmTC_12e09.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-80NJxX'
-        Building C object CMakeFiles/cmTC_12e09.dir/src.c.o
-        /usr/bin/cc -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_12e09.dir/src.c.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-80NJxX/src.c
-        Linking C executable cmTC_12e09
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_12e09.dir/link.txt --verbose=1
-        /usr/bin/cc CMakeFiles/cmTC_12e09.dir/src.c.o -o cmTC_12e09
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-80NJxX'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_1f6e2/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_1f6e2.dir/build.make CMakeFiles/cmTC_1f6e2.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-1gvxBa'
+        Building C object CMakeFiles/cmTC_1f6e2.dir/src.c.o
+        /usr/bin/cc -DCMAKE_HAVE_LIBC_PTHREAD   -o CMakeFiles/cmTC_1f6e2.dir/src.c.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-1gvxBa/src.c
+        Linking C executable cmTC_1f6e2
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1f6e2.dir/link.txt --verbose=1
+        /usr/bin/cc CMakeFiles/cmTC_1f6e2.dir/src.c.o -o cmTC_1f6e2
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-1gvxBa'
         
       exitCode: 0
   -
@@ -5697,8 +5697,8 @@ events:
     checks:
       - "Looking for shm_open in rt"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-7whnKR"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-7whnKR"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-fPUe0t"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-fPUe0t"
     cmakeVariables:
       CMAKE_C_FLAGS: ""
       CMAKE_C_FLAGS_DEBUG: "-g"
@@ -5708,17 +5708,17 @@ events:
       variable: "HAVE_LIB_RT"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-7whnKR'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-fPUe0t'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_18f1d/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_18f1d.dir/build.make CMakeFiles/cmTC_18f1d.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-7whnKR'
-        Building C object CMakeFiles/cmTC_18f1d.dir/CheckFunctionExists.c.o
-        /usr/bin/cc   -DCHECK_FUNCTION_EXISTS=shm_open -o CMakeFiles/cmTC_18f1d.dir/CheckFunctionExists.c.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-7whnKR/CheckFunctionExists.c
-        Linking C executable cmTC_18f1d
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_18f1d.dir/link.txt --verbose=1
-        /usr/bin/cc  -DCHECK_FUNCTION_EXISTS=shm_open CMakeFiles/cmTC_18f1d.dir/CheckFunctionExists.c.o -o cmTC_18f1d  -lrt
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-7whnKR'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_f4dff/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_f4dff.dir/build.make CMakeFiles/cmTC_f4dff.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-fPUe0t'
+        Building C object CMakeFiles/cmTC_f4dff.dir/CheckFunctionExists.c.o
+        /usr/bin/cc   -DCHECK_FUNCTION_EXISTS=shm_open -o CMakeFiles/cmTC_f4dff.dir/CheckFunctionExists.c.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-fPUe0t/CheckFunctionExists.c
+        Linking C executable cmTC_f4dff
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f4dff.dir/link.txt --verbose=1
+        /usr/bin/cc  -DCHECK_FUNCTION_EXISTS=shm_open CMakeFiles/cmTC_f4dff.dir/CheckFunctionExists.c.o -o cmTC_f4dff  -lrt
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-fPUe0t'
         
       exitCode: 0
   -
@@ -5732,8 +5732,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WALL"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-5krR0j"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-5krR0j"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dFKdpV"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dFKdpV"
     cmakeVariables:
       CMAKE_CXX_FLAGS: ""
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -5743,17 +5743,17 @@ events:
       variable: "HAVE_CXX_FLAG_WALL"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-5krR0j'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dFKdpV'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_adc2a/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_adc2a.dir/build.make CMakeFiles/cmTC_adc2a.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-5krR0j'
-        Building CXX object CMakeFiles/cmTC_adc2a.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WALL  -Wall -std=c++11   -Wall -o CMakeFiles/cmTC_adc2a.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-5krR0j/src.cxx
-        Linking CXX executable cmTC_adc2a
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_adc2a.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall CMakeFiles/cmTC_adc2a.dir/src.cxx.o -o cmTC_adc2a
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-5krR0j'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_c9763/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_c9763.dir/build.make CMakeFiles/cmTC_c9763.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dFKdpV'
+        Building CXX object CMakeFiles/cmTC_c9763.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WALL  -Wall -std=c++11   -Wall -o CMakeFiles/cmTC_c9763.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dFKdpV/src.cxx
+        Linking CXX executable cmTC_c9763
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_c9763.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall CMakeFiles/cmTC_c9763.dir/src.cxx.o -o cmTC_c9763
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-dFKdpV'
         
       exitCode: 0
   -
@@ -5767,8 +5767,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WEXTRA"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-P7DiEO"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-P7DiEO"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DwOUPv"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DwOUPv"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -5778,17 +5778,17 @@ events:
       variable: "HAVE_CXX_FLAG_WEXTRA"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-P7DiEO'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DwOUPv'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_9a691/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_9a691.dir/build.make CMakeFiles/cmTC_9a691.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-P7DiEO'
-        Building CXX object CMakeFiles/cmTC_9a691.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WEXTRA  -Wall  -Wextra -std=c++11   -Wextra -o CMakeFiles/cmTC_9a691.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-P7DiEO/src.cxx
-        Linking CXX executable cmTC_9a691
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_9a691.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra CMakeFiles/cmTC_9a691.dir/src.cxx.o -o cmTC_9a691
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-P7DiEO'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_6a057/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_6a057.dir/build.make CMakeFiles/cmTC_6a057.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DwOUPv'
+        Building CXX object CMakeFiles/cmTC_6a057.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WEXTRA  -Wall  -Wextra -std=c++11   -Wextra -o CMakeFiles/cmTC_6a057.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DwOUPv/src.cxx
+        Linking CXX executable cmTC_6a057
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_6a057.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra CMakeFiles/cmTC_6a057.dir/src.cxx.o -o cmTC_6a057
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DwOUPv'
         
       exitCode: 0
   -
@@ -5802,8 +5802,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WSHADOW"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-4Hsv0e"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-4Hsv0e"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-90Ep5f"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-90Ep5f"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -5813,17 +5813,17 @@ events:
       variable: "HAVE_CXX_FLAG_WSHADOW"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-4Hsv0e'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-90Ep5f'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_268d0/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_268d0.dir/build.make CMakeFiles/cmTC_268d0.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-4Hsv0e'
-        Building CXX object CMakeFiles/cmTC_268d0.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WSHADOW  -Wall  -Wextra  -Wshadow -std=c++11   -Wshadow -o CMakeFiles/cmTC_268d0.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-4Hsv0e/src.cxx
-        Linking CXX executable cmTC_268d0
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_268d0.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow CMakeFiles/cmTC_268d0.dir/src.cxx.o -o cmTC_268d0
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-4Hsv0e'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_b3d3e/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_b3d3e.dir/build.make CMakeFiles/cmTC_b3d3e.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-90Ep5f'
+        Building CXX object CMakeFiles/cmTC_b3d3e.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WSHADOW  -Wall  -Wextra  -Wshadow -std=c++11   -Wshadow -o CMakeFiles/cmTC_b3d3e.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-90Ep5f/src.cxx
+        Linking CXX executable cmTC_b3d3e
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b3d3e.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow CMakeFiles/cmTC_b3d3e.dir/src.cxx.o -o cmTC_b3d3e
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-90Ep5f'
         
       exitCode: 0
   -
@@ -5837,8 +5837,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WFLOAT_EQUAL"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-APHwxw"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-APHwxw"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nL8pjB"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nL8pjB"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -5848,17 +5848,17 @@ events:
       variable: "HAVE_CXX_FLAG_WFLOAT_EQUAL"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-APHwxw'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nL8pjB'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_e455d/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_e455d.dir/build.make CMakeFiles/cmTC_e455d.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-APHwxw'
-        Building CXX object CMakeFiles/cmTC_e455d.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WFLOAT_EQUAL  -Wall  -Wextra  -Wshadow  -Wfloat-equal -std=c++11   -Wfloat-equal -o CMakeFiles/cmTC_e455d.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-APHwxw/src.cxx
-        Linking CXX executable cmTC_e455d
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e455d.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal CMakeFiles/cmTC_e455d.dir/src.cxx.o -o cmTC_e455d
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-APHwxw'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_1027d/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_1027d.dir/build.make CMakeFiles/cmTC_1027d.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nL8pjB'
+        Building CXX object CMakeFiles/cmTC_1027d.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WFLOAT_EQUAL  -Wall  -Wextra  -Wshadow  -Wfloat-equal -std=c++11   -Wfloat-equal -o CMakeFiles/cmTC_1027d.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nL8pjB/src.cxx
+        Linking CXX executable cmTC_1027d
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1027d.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal CMakeFiles/cmTC_1027d.dir/src.cxx.o -o cmTC_1027d
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nL8pjB'
         
       exitCode: 0
   -
@@ -5872,8 +5872,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WOLD_STYLE_CAST"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-cwaEo7"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-cwaEo7"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-rQJlg9"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-rQJlg9"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -5883,17 +5883,17 @@ events:
       variable: "HAVE_CXX_FLAG_WOLD_STYLE_CAST"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-cwaEo7'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-rQJlg9'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_e808f/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_e808f.dir/build.make CMakeFiles/cmTC_e808f.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-cwaEo7'
-        Building CXX object CMakeFiles/cmTC_e808f.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WOLD_STYLE_CAST  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast -std=c++11   -Wold-style-cast -o CMakeFiles/cmTC_e808f.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-cwaEo7/src.cxx
-        Linking CXX executable cmTC_e808f
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e808f.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast CMakeFiles/cmTC_e808f.dir/src.cxx.o -o cmTC_e808f
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-cwaEo7'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ccf4e/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_ccf4e.dir/build.make CMakeFiles/cmTC_ccf4e.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-rQJlg9'
+        Building CXX object CMakeFiles/cmTC_ccf4e.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WOLD_STYLE_CAST  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast -std=c++11   -Wold-style-cast -o CMakeFiles/cmTC_ccf4e.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-rQJlg9/src.cxx
+        Linking CXX executable cmTC_ccf4e
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ccf4e.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast CMakeFiles/cmTC_ccf4e.dir/src.cxx.o -o cmTC_ccf4e
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-rQJlg9'
         
       exitCode: 0
   -
@@ -5907,8 +5907,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WERROR"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xFdXa4"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xFdXa4"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DVKKgm"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DVKKgm"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -5918,17 +5918,17 @@ events:
       variable: "HAVE_CXX_FLAG_WERROR"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xFdXa4'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DVKKgm'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_42544/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_42544.dir/build.make CMakeFiles/cmTC_42544.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xFdXa4'
-        Building CXX object CMakeFiles/cmTC_42544.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WERROR  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror -std=c++11   -Werror -o CMakeFiles/cmTC_42544.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xFdXa4/src.cxx
-        Linking CXX executable cmTC_42544
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_42544.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror CMakeFiles/cmTC_42544.dir/src.cxx.o -o cmTC_42544
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xFdXa4'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_e9d22/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_e9d22.dir/build.make CMakeFiles/cmTC_e9d22.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DVKKgm'
+        Building CXX object CMakeFiles/cmTC_e9d22.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WERROR  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror -std=c++11   -Werror -o CMakeFiles/cmTC_e9d22.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DVKKgm/src.cxx
+        Linking CXX executable cmTC_e9d22
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e9d22.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror CMakeFiles/cmTC_e9d22.dir/src.cxx.o -o cmTC_e9d22
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-DVKKgm'
         
       exitCode: 0
   -
@@ -5942,8 +5942,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WSUGGEST_OVERRIDE"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-B8qObp"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-B8qObp"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-unWGlP"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-unWGlP"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -5953,17 +5953,17 @@ events:
       variable: "HAVE_CXX_FLAG_WSUGGEST_OVERRIDE"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-B8qObp'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-unWGlP'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7f5c0/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_7f5c0.dir/build.make CMakeFiles/cmTC_7f5c0.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-B8qObp'
-        Building CXX object CMakeFiles/cmTC_7f5c0.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WSUGGEST_OVERRIDE  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override -std=c++11   -Wsuggest-override -o CMakeFiles/cmTC_7f5c0.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-B8qObp/src.cxx
-        Linking CXX executable cmTC_7f5c0
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7f5c0.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override CMakeFiles/cmTC_7f5c0.dir/src.cxx.o -o cmTC_7f5c0
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-B8qObp'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_1ff97/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_1ff97.dir/build.make CMakeFiles/cmTC_1ff97.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-unWGlP'
+        Building CXX object CMakeFiles/cmTC_1ff97.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WSUGGEST_OVERRIDE  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override -std=c++11   -Wsuggest-override -o CMakeFiles/cmTC_1ff97.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-unWGlP/src.cxx
+        Linking CXX executable cmTC_1ff97
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_1ff97.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override CMakeFiles/cmTC_1ff97.dir/src.cxx.o -o cmTC_1ff97
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-unWGlP'
         
       exitCode: 0
   -
@@ -5977,8 +5977,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_PEDANTIC"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-aNLtMp"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-aNLtMp"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-FpC65k"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-FpC65k"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -5988,17 +5988,17 @@ events:
       variable: "HAVE_CXX_FLAG_PEDANTIC"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-aNLtMp'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-FpC65k'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_89fc4/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_89fc4.dir/build.make CMakeFiles/cmTC_89fc4.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-aNLtMp'
-        Building CXX object CMakeFiles/cmTC_89fc4.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_PEDANTIC  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic -std=c++11   -pedantic -o CMakeFiles/cmTC_89fc4.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-aNLtMp/src.cxx
-        Linking CXX executable cmTC_89fc4
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_89fc4.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic CMakeFiles/cmTC_89fc4.dir/src.cxx.o -o cmTC_89fc4
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-aNLtMp'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8e5c9/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_8e5c9.dir/build.make CMakeFiles/cmTC_8e5c9.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-FpC65k'
+        Building CXX object CMakeFiles/cmTC_8e5c9.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_PEDANTIC  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic -std=c++11   -pedantic -o CMakeFiles/cmTC_8e5c9.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-FpC65k/src.cxx
+        Linking CXX executable cmTC_8e5c9
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8e5c9.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic CMakeFiles/cmTC_8e5c9.dir/src.cxx.o -o cmTC_8e5c9
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-FpC65k'
         
       exitCode: 0
   -
@@ -6012,8 +6012,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_PEDANTIC_ERRORS"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hgyEtD"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hgyEtD"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E3UUIb"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E3UUIb"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6023,17 +6023,17 @@ events:
       variable: "HAVE_CXX_FLAG_PEDANTIC_ERRORS"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hgyEtD'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E3UUIb'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_457ab/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_457ab.dir/build.make CMakeFiles/cmTC_457ab.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hgyEtD'
-        Building CXX object CMakeFiles/cmTC_457ab.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_PEDANTIC_ERRORS  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors -std=c++11   -pedantic-errors -o CMakeFiles/cmTC_457ab.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hgyEtD/src.cxx
-        Linking CXX executable cmTC_457ab
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_457ab.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors CMakeFiles/cmTC_457ab.dir/src.cxx.o -o cmTC_457ab
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hgyEtD'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_2e3b6/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_2e3b6.dir/build.make CMakeFiles/cmTC_2e3b6.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E3UUIb'
+        Building CXX object CMakeFiles/cmTC_2e3b6.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_PEDANTIC_ERRORS  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors -std=c++11   -pedantic-errors -o CMakeFiles/cmTC_2e3b6.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E3UUIb/src.cxx
+        Linking CXX executable cmTC_2e3b6
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_2e3b6.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors CMakeFiles/cmTC_2e3b6.dir/src.cxx.o -o cmTC_2e3b6
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E3UUIb'
         
       exitCode: 0
   -
@@ -6047,8 +6047,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WSHORTEN_64_TO_32"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YoQysk"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YoQysk"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-j8CQsF"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-j8CQsF"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6058,18 +6058,18 @@ events:
       variable: "HAVE_CXX_FLAG_WSHORTEN_64_TO_32"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YoQysk'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-j8CQsF'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_2cbb1/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_2cbb1.dir/build.make CMakeFiles/cmTC_2cbb1.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YoQysk'
-        Building CXX object CMakeFiles/cmTC_2cbb1.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WSHORTEN_64_TO_32  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -Wshorten-64-to-32 -std=c++11   -Wshorten-64-to-32 -o CMakeFiles/cmTC_2cbb1.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YoQysk/src.cxx
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_cbb35/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_cbb35.dir/build.make CMakeFiles/cmTC_cbb35.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-j8CQsF'
+        Building CXX object CMakeFiles/cmTC_cbb35.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WSHORTEN_64_TO_32  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -Wshorten-64-to-32 -std=c++11   -Wshorten-64-to-32 -o CMakeFiles/cmTC_cbb35.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-j8CQsF/src.cxx
         c++: error: unrecognized command-line option '-Wshorten-64-to-32'
         c++: error: unrecognized command-line option '-Wshorten-64-to-32'
-        gmake[1]: *** [CMakeFiles/cmTC_2cbb1.dir/build.make:81: CMakeFiles/cmTC_2cbb1.dir/src.cxx.o] Error 1
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YoQysk'
-        gmake: *** [Makefile:134: cmTC_2cbb1/fast] Error 2
+        gmake[1]: *** [CMakeFiles/cmTC_cbb35.dir/build.make:81: CMakeFiles/cmTC_cbb35.dir/src.cxx.o] Error 1
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-j8CQsF'
+        gmake: *** [Makefile:134: cmTC_cbb35/fast] Error 2
         
       exitCode: 2
   -
@@ -6083,8 +6083,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_FSTRICT_ALIASING"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-oG82Tn"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-oG82Tn"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-mlA7IB"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-mlA7IB"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6094,17 +6094,17 @@ events:
       variable: "HAVE_CXX_FLAG_FSTRICT_ALIASING"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-oG82Tn'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-mlA7IB'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_509b9/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_509b9.dir/build.make CMakeFiles/cmTC_509b9.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-oG82Tn'
-        Building CXX object CMakeFiles/cmTC_509b9.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_FSTRICT_ALIASING  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing -std=c++11   -fstrict-aliasing -o CMakeFiles/cmTC_509b9.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-oG82Tn/src.cxx
-        Linking CXX executable cmTC_509b9
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_509b9.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing CMakeFiles/cmTC_509b9.dir/src.cxx.o -o cmTC_509b9
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-oG82Tn'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_447b9/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_447b9.dir/build.make CMakeFiles/cmTC_447b9.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-mlA7IB'
+        Building CXX object CMakeFiles/cmTC_447b9.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_FSTRICT_ALIASING  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing -std=c++11   -fstrict-aliasing -o CMakeFiles/cmTC_447b9.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-mlA7IB/src.cxx
+        Linking CXX executable cmTC_447b9
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_447b9.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing CMakeFiles/cmTC_447b9.dir/src.cxx.o -o cmTC_447b9
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-mlA7IB'
         
       exitCode: 0
   -
@@ -6118,8 +6118,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WNO_DEPRECATED_DECLARATIONS"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YAO5jl"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YAO5jl"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-Mbfrfo"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-Mbfrfo"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6129,17 +6129,17 @@ events:
       variable: "HAVE_CXX_FLAG_WNO_DEPRECATED_DECLARATIONS"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YAO5jl'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-Mbfrfo'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_a2f4d/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_a2f4d.dir/build.make CMakeFiles/cmTC_a2f4d.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YAO5jl'
-        Building CXX object CMakeFiles/cmTC_a2f4d.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WNO_DEPRECATED_DECLARATIONS  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations -std=c++11   -Wno-deprecated-declarations -o CMakeFiles/cmTC_a2f4d.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YAO5jl/src.cxx
-        Linking CXX executable cmTC_a2f4d
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_a2f4d.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations CMakeFiles/cmTC_a2f4d.dir/src.cxx.o -o cmTC_a2f4d
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YAO5jl'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_33303/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_33303.dir/build.make CMakeFiles/cmTC_33303.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-Mbfrfo'
+        Building CXX object CMakeFiles/cmTC_33303.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WNO_DEPRECATED_DECLARATIONS  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations -std=c++11   -Wno-deprecated-declarations -o CMakeFiles/cmTC_33303.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-Mbfrfo/src.cxx
+        Linking CXX executable cmTC_33303
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_33303.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations CMakeFiles/cmTC_33303.dir/src.cxx.o -o cmTC_33303
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-Mbfrfo'
         
       exitCode: 0
   -
@@ -6153,8 +6153,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WNO_DEPRECATED"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-U9aWYq"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-U9aWYq"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hsKVsF"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hsKVsF"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6164,17 +6164,17 @@ events:
       variable: "HAVE_CXX_FLAG_WNO_DEPRECATED"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-U9aWYq'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hsKVsF'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_502e3/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_502e3.dir/build.make CMakeFiles/cmTC_502e3.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-U9aWYq'
-        Building CXX object CMakeFiles/cmTC_502e3.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WNO_DEPRECATED  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated -std=c++11   -Wno-deprecated -o CMakeFiles/cmTC_502e3.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-U9aWYq/src.cxx
-        Linking CXX executable cmTC_502e3
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_502e3.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated CMakeFiles/cmTC_502e3.dir/src.cxx.o -o cmTC_502e3
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-U9aWYq'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_41e0b/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_41e0b.dir/build.make CMakeFiles/cmTC_41e0b.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hsKVsF'
+        Building CXX object CMakeFiles/cmTC_41e0b.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WNO_DEPRECATED  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated -std=c++11   -Wno-deprecated -o CMakeFiles/cmTC_41e0b.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hsKVsF/src.cxx
+        Linking CXX executable cmTC_41e0b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_41e0b.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated CMakeFiles/cmTC_41e0b.dir/src.cxx.o -o cmTC_41e0b
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-hsKVsF'
         
       exitCode: 0
   -
@@ -6188,8 +6188,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WSTRICT_ALIASING"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YFHmJY"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YFHmJY"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-0I0Sfb"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-0I0Sfb"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6199,17 +6199,17 @@ events:
       variable: "HAVE_CXX_FLAG_WSTRICT_ALIASING"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YFHmJY'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-0I0Sfb'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7b30a/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_7b30a.dir/build.make CMakeFiles/cmTC_7b30a.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YFHmJY'
-        Building CXX object CMakeFiles/cmTC_7b30a.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WSTRICT_ALIASING  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing -std=c++11   -Wstrict-aliasing -o CMakeFiles/cmTC_7b30a.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YFHmJY/src.cxx
-        Linking CXX executable cmTC_7b30a
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7b30a.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing CMakeFiles/cmTC_7b30a.dir/src.cxx.o -o cmTC_7b30a
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-YFHmJY'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_6ecb3/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_6ecb3.dir/build.make CMakeFiles/cmTC_6ecb3.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-0I0Sfb'
+        Building CXX object CMakeFiles/cmTC_6ecb3.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WSTRICT_ALIASING  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing -std=c++11   -Wstrict-aliasing -o CMakeFiles/cmTC_6ecb3.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-0I0Sfb/src.cxx
+        Linking CXX executable cmTC_6ecb3
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_6ecb3.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing CMakeFiles/cmTC_6ecb3.dir/src.cxx.o -o cmTC_6ecb3
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-0I0Sfb'
         
       exitCode: 0
   -
@@ -6223,8 +6223,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WD654"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-R7anJA"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-R7anJA"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E5N270"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E5N270"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6234,18 +6234,18 @@ events:
       variable: "HAVE_CXX_FLAG_WD654"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-R7anJA'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E5N270'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_985da/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_985da.dir/build.make CMakeFiles/cmTC_985da.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-R7anJA'
-        Building CXX object CMakeFiles/cmTC_985da.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WD654  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -wd654 -std=c++11   -wd654 -o CMakeFiles/cmTC_985da.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-R7anJA/src.cxx
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_dc564/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_dc564.dir/build.make CMakeFiles/cmTC_dc564.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E5N270'
+        Building CXX object CMakeFiles/cmTC_dc564.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WD654  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -wd654 -std=c++11   -wd654 -o CMakeFiles/cmTC_dc564.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E5N270/src.cxx
         c++: error: unrecognized command-line option '-wd654'
         c++: error: unrecognized command-line option '-wd654'
-        gmake[1]: *** [CMakeFiles/cmTC_985da.dir/build.make:81: CMakeFiles/cmTC_985da.dir/src.cxx.o] Error 1
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-R7anJA'
-        gmake: *** [Makefile:134: cmTC_985da/fast] Error 2
+        gmake[1]: *** [CMakeFiles/cmTC_dc564.dir/build.make:81: CMakeFiles/cmTC_dc564.dir/src.cxx.o] Error 1
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-E5N270'
+        gmake: *** [Makefile:134: cmTC_dc564/fast] Error 2
         
       exitCode: 2
   -
@@ -6259,8 +6259,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_WTHREAD_SAFETY"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-zCRHma"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-zCRHma"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nve9pF"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nve9pF"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6270,18 +6270,18 @@ events:
       variable: "HAVE_CXX_FLAG_WTHREAD_SAFETY"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-zCRHma'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nve9pF'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_5aff7/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_5aff7.dir/build.make CMakeFiles/cmTC_5aff7.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-zCRHma'
-        Building CXX object CMakeFiles/cmTC_5aff7.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_WTHREAD_SAFETY  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -Wthread-safety -std=c++11   -Wthread-safety -o CMakeFiles/cmTC_5aff7.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-zCRHma/src.cxx
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_452b1/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_452b1.dir/build.make CMakeFiles/cmTC_452b1.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nve9pF'
+        Building CXX object CMakeFiles/cmTC_452b1.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_WTHREAD_SAFETY  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -Wthread-safety -std=c++11   -Wthread-safety -o CMakeFiles/cmTC_452b1.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nve9pF/src.cxx
         c++: error: unrecognized command-line option '-Wthread-safety'
         c++: error: unrecognized command-line option '-Wthread-safety'
-        gmake[1]: *** [CMakeFiles/cmTC_5aff7.dir/build.make:81: CMakeFiles/cmTC_5aff7.dir/src.cxx.o] Error 1
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-zCRHma'
-        gmake: *** [Makefile:134: cmTC_5aff7/fast] Error 2
+        gmake[1]: *** [CMakeFiles/cmTC_452b1.dir/build.make:81: CMakeFiles/cmTC_452b1.dir/src.cxx.o] Error 1
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-nve9pF'
+        gmake: *** [Makefile:134: cmTC_452b1/fast] Error 2
         
       exitCode: 2
   -
@@ -6295,8 +6295,8 @@ events:
     checks:
       - "Performing Test HAVE_CXX_FLAG_COVERAGE"
     directories:
-      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-XcThqK"
-      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-XcThqK"
+      source: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xJOwAD"
+      binary: "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xJOwAD"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing"
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -6306,17 +6306,17 @@ events:
       variable: "HAVE_CXX_FLAG_COVERAGE"
       cached: true
       stdout: |
-        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-XcThqK'
+        Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xJOwAD'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_bf43d/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_bf43d.dir/build.make CMakeFiles/cmTC_bf43d.dir/build
-        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-XcThqK'
-        Building CXX object CMakeFiles/cmTC_bf43d.dir/src.cxx.o
-        /usr/bin/c++ -DHAVE_CXX_FLAG_COVERAGE  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  --coverage -std=c++11   --coverage -o CMakeFiles/cmTC_bf43d.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-XcThqK/src.cxx
-        Linking CXX executable cmTC_bf43d
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_bf43d.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  --coverage CMakeFiles/cmTC_bf43d.dir/src.cxx.o -o cmTC_bf43d
-        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-XcThqK'
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7d259/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_7d259.dir/build.make CMakeFiles/cmTC_7d259.dir/build
+        gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xJOwAD'
+        Building CXX object CMakeFiles/cmTC_7d259.dir/src.cxx.o
+        /usr/bin/c++ -DHAVE_CXX_FLAG_COVERAGE  -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  --coverage -std=c++11   --coverage -o CMakeFiles/cmTC_7d259.dir/src.cxx.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xJOwAD/src.cxx
+        Linking CXX executable cmTC_7d259
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7d259.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  --coverage CMakeFiles/cmTC_7d259.dir/src.cxx.o -o cmTC_7d259
+        gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeScratch/TryCompile-xJOwAD'
         
       exitCode: 0
   -
@@ -6338,14 +6338,14 @@ events:
       stdout: |
         Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_86460/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_86460.dir/build.make CMakeFiles/cmTC_86460.dir/build
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_9c458/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_9c458.dir/build.make CMakeFiles/cmTC_9c458.dir/build
         gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
-        Building CXX object CMakeFiles/cmTC_86460.dir/std_regex.cpp.o
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_86460.dir/std_regex.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/std_regex.cpp
-        Linking CXX executable cmTC_86460
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_86460.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  CMakeFiles/cmTC_86460.dir/std_regex.cpp.o -o cmTC_86460
+        Building CXX object CMakeFiles/cmTC_9c458.dir/std_regex.cpp.o
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_9c458.dir/std_regex.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/std_regex.cpp
+        Linking CXX executable cmTC_9c458
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_9c458.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  CMakeFiles/cmTC_9c458.dir/std_regex.cpp.o -o cmTC_9c458
         gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
       exitCode: 0
@@ -6373,18 +6373,18 @@ events:
       stdout: |
         Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_adc7b/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_adc7b.dir/build.make CMakeFiles/cmTC_adc7b.dir/build
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_e4c43/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_e4c43.dir/build.make CMakeFiles/cmTC_e4c43.dir/build
         gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
-        Building CXX object CMakeFiles/cmTC_adc7b.dir/gnu_posix_regex.cpp.o
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_adc7b.dir/gnu_posix_regex.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/gnu_posix_regex.cpp
+        Building CXX object CMakeFiles/cmTC_e4c43.dir/gnu_posix_regex.cpp.o
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_e4c43.dir/gnu_posix_regex.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/gnu_posix_regex.cpp
         /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/gnu_posix_regex.cpp:1:10: fatal error: gnuregex.h: No such file or directory
             1 | #include <gnuregex.h>
               |          ^~~~~~~~~~~~
         compilation terminated.
-        gmake[1]: *** [CMakeFiles/cmTC_adc7b.dir/build.make:81: CMakeFiles/cmTC_adc7b.dir/gnu_posix_regex.cpp.o] Error 1
+        gmake[1]: *** [CMakeFiles/cmTC_e4c43.dir/build.make:81: CMakeFiles/cmTC_e4c43.dir/gnu_posix_regex.cpp.o] Error 1
         gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
-        gmake: *** [Makefile:134: cmTC_adc7b/fast] Error 2
+        gmake: *** [Makefile:134: cmTC_e4c43/fast] Error 2
         
       exitCode: 2
     runResult:
@@ -6409,14 +6409,14 @@ events:
       stdout: |
         Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_ea9b8/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_ea9b8.dir/build.make CMakeFiles/cmTC_ea9b8.dir/build
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_b8b67/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_b8b67.dir/build.make CMakeFiles/cmTC_b8b67.dir/build
         gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
-        Building CXX object CMakeFiles/cmTC_ea9b8.dir/posix_regex.cpp.o
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_ea9b8.dir/posix_regex.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/posix_regex.cpp
-        Linking CXX executable cmTC_ea9b8
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_ea9b8.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  CMakeFiles/cmTC_ea9b8.dir/posix_regex.cpp.o -o cmTC_ea9b8
+        Building CXX object CMakeFiles/cmTC_b8b67.dir/posix_regex.cpp.o
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_b8b67.dir/posix_regex.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/posix_regex.cpp
+        Linking CXX executable cmTC_b8b67
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_b8b67.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  CMakeFiles/cmTC_b8b67.dir/posix_regex.cpp.o -o cmTC_b8b67
         gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
       exitCode: 0
@@ -6444,14 +6444,14 @@ events:
       stdout: |
         Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_0b509/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_0b509.dir/build.make CMakeFiles/cmTC_0b509.dir/build
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_7d516/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_7d516.dir/build.make CMakeFiles/cmTC_7d516.dir/build
         gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
-        Building CXX object CMakeFiles/cmTC_0b509.dir/steady_clock.cpp.o
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_0b509.dir/steady_clock.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/steady_clock.cpp
-        Linking CXX executable cmTC_0b509
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_0b509.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  CMakeFiles/cmTC_0b509.dir/steady_clock.cpp.o -o cmTC_0b509
+        Building CXX object CMakeFiles/cmTC_7d516.dir/steady_clock.cpp.o
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_7d516.dir/steady_clock.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/steady_clock.cpp
+        Linking CXX executable cmTC_7d516
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_7d516.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  CMakeFiles/cmTC_7d516.dir/steady_clock.cpp.o -o cmTC_7d516
         gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
       exitCode: 0
@@ -6479,14 +6479,14 @@ events:
       stdout: |
         Change Dir: '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_e687b/fast
-        /usr/bin/gmake  -f CMakeFiles/cmTC_e687b.dir/build.make CMakeFiles/cmTC_e687b.dir/build
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_f5f5d/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_f5f5d.dir/build.make CMakeFiles/cmTC_f5f5d.dir/build
         gmake[1]: Entering directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
-        Building CXX object CMakeFiles/cmTC_e687b.dir/pthread_affinity.cpp.o
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_e687b.dir/pthread_affinity.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/pthread_affinity.cpp
-        Linking CXX executable cmTC_e687b
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e687b.dir/link.txt --verbose=1
-        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  CMakeFiles/cmTC_e687b.dir/pthread_affinity.cpp.o -o cmTC_e687b
+        Building CXX object CMakeFiles/cmTC_f5f5d.dir/pthread_affinity.cpp.o
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  -std=c++11 -o CMakeFiles/cmTC_f5f5d.dir/pthread_affinity.cpp.o -c /home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/_deps/googlebenchmark-src/cmake/pthread_affinity.cpp
+        Linking CXX executable cmTC_f5f5d
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_f5f5d.dir/link.txt --verbose=1
+        /usr/bin/c++   -Wall  -Wextra  -Wshadow  -Wfloat-equal  -Wold-style-cast  -Werror  -Wsuggest-override  -pedantic  -pedantic-errors  -fstrict-aliasing  -Wno-deprecated-declarations  -Wno-deprecated  -Wstrict-aliasing  CMakeFiles/cmTC_f5f5d.dir/pthread_affinity.cpp.o -o cmTC_f5f5d
         gmake[1]: Leaving directory '/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_release/CMakeFiles/CMakeTmp'
         
       exitCode: 0

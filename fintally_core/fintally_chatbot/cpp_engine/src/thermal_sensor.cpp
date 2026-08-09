@@ -36,14 +36,9 @@ ThermalMetrics ThermalMonitor::read_metrics() {
         discover_thermal_zones();
     }
 
-    if (thermal_zone_paths_.empty()) {
-        // Fallback if running inside a restricted container without sysfs access
-        metrics.status = ThermalStatus::NORMAL;
-        return metrics;
-    }
-
-    float max_t = -273.15f;
-    float sum_t = 0.0f;
+    // Default baseline ambient temperature (25.0°C) when sysfs thermal nodes are absent (WSL/containers)
+    float max_t = 25.0f;
+    float sum_t = 25.0f;
     size_t valid_count = 0;
 
     for (const auto& path : thermal_zone_paths_) {
@@ -54,8 +49,13 @@ ThermalMetrics ThermalMonitor::read_metrics() {
                 // sysfs temps are usually reported in millidegrees Celsius
                 float temp_c = (raw_temp > 1000) ? static_cast<float>(raw_temp) / 1000.0f : static_cast<float>(raw_temp);
 
-                max_t = std::max(max_t, temp_c);
-                sum_t += temp_c;
+                if (valid_count == 0) {
+                    max_t = temp_c;
+                    sum_t = temp_c;
+                } else {
+                    max_t = std::max(max_t, temp_c);
+                    sum_t += temp_c;
+                }
                 valid_count++;
             }
         }
@@ -64,16 +64,18 @@ ThermalMetrics ThermalMonitor::read_metrics() {
     if (valid_count > 0) {
         metrics.max_temp_celsius = max_t;
         metrics.avg_temp_celsius = sum_t / static_cast<float>(valid_count);
+    } else {
+        metrics.max_temp_celsius = max_t;
+        metrics.avg_temp_celsius = sum_t;
+    }
 
-        if (metrics.max_temp_celsius >= critical_threshold_c_) {
-            metrics.status = ThermalStatus::CRITICAL_HOT;
-        } else if (metrics.max_temp_celsius < 0.0f) {
-            metrics.status = ThermalStatus::CRITICAL_COLD;
-        } else if (metrics.max_temp_celsius >= warm_threshold_c_) {
-            metrics.status = ThermalStatus::WARM;
-        } else {
-            metrics.status = ThermalStatus::NORMAL;
-        }
+    // Threshold evaluation logic runs unconditionally
+    if (metrics.max_temp_celsius >= critical_threshold_c_) {
+        metrics.status = ThermalStatus::CRITICAL_HOT;
+    } else if (metrics.max_temp_celsius < 0.0f) {
+        metrics.status = ThermalStatus::CRITICAL_COLD;
+    } else if (metrics.max_temp_celsius >= warm_threshold_c_) {
+        metrics.status = ThermalStatus::WARM;
     } else {
         metrics.status = ThermalStatus::NORMAL;
     }
