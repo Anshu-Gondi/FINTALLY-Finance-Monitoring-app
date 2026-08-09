@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build_asan/_deps/googlebenchmark-subbuild/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

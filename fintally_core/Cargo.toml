@@ -50,10 +50,10 @@ usearch = "2.25"
 
 [profile.release]
 opt-level = 3
-lto = "fat"
-codegen-units = 16
-panic = "abort"
-strip = true
+lto = "thin"            # ThinLTO prevents monolithic linker memory exhaustion
+codegen-units = 1      # Maximizes cross-boundary vectorization & function inlining
+panic = "abort"        # Eliminates unwinding overhead across C/Rust boundaries
+strip = true           # Drops debug symbols for smallest binary footprint
 
 [profile.dev]
 incremental = true
