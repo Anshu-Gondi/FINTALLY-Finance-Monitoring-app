@@ -14,7 +14,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: chatbot-backend/fintally_core
+        working-directory: fintally_core
 
     steps:
       - name: Checkout repository
@@ -33,32 +33,6 @@ jobs:
 
       - name: Rust clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
-
-
-  # ─────────────────────────────────────────
-  # Python
-  # ─────────────────────────────────────────
-  lint-python:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install Ruff
-        run: pip install ruff
-
-      # IMPORTANT:
-      # Do NOT install llama-cpp-python here.
-      # Linting should stay lightweight.
-      - name: Run Ruff
-        run: ruff check chatbot-backend
-
 
   # ─────────────────────────────────────────
   # Frontend

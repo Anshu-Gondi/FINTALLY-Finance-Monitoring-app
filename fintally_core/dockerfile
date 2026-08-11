@@ -1,5 +1,6 @@
+# syntax=docker/dockerfile:1
 # ==============================================================================
-# --- Stage 1: Base Environment (Toolchain & cargo-chef) ---
+# --- Stage 1: Base Environment (Purged CUDA Toolchain, libclang, & cargo-chef) ---
 # ==============================================================================
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 AS chef-base
 
@@ -7,17 +8,23 @@ ARG CUDA_COMPUTE_CAP=89
 ENV CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP}
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+# 🧹 TRICK 1: Remove heavy CUDA bloat AND install clang + libclang-dev for bindgen
+RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common \
     && add-apt-repository ppa:ubuntu-toolchain-r/test \
-    && apt-get update && apt-get install -y \
+    && apt-get update && apt-get install -y --no-install-recommends \
     pkg-config libssl-dev cmake g++-12 gcc-12 curl ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    clang libclang-dev \
+    && apt-get purge -y cuda-nsight* cuda-documentation* cuda-visual-tools* cuda-demo-suite* \
+    && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 ENV CC=/usr/bin/gcc-12
 ENV CXX=/usr/bin/g++-12
 
-# Install Rust & Cargo Chef
+# ⚡ FIX FOR LIBCLANG: Explicitly tell bindgen where libclang.so lives in Ubuntu 22.04
+ENV LIBCLANG_PATH="/usr/lib/llvm-14/lib"
+
+# Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:/usr/local/cuda/bin:${PATH}"
 ENV CUDA_PATH="/usr/local/cuda"
@@ -27,61 +34,68 @@ RUN cargo install cargo-chef --locked
 
 
 # ==============================================================================
-# --- Stage 2: Planner (Analyzes dependencies) ---
+# --- Stage 2: Planner ---
 # ==============================================================================
 FROM chef-base AS planner
-
 WORKDIR /app
 COPY . .
 WORKDIR /app/fintally_core
-
-# Generate a recipe.json containing ONLY your dependencies
 RUN cargo chef prepare --recipe-path recipe.json
 
 
 # ==============================================================================
-# --- Stage 3: Builder (Cooks dependencies & builds app) ---
+# --- Stage 3: Builder (Zero-Layer Cargo Target Caching) ---
 # ==============================================================================
 FROM chef-base AS builder
-
 WORKDIR /app/fintally_core
 
-# 1. Copy ONLY the recipe.json from the planner stage
 COPY --from=planner /app/fintally_core/recipe.json recipe.json
 
-# 2. Build dependencies - THIS LAYER GETS CACHED!
-RUN cargo chef cook --release --recipe-path recipe.json
+# Use BuildKit cache mounts so build intermediate targets don't blow up Docker layers
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    --mount=type=cache,target=/app/fintally_core/target \
+    cargo chef cook --release --recipe-path recipe.json
 
-# 3. NOW copy your actual source code.
-# (If you change your code, Docker starts from here, keeping dependencies cached!)
 WORKDIR /app
 COPY . .
 WORKDIR /app/fintally_core
 
 ENV SQLX_OFFLINE=true
 
-# 4. Compile and run the model downloader
-RUN cargo build --release -p fintally_chatbot --bin download_models
-RUN ./target/release/download_models
-
-# 5. Compile the primary Axum application
-RUN cargo build --release -p fintally_axum --bin fintally_axum
+# Compile binaries with mount cache
+RUN --mount=type=cache,target=/root/.cargo/registry \
+    --mount=type=cache,target=/root/.cargo/git \
+    --mount=type=cache,target=/app/fintally_core/target \
+    cargo build --release -p fintally_chatbot --bin download_models && \
+    cargo build --release -p fintally_axum --bin fintally_axum && \
+    mkdir -p /app/bin && \
+    cp /app/fintally_core/target/release/download_models /app/bin/ && \
+    cp /app/fintally_core/target/release/fintally_axum /app/bin/
 
 
 # ==============================================================================
-# --- Stage 4: The Hardened Black Box (Runtime) ---
+# --- Stage 4: Model Downloader Stage (Isolated) ---
+# ==============================================================================
+FROM chef-base AS model-fetcher
+WORKDIR /app
+COPY --from=builder /app/bin/download_models /app/download_models
+RUN /app/download_models
+
+
+# ==============================================================================
+# --- Stage 5: Hardened Runtime (Runtime CUDA Base ~1.5GB) ---
 # ==============================================================================
 FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Extract the compiled binary and downloaded models using the updated paths
-COPY --from=builder /app/fintally_core/target/release/fintally_axum /app/fintally_backend
-COPY --from=builder /app/fintally_core/llm_models /app/llm_models
+COPY --from=builder /app/bin/fintally_axum /app/fintally_backend
+COPY --from=model-fetcher /app/fintally_core/llm_models /app/llm_models
 
 EXPOSE 8080
 CMD ["./fintally_backend"]
