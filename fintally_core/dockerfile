@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # ==============================================================================
-# --- Stage 1: Base Environment (Purged CUDA Toolchain, libclang, & cargo-chef) ---
+# --- Stage 1: Base Environment ---
 # ==============================================================================
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 AS chef-base
 
@@ -8,7 +8,6 @@ ARG CUDA_COMPUTE_CAP=89
 ENV CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP}
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 🧹 TRICK 1: Remove heavy CUDA bloat AND install clang + libclang-dev for bindgen
 RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common \
     && add-apt-repository ppa:ubuntu-toolchain-r/test \
@@ -20,18 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV CC=/usr/bin/gcc-12
 ENV CXX=/usr/bin/g++-12
-
-# ⚡ FIX FOR LIBCLANG: Explicitly tell bindgen where libclang.so lives in Ubuntu 22.04
 ENV LIBCLANG_PATH="/usr/lib/llvm-14/lib"
 
-# Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:/usr/local/cuda/bin:${PATH}"
 ENV CUDA_PATH="/usr/local/cuda"
 
-# Install cargo-chef
 RUN cargo install cargo-chef --locked
-
 
 # ==============================================================================
 # --- Stage 2: Planner ---
@@ -42,16 +36,14 @@ COPY . .
 WORKDIR /app/fintally_core
 RUN cargo chef prepare --recipe-path recipe.json
 
-
 # ==============================================================================
-# --- Stage 3: Builder (Zero-Layer Cargo Target Caching) ---
+# --- Stage 3: Builder ---
 # ==============================================================================
 FROM chef-base AS builder
 WORKDIR /app/fintally_core
 
 COPY --from=planner /app/fintally_core/recipe.json recipe.json
 
-# Use BuildKit cache mounts so build intermediate targets don't blow up Docker layers
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/app/fintally_core/target \
@@ -63,7 +55,6 @@ WORKDIR /app/fintally_core
 
 ENV SQLX_OFFLINE=true
 
-# Compile binaries with mount cache
 RUN --mount=type=cache,target=/root/.cargo/registry \
     --mount=type=cache,target=/root/.cargo/git \
     --mount=type=cache,target=/app/fintally_core/target \
@@ -73,18 +64,17 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
     cp /app/fintally_core/target/release/download_models /app/bin/ && \
     cp /app/fintally_core/target/release/fintally_axum /app/bin/
 
-
 # ==============================================================================
-# --- Stage 4: Model Downloader Stage (Isolated) ---
+# --- Stage 4: Model Downloader Stage (Fixed Paths) ---
 # ==============================================================================
 FROM chef-base AS model-fetcher
-WORKDIR /app
-COPY --from=builder /app/bin/download_models /app/download_models
-RUN /app/download_models
-
+# Create and work inside fintally_core directory so outputs land in /app/fintally_core/llm_models
+WORKDIR /app/fintally_core
+COPY --from=builder /app/bin/download_models /app/fintally_core/download_models
+RUN /app/fintally_core/download_models
 
 # ==============================================================================
-# --- Stage 5: Hardened Runtime (Runtime CUDA Base ~1.5GB) ---
+# --- Stage 5: Hardened Runtime ---
 # ==============================================================================
 FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
 
