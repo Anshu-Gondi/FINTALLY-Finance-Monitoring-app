@@ -15,6 +15,10 @@ jobs:
       - run:
           name: Log in to GitHub Container Registry (GHCR)
           command: |
+            if [ -z "$GHCR_TOKEN" ] || [ -z "$GHCR_USERNAME" ]; then
+              echo "Error: GHCR_TOKEN or GHCR_USERNAME environment variables are not set in CircleCI Project Settings."
+              exit 1
+            fi
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
       - run:
