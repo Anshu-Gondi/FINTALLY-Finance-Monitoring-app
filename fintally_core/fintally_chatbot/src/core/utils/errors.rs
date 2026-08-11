@@ -1,6 +1,7 @@
 use std::fmt;
 use std::error::Error;
 use crate::core::utils::domain_error::DomainError;
+use crate::core::llm::tools::ToolDiagnosticReport;
 
 /// Core error type for the application
 #[derive(Debug)]
@@ -13,8 +14,9 @@ pub enum AppError {
     AllocationError(String),
     InferenceError(String),
     ExternalServiceError(String),
-    ValidationError(String),     
-    SerializationError(String), 
+    ValidationError(String),
+    SerializationError(String),
+    ToolDiagnostic(ToolDiagnosticReport),
     Other(String),
 }
 
@@ -30,6 +32,7 @@ impl fmt::Display for AppError {
             AppError::ValidationError(msg) => write!(f, "Validation error: {}", msg),
             AppError::SerializationError(msg) => write!(f, "Serialization error: {}", msg),
             AppError::ExternalServiceError(msg) => write!(f, "External service error: {}", msg),
+            AppError::ToolDiagnostic(report) => write!(f, "Tool Diagnostic Error: {}", report),
             AppError::Other(msg) => write!(f, "Other error: {}", msg),
         }
     }
@@ -43,6 +46,11 @@ impl From<DomainError> for AppError {
 impl From<crate::core::utils::domain_error::EmiError> for AppError {
     fn from(err: crate::core::utils::domain_error::EmiError) -> Self {
         AppError::Domain(DomainError::Emi(err))
+    }
+}
+impl From<ToolDiagnosticReport> for AppError {
+    fn from(err: ToolDiagnosticReport) -> Self {
+        AppError::ToolDiagnostic(err)
     }
 }
 

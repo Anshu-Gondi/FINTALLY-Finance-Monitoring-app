@@ -94,63 +94,62 @@ impl NativeEmbedder {
 
         let mut token_ids = tokens.get_ids().to_vec();
         let mut token_type_ids = tokens.get_type_ids().to_vec();
+        let mut attention_mask = tokens.get_attention_mask().to_vec();
 
         // FAIL-SAFE BOUND GUARD: Hard truncate slice if tokenizer truncation settings failed
         if token_ids.len() > MAX_BERT_SEQ_LEN {
             token_ids.truncate(MAX_BERT_SEQ_LEN);
             token_type_ids.truncate(MAX_BERT_SEQ_LEN);
+            attention_mask.truncate(MAX_BERT_SEQ_LEN);
         }
 
         // Structure Candle tensors targeting the selected device (CUDA/CPU)
         let input_ids = Tensor::new(token_ids.as_slice(), &self.device)
             .map_err(|e| RagError::EmbeddingError(format!("Failed embedding array token tensor mappings: {e}")))?
-            .unsqueeze(0)?; // Pack into dimension shapes: [1, seq_len]
+            .unsqueeze(0)?; // Shape: [1, seq_len]
 
         let token_type_ids = Tensor::new(token_type_ids.as_slice(), &self.device)
             .map_err(|e| RagError::EmbeddingError(format!("Failed embedding type layer tensor configurations: {e}")))?
+            .unsqueeze(0)?;
+
+        let attention_mask_tensor = Tensor::new(attention_mask.as_slice(), &self.device)
+            .map_err(|e| RagError::EmbeddingError(format!("Failed embedding attention mask tensor configurations: {e}")))?
             .unsqueeze(0)?;
 
         // Run direct Forward Matrix Vector Pass on GPU or CPU
         let embeddings = self.model.forward(&input_ids, &token_type_ids, None)
             .map_err(|e| RagError::EmbeddingError(format!("Candle core neural network execution error: {e}")))?;
 
-        // Apply Mean Pooling to build output topology
-        let pooled_vector = self.mean_pooling(&embeddings, &tokens)?;
+        // Apply Native GPU/Tensor Mean Pooling
+        let pooled_vector = self.mean_pooling(&embeddings, &attention_mask_tensor)?;
 
         Ok(pooled_vector)
     }
 
-    /// Standard Mean Pooling routine tailored for Sentence Transformers
-    fn mean_pooling(&self, embeddings: &Tensor, tokens: &tokenizers::Encoding) -> Result<Vec<f32>, RagError> {
-        let attention_mask = tokens.get_attention_mask();
+    /// Compute mean pooling entirely on GPU/CPU device memory via native Candle operations
+    fn mean_pooling(&self, embeddings: &Tensor, attention_mask: &Tensor) -> Result<Vec<f32>, RagError> {
+        // Expand attention mask from [1, seq_len] -> [1, seq_len, 1] -> [1, seq_len, hidden_size]
+        let mask_expanded = attention_mask
+            .unsqueeze(2)?
+            .broadcast_as(embeddings.shape())?
+            .to_dtype(embeddings.dtype())?;
 
-        // Dimensions: [1, seq_len, hidden_size]
-        let (_n_batch, seq_len, hidden_size) = embeddings.dims3()
-            .map_err(|e| RagError::EmbeddingError(format!("Invalid matrix dimensional configuration: {e}")))?;
+        // Sum weighted token embeddings across sequence dimension (dim 1)
+        let sum_embeddings = embeddings
+            .broadcast_mul(&mask_expanded)?
+            .sum(1)?;
 
-        // Ensure tensor is cast to F32 when converting to vector array regardless of compute DType
-        let embeddings_f32 = embeddings.to_dtype(DType::F32)
-            .map_err(|e| RagError::EmbeddingError(format!("Failed casting embeddings to float32: {e}")))?;
+        // Sum attention mask values across sequence dimension and clamp values to prevent divide-by-zero
+        let sum_mask = mask_expanded.sum(1)?;
+        let clamped_mask = sum_mask.clamp(1e-9f32, f32::MAX)?;
 
-        let embeddings_data = embeddings_f32.to_vec3::<f32>()
-            .map_err(|e| RagError::EmbeddingError(format!("Failed reading raw scalar matrices from calculation graphs: {e}")))?;
+        // Element-wise division for mean pooling result: [1, hidden_size]
+        let pooled = sum_embeddings.broadcast_div(&clamped_mask)?;
 
-        let mut sum_embeddings = vec![0.0f32; hidden_size];
-        let mut sum_mask = 0.0f32;
-
-        // Loop over sequence elements bounded by the actual embedding output matrix size
-        for i in 0..seq_len {
-            let mask_val = attention_mask.get(i).cloned().unwrap_or(1) as f32;
-            sum_mask += mask_val;
-
-            for j in 0..hidden_size {
-                sum_embeddings[j] += embeddings_data[0][i][j] * mask_val;
-            }
-        }
-
-        // Prevent division-by-zero boundaries for safety strings
-        let divisor = if sum_mask > 0.0 { sum_mask } else { 1.0 };
-        let finalized_vector: Vec<f32> = sum_embeddings.into_iter().map(|v| v / divisor).collect();
+        // Cast to F32, flatten to 1D, and transfer only the final vector to host CPU memory
+        let pooled_f32 = pooled.to_dtype(DType::F32)?.squeeze(0)?;
+        let finalized_vector = pooled_f32.to_vec1::<f32>()
+            .map_err(|e| RagError::EmbeddingError(format!("Failed reading scalar vector from tensor memory: {e}")))?;
 
         if finalized_vector.len() != 384 {
             return Err(RagError::EmbeddingError(format!(

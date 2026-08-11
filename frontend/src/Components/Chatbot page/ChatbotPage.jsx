@@ -13,23 +13,42 @@ import "./Chatbot.css";
 const preprocessMarkdown = (content) => {
   if (!content) return "";
 
-  return content
-    // 1. Convert standard LaTeX block delimiters \[ equation \] -> $$ equation $$
+  let cleaned = content;
+
+  // 1. If the model streams raw JSON structure, attempt to extract conversational_response
+  if (cleaned.trim().startsWith("{")) {
+    try {
+      // Try parsing complete JSON payload
+      const parsed = JSON.parse(cleaned);
+      if (parsed.conversational_response) {
+        cleaned = parsed.conversational_response;
+      }
+    } catch (e) {
+      // If still streaming incomplete JSON, strip JSON structure fields using regex
+      cleaned = cleaned
+        .replace(/\{\s*"thought"\s*:\s*".*?"\s*,\s*"tool_call"\s*:\s*null\s*,\s*"conversational_response"\s*:\s*"/gs, "")
+        .replace(/^\{\s*"thought"[\s\S]*?"conversational_response"\s*:\s*"/i, "")
+        .replace(/"\s*\}$/, "");
+    }
+  }
+
+  return cleaned
+    // 2. Convert standard LaTeX block delimiters \[ equation \] -> $$ equation $$
     .replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, "\n\n$$$1$$\n\n")
 
-    // 2. Convert standard LaTeX inline delimiters \( variable \) -> $ variable $
+    // 3. Convert standard LaTeX inline delimiters \( variable \) -> $ variable $
     .replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, "$$1$")
 
-    // 3. Remove orphaned backslashes sitting on their own lines
+    // 4. Remove orphaned backslashes sitting on their own lines
     .replace(/^[ \t]*\\+[ \t]*$/gm, "")
 
-    // 4. Remove trailing backslashes inside math blocks before closing dollar signs
+    // 5. Remove trailing backslashes inside math blocks before closing dollar signs
     .replace(/\\+(\s*(\$\$|\$))/g, "$1")
 
-    // 5. Convert raw bracketed formulas [ ... ] into KaTeX $$ blocks
+    // 6. Convert raw bracketed formulas [ ... ] into KaTeX $$ blocks
     .replace(/\[\s*([\s\S]*?(?:\\times|\\frac|\\text|=|\\approx|\^|\/|\+|\{|\})[\s\S]*?)\s*\]/g, "\n\n$$$1$$\n\n")
 
-    // 6. Convert single letter parenthesized variables "( P )" -> "$P$"
+    // 7. Convert single letter parenthesized variables "( P )" -> "$P$"
     .replace(/\(\s*([a-zA-Z0-9])\s*\)/g, "$$$1$");
 };
 

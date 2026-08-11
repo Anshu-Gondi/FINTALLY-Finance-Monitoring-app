@@ -7,7 +7,6 @@
 // The separation of concerns is:
 //   - Planner (tools.rs) handles structured numeric execution
 //   - prompt.rs only validates and formats text for the LLM
-//   - llm_bridge.py decides WHEN to route to tools vs plain text
 
 use crate::core::utils::errors::AppError;
 

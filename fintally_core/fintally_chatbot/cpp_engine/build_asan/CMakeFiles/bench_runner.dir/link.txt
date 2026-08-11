@@ -1,1 +1,0 @@
-/usr/bin/c++ -fsanitize=address,undefined -g -g -Wl,--dependency-file=CMakeFiles/bench_runner.dir/link.d CMakeFiles/bench_runner.dir/benchmarks/bench_engine.cpp.o -o bench_runner  libfin_ocr_native.a _deps/googlebenchmark-build/src/libbenchmark.a -lrt

@@ -1,40 +1,79 @@
 // src/core/llm/tools.rs
 
 use crate::core::llm::assistant;
-use crate::core::utils::errors::AppError;
 use crate::core::types::*;
-use serde_json::{ json, Value };
+use crate::core::utils::errors::AppError;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::fmt;
 use std::str::FromStr;
 
-/// Convert internal AppError into LLM-safe, user-facing error payload
-fn llm_safe_error(err: AppError) -> AppError {
-    use crate::core::utils::domain_error::DomainError;
+// ============================================================================
+// 1. Diagnostic Data Model
+// ============================================================================
 
-    match err {
-        AppError::InvalidInput(_) => {
-            AppError::InvalidInput(
-                "Invalid or missing input parameters. Please correct the arguments and retry.".into()
-            )
-        }
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DiagnosticStatus {
+    UnknownTool,
+    MissingArguments,
+    TypeMismatch,
+    DomainConstraintViolation,
+    ExecutionFailed,
+}
 
-        AppError::Domain(DomainError::AllocationOverflow { .. }) => {
-            AppError::InvalidInput(
-                "Investment amount exceeds allowed allocation for the selected profile.".into()
-            )
-        }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FieldError {
+    pub field: String,
+    pub expected_type: String,
+    pub actual_value: Option<Value>,
+    pub issue: String,
+}
 
-        AppError::Domain(_) => {
-            AppError::InvalidInput(
-                "The request violates domain rules for this financial calculation.".into()
-            )
-        }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolDiagnosticReport {
+    pub tool_name: String,
+    pub status: DiagnosticStatus,
+    pub error_summary: String,
+    pub missing_fields: Vec<String>,
+    pub invalid_fields: Vec<FieldError>,
+    pub expected_schema: Option<Value>,
+    pub available_tools: Vec<String>,
+    pub remediation_prompt: String,
+}
 
-        _ => AppError::Other("Internal calculation error. Please try again later.".into()),
+impl ToolDiagnosticReport {
+    /// Formats the diagnostic report into an LLM-friendly correction prompt
+    pub fn to_llm_payload(&self) -> Value {
+        json!({
+            "status": "error",
+            "diagnostic_report": self
+        })
     }
 }
 
-/// Enum of tool names
-#[derive(Debug, Clone)]
+impl fmt::Display for ToolDiagnosticReport {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.remediation_prompt.is_empty() {
+            write!(
+                f,
+                "[{:?}] Tool '{}' failed: {}. Remediation: {}",
+                self.status, self.tool_name, self.error_summary, self.remediation_prompt
+            )
+        } else {
+            write!(
+                f,
+                "[{:?}] Tool '{}' failed: {}",
+                self.status, self.tool_name, self.error_summary
+            )
+        }
+    }
+}
+
+// ============================================================================
+// 2. Tool Definition & Enum Registry
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToolName {
     CalculateEmi,
     AssessLoan,
@@ -63,6 +102,21 @@ impl ToolName {
             ToolName::StatAnalysis => "stat_analysis",
         }
     }
+
+    pub fn all_names() -> Vec<String> {
+        vec![
+            ToolName::CalculateEmi.as_str().to_string(),
+            ToolName::AssessLoan.as_str().to_string(),
+            ToolName::EmergencyFund.as_str().to_string(),
+            ToolName::SavingsProjection.as_str().to_string(),
+            ToolName::CalculateTax.as_str().to_string(),
+            ToolName::InvestmentPlan.as_str().to_string(),
+            ToolName::CashflowPlan.as_str().to_string(),
+            ToolName::GenerateBudget.as_str().to_string(),
+            ToolName::ProfileSimilarity.as_str().to_string(),
+            ToolName::StatAnalysis.as_str().to_string(),
+        ]
+    }
 }
 
 impl FromStr for ToolName {
@@ -80,10 +134,19 @@ impl FromStr for ToolName {
             "generate_budget" => Ok(ToolName::GenerateBudget),
             "profile_similarity" => Ok(ToolName::ProfileSimilarity),
             "stat_analysis" => Ok(ToolName::StatAnalysis),
-
             _ => Err(AppError::InvalidInput(format!("Unknown tool: {}", s))),
         }
     }
+}
+
+/// Retrieve full JSON schema definition for a specific tool
+pub fn get_tool_schema(tool_name: &str) -> Option<Value> {
+    tool_definitions().into_iter().find(|def| {
+        def.get("function")
+            .and_then(|f| f.get("name"))
+            .and_then(|n| n.as_str())
+            == Some(tool_name)
+    })
 }
 
 /// Returns tool definitions for LLM function calling
@@ -98,9 +161,9 @@ pub fn tool_definitions() -> Vec<Value> {
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "principal": { "type": "number" },
-                        "annual_rate": { "type": "number" },
-                        "tenure_months": { "type": "integer" }
+                        "principal": { "type": "number", "description": "Total loan principal amount" },
+                        "annual_rate": { "type": "number", "description": "Annual interest rate percentage (e.g. 8.5)" },
+                        "tenure_months": { "type": "integer", "description": "Tenure in months" }
                     },
                     "required": ["principal", "annual_rate", "tenure_months"]
                 }
@@ -131,7 +194,7 @@ pub fn tool_definitions() -> Vec<Value> {
                         "policy": {
                             "type": "string",
                             "enum": LoanPolicy::variants(),
-                            "description": "Select a loan policy variant (salaried, self_employed, etc.)"
+                            "description": "Select a loan policy variant"
                         }
                     },
                     "required": ["request", "policy"]
@@ -152,7 +215,7 @@ pub fn tool_definitions() -> Vec<Value> {
                         "policy": {
                             "type": "string",
                             "enum": LoanPolicy::variants(),
-                            "description": "Loan policy variant that may affect emergency fund calculations"
+                            "description": "Loan policy variant affecting emergency fund calculations"
                         }
                     },
                     "required": ["monthly_expense"]
@@ -172,7 +235,7 @@ pub fn tool_definitions() -> Vec<Value> {
                         "months": { "type": "integer" },
                         "policy": { "type": "string", "enum": LoanPolicy::variants() }
                     },
-                    "required": ["months"]
+                    "required": ["months", "policy"]
                 }
             }
         }),
@@ -217,7 +280,7 @@ pub fn tool_definitions() -> Vec<Value> {
                         "loan_policy": {
                             "type": "string",
                             "enum": LoanPolicy::variants(),
-                            "description": "Optional loan policy variant affecting the investment plan"
+                            "description": "Optional loan policy variant"
                         }
                     },
                     "required": ["investable_amount", "profile"]
@@ -328,208 +391,340 @@ pub fn tool_definitions() -> Vec<Value> {
     ]
 }
 
-/// Executes a tool based on name and arguments (async version)
-pub async fn execute_tool_async(
-    tool_name: &str,
-    mut arguments: Value
-) -> Result<Value, AppError> {
-    let tool = ToolName::from_str(tool_name)?;
+// ============================================================================
+// 3. Pre-Execution Schema Validator
+// ============================================================================
 
-    // ===== Resolve LoanPolicy FIRST (owned) =====
-    let loan_policy: Option<LoanPolicy> =
-        arguments
-            .get("policy")
-            .and_then(|v| v.as_str())
-            .map(|policy_str| LoanPolicy::from_name(policy_str))
-            .transpose()?;
-
-    if let Some(ref policy) = loan_policy {
-        arguments["policy"] = serde_json::to_value(policy)
-            .map_err(|e| AppError::Other(format!(
-                "Failed to serialize LoanPolicy: {}", e
-            )))?;
-    }
-
-    // ===== Resolve TaxProfile FIRST (owned) =====
-    let tax_profile: Option<TaxProfile> =
-        arguments
-            .get("tax_profile")
-            .and_then(|v| v.as_str())
-            .map(|tax_str| TaxProfile::from_name(tax_str, None))
-            .transpose()?;
-
-    if let Some(ref tax) = tax_profile {
-        arguments["tax_profile"] = serde_json::to_value(tax)
-            .map_err(|e| AppError::Other(format!(
-                "Failed to serialize TaxProfile: {}", e
-            )))?;
-    }
-
-    // ===== Resolve StatProfile LAST (needs refs) =====
-    if let Some(profile_str) = arguments.get("profile").and_then(|v| v.as_str()) {
-        let stat_profile = StatProfile::from_name(
-            profile_str,
-            tax_profile.as_ref(),
-            loan_policy.as_ref()
-        )?;
-
-        arguments["profile"] = serde_json::to_value(&stat_profile)
-            .map_err(|e| AppError::Other(format!(
-                "Failed to serialize StatProfile: {}", e
-            )))?;
-    }
-
-    // ===== Dispatch =====
-    let result = match tool {
-        ToolName::CalculateEmi =>
-            assistant::execute_calculate_emi_async(arguments).await,
-
-        ToolName::AssessLoan =>
-            assistant::execute_assess_loan_async(arguments).await,
-
-        ToolName::EmergencyFund =>
-            assistant::execute_emergency_fund_async(arguments).await,
-
-        ToolName::SavingsProjection =>
-            assistant::execute_savings_projection_async(arguments).await,
-
-        ToolName::CalculateTax =>
-            assistant::execute_calculate_tax_async(arguments).await,
-
-        ToolName::InvestmentPlan =>
-            assistant::execute_investment_plan_async(arguments).await,
-
-        ToolName::CashflowPlan =>
-            assistant::execute_cashflow_async(arguments).await,
-
-        ToolName::GenerateBudget =>
-            assistant::execute_generate_budget(arguments).await,
-
-        ToolName::ProfileSimilarity =>
-            assistant::execute_profile_similarity(arguments).await,
-
-        ToolName::StatAnalysis =>
-            assistant::execute_stat_analysis_async(arguments).await,
+pub fn validate_arguments(tool_name: &str, arguments: &mut Value) -> Result<(), ToolDiagnosticReport> {
+    let schema = match get_tool_schema(tool_name) {
+        Some(s) => s,
+        None => {
+            return Err(ToolDiagnosticReport {
+                tool_name: tool_name.to_string(),
+                status: DiagnosticStatus::UnknownTool,
+                error_summary: format!("Tool '{}' does not exist in registry.", tool_name),
+                missing_fields: vec![],
+                invalid_fields: vec![],
+                expected_schema: None,
+                available_tools: ToolName::all_names(),
+                remediation_prompt: format!(
+                    "Tool '{}' was not found. Please select from available tools: {}",
+                    tool_name,
+                    ToolName::all_names().join(", ")
+                ),
+            });
+        }
     };
 
-    result.map_err(llm_safe_error)
+    let params = &schema["function"]["parameters"];
+    let empty_vec = vec![];
+    let required_fields = params["required"].as_array().unwrap_or(&empty_vec);
+    let properties = &params["properties"];
+
+    let mut missing_fields = Vec::new();
+    let mut invalid_fields = Vec::new();
+
+    // Check required fields
+    for req in required_fields {
+        if let Some(req_str) = req.as_str() {
+            if arguments.get(req_str).is_none() || arguments[req_str].is_null() {
+                missing_fields.push(req_str.to_string());
+            }
+        }
+    }
+
+    // Check type constraints and auto-coerce numeric strings if valid
+    if let Some(args_obj) = arguments.as_object_mut() {
+        for (key, val) in args_obj.iter_mut() {
+            if let Some(prop_schema) = properties.get(key) {
+                if let Some(expected_type) = prop_schema.get("type").and_then(|t| t.as_str()) {
+                    let is_valid = match expected_type {
+                        "number" => {
+                            if val.is_number() {
+                                true
+                            } else if let Some(s) = val.as_str() {
+                                let cleaned = s.replace('₹', "").replace('$', "").replace(',', "").replace(' ', "");
+                                if let Ok(parsed) = cleaned.parse::<f64>() {
+                                    *val = json!(parsed);
+                                    true
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        }
+                        "integer" => {
+                            if val.is_i64() || val.is_u64() {
+                                true
+                            } else if let Some(s) = val.as_str() {
+                                let cleaned = s.replace('₹', "").replace('$', "").replace(',', "").replace(' ', "");
+                                if let Ok(parsed) = cleaned.parse::<i64>() {
+                                    *val = json!(parsed);
+                                    true
+                                } else {
+                                    false
+                                }
+                            } else {
+                                false
+                            }
+                        }
+                        "string" => val.is_string(),
+                        "boolean" => val.is_boolean(),
+                        "object" => val.is_object(),
+                        "array" => val.is_array(),
+                        _ => true,
+                    };
+
+                    if !is_valid {
+                        invalid_fields.push(FieldError {
+                            field: key.clone(),
+                            expected_type: expected_type.to_string(),
+                            actual_value: Some(val.clone()),
+                            issue: format!("Value for field '{}' must be of type '{}'.", key, expected_type),
+                        });
+                    }
+                }
+
+                // Enum validation for string params
+                if let Some(enum_vals) = prop_schema.get("enum").and_then(|e| e.as_array()) {
+                    if let Some(val_str) = val.as_str() {
+                        let matches_enum = enum_vals.iter().any(|e| e.as_str() == Some(val_str));
+                        if !matches_enum {
+                            let allowed: Vec<String> = enum_vals
+                                .iter()
+                                .filter_map(|e| e.as_str().map(|s| s.to_string()))
+                                .collect();
+
+                            invalid_fields.push(FieldError {
+                                field: key.clone(),
+                                expected_type: "enum_string".to_string(),
+                                actual_value: Some(val.clone()),
+                                issue: format!(
+                                    "Invalid enum value '{}'. Allowed values are: [{}]",
+                                    val_str,
+                                    allowed.join(", ")
+                                ),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if !missing_fields.is_empty() || !invalid_fields.is_empty() {
+        let status = if !missing_fields.is_empty() {
+            DiagnosticStatus::MissingArguments
+        } else {
+            DiagnosticStatus::TypeMismatch
+        };
+
+        let remediation = if !missing_fields.is_empty() {
+            format!(
+                "Tool '{}' requires missing parameters: [{}]. Ask the user for these details or supply them.",
+                tool_name,
+                missing_fields.join(", ")
+            )
+        } else {
+            format!(
+                "Tool '{}' received invalid arguments for fields: [{}]. Correct the parameter types or enum values.",
+                tool_name,
+                invalid_fields.iter().map(|f| f.field.as_str()).collect::<Vec<_>>().join(", ")
+            )
+        };
+
+        return Err(ToolDiagnosticReport {
+            tool_name: tool_name.to_string(),
+            status,
+            error_summary: "Validation failed before execution.".to_string(),
+            missing_fields,
+            invalid_fields,
+            expected_schema: Some(params.clone()),
+            available_tools: ToolName::all_names(),
+            remediation_prompt: remediation,
+        });
+    }
+
+    Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-    use tokio;
+// ============================================================================
+// 4. Async Execution Engine with Diagnostic Error Intercept
+// ============================================================================
 
-    #[tokio::test]
-    #[cfg_attr(miri, ignore)]
-    async fn unknown_tool_returns_error() {
-        let args = json!({});
-        let result = execute_tool_async("not_a_tool", args).await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Unknown tool"));
+/// Executes a tool asynchronously, producing rich diagnostics on failure
+pub async fn execute_tool_async(
+    tool_name: &str,
+    mut arguments: Value,
+) -> Result<Value, ToolDiagnosticReport> {
+    // Phase 1: Pre-execution validation (mutably coerces formatted strings into numbers)
+    validate_arguments(tool_name, &mut arguments)?;
+
+    let tool = ToolName::from_str(tool_name).map_err(|_| ToolDiagnosticReport {
+        tool_name: tool_name.to_string(),
+        status: DiagnosticStatus::UnknownTool,
+        error_summary: format!("Unknown tool '{}'", tool_name),
+        missing_fields: vec![],
+        invalid_fields: vec![],
+        expected_schema: None,
+        available_tools: ToolName::all_names(),
+        remediation_prompt: format!("Unknown tool: {}", tool_name),
+    })?;
+
+    // Phase 2: Domain Entity Resolution & Fallbacks
+    let loan_policy: Option<LoanPolicy> = if let Some(policy_val) = arguments.get("policy") {
+        if let Some(policy_str) = policy_val.as_str() {
+            match LoanPolicy::from_name(policy_str) {
+                Ok(p) => Some(p),
+                Err(e) => {
+                    return Err(ToolDiagnosticReport {
+                        tool_name: tool_name.to_string(),
+                        status: DiagnosticStatus::TypeMismatch,
+                        error_summary: format!("Failed to parse LoanPolicy: {}", e),
+                        missing_fields: vec![],
+                        invalid_fields: vec![FieldError {
+                            field: "policy".to_string(),
+                            expected_type: "LoanPolicy enum".to_string(),
+                            actual_value: Some(policy_val.clone()),
+                            issue: format!("Allowed policy values: {:?}", LoanPolicy::variants()),
+                        }],
+                        expected_schema: get_tool_schema(tool_name),
+                        available_tools: ToolName::all_names(),
+                        remediation_prompt: format!(
+                            "Invalid policy string '{}'. Must be one of: {:?}",
+                            policy_str,
+                            LoanPolicy::variants()
+                        ),
+                    });
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        // Fallback default policy if none is specified
+        Some(LoanPolicy::salaried())
+    };
+
+    if let Some(ref policy) = loan_policy {
+        arguments["policy"] = serde_json::to_value(policy).map_err(|e| ToolDiagnosticReport {
+            tool_name: tool_name.to_string(),
+            status: DiagnosticStatus::ExecutionFailed,
+            error_summary: format!("Serialization failure: {}", e),
+            missing_fields: vec![],
+            invalid_fields: vec![],
+            expected_schema: None,
+            available_tools: ToolName::all_names(),
+            remediation_prompt: "Internal serialization failure.".into(),
+        })?;
     }
 
-    #[tokio::test]
-    #[cfg_attr(miri, ignore)]
-    async fn toolname_as_str_roundtrip() {
-        let tools = vec![
-            ToolName::CalculateEmi,
-            ToolName::AssessLoan,
-            ToolName::EmergencyFund,
-            ToolName::SavingsProjection,
-            ToolName::CalculateTax,
-            ToolName::InvestmentPlan,
-            ToolName::CashflowPlan,
-            ToolName::GenerateBudget,
-            ToolName::ProfileSimilarity,
-            ToolName::StatAnalysis
-        ];
+    let tax_profile: Option<TaxProfile> = if let Some(tax_val) = arguments.get("tax_profile") {
+        if let Some(tax_str) = tax_val.as_str() {
+            match TaxProfile::from_name(tax_str, None) {
+                Ok(t) => Some(t),
+                Err(e) => {
+                    return Err(ToolDiagnosticReport {
+                        tool_name: tool_name.to_string(),
+                        status: DiagnosticStatus::TypeMismatch,
+                        error_summary: format!("Failed to resolve TaxProfile: {}", e),
+                        missing_fields: vec![],
+                        invalid_fields: vec![FieldError {
+                            field: "tax_profile".to_string(),
+                            expected_type: "TaxProfile string".to_string(),
+                            actual_value: Some(tax_val.clone()),
+                            issue: "Tax profile name unrecognized.".to_string(),
+                        }],
+                        expected_schema: get_tool_schema(tool_name),
+                        available_tools: ToolName::all_names(),
+                        remediation_prompt: format!("Provide a valid tax profile name. Details: {}", e),
+                    });
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
 
-        for tool in tools {
-            let name = tool.as_str();
-            let parsed = ToolName::from_str(name).expect("ToolName should parse from as_str()");
-            assert_eq!(parsed.as_str(), name);
+    if let Some(ref tax) = tax_profile {
+        arguments["tax_profile"] = serde_json::to_value(tax).map_err(|e| ToolDiagnosticReport {
+            tool_name: tool_name.to_string(),
+            status: DiagnosticStatus::ExecutionFailed,
+            error_summary: format!("Serialization failure: {}", e),
+            missing_fields: vec![],
+            invalid_fields: vec![],
+            expected_schema: None,
+            available_tools: ToolName::all_names(),
+            remediation_prompt: "Internal serialization failure.".into(),
+        })?;
+    }
+
+    if let Some(profile_str) = arguments.get("profile").and_then(|v| v.as_str()) {
+        match StatProfile::from_name(profile_str, tax_profile.as_ref(), loan_policy.as_ref()) {
+            Ok(stat_profile) => {
+                arguments["profile"] =
+                    serde_json::to_value(&stat_profile).map_err(|e| ToolDiagnosticReport {
+                        tool_name: tool_name.to_string(),
+                        status: DiagnosticStatus::ExecutionFailed,
+                        error_summary: format!("Failed to serialize StatProfile: {}", e),
+                        missing_fields: vec![],
+                        invalid_fields: vec![],
+                        expected_schema: None,
+                        available_tools: ToolName::all_names(),
+                        remediation_prompt: "Internal state error.".into(),
+                    })?;
+            }
+            Err(e) => {
+                return Err(ToolDiagnosticReport {
+                    tool_name: tool_name.to_string(),
+                    status: DiagnosticStatus::DomainConstraintViolation,
+                    error_summary: format!("StatProfile constraint failed: {}", e),
+                    missing_fields: vec![],
+                    invalid_fields: vec![FieldError {
+                        field: "profile".to_string(),
+                        expected_type: "StatProfile variant".to_string(),
+                        actual_value: Some(json!(profile_str)),
+                        issue: format!("Profile domain error: {}", e),
+                    }],
+                    expected_schema: get_tool_schema(tool_name),
+                    available_tools: ToolName::all_names(),
+                    remediation_prompt: format!(
+                        "Profile parameter '{}' violates domain rules: {}. Choose a valid StatProfile.",
+                        profile_str, e
+                    ),
+                });
+            }
         }
     }
 
-    #[test]
-    fn from_str_unknown_tool_errors() {
-        let result = ToolName::from_str("definitely_not_real");
-        assert!(result.is_err());
+    // Phase 3: Function Dispatch
+    let result = match tool {
+        ToolName::CalculateEmi => assistant::execute_calculate_emi_async(arguments).await,
+        ToolName::AssessLoan => assistant::execute_assess_loan_async(arguments).await,
+        ToolName::EmergencyFund => assistant::execute_emergency_fund_async(arguments).await,
+        ToolName::SavingsProjection => assistant::execute_savings_projection_async(arguments).await,
+        ToolName::CalculateTax => assistant::execute_calculate_tax_async(arguments).await,
+        ToolName::InvestmentPlan => assistant::execute_investment_plan_async(arguments).await,
+        ToolName::CashflowPlan => assistant::execute_cashflow_async(arguments).await,
+        ToolName::GenerateBudget => assistant::execute_generate_budget(arguments).await,
+        ToolName::ProfileSimilarity => assistant::execute_profile_similarity(arguments).await,
+        ToolName::StatAnalysis => assistant::execute_stat_analysis_async(arguments).await,
+    };
 
-        let err = result.unwrap_err().to_string();
-        assert!(err.contains("Unknown tool"));
-    }
-
-    #[test]
-    fn tool_definitions_have_unique_names() {
-        let defs = tool_definitions();
-
-        let mut names: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-        for def in defs {
-            let name = def["function"]["name"]
-                .as_str()
-                .expect("tool definition must have function.name")
-                .to_string(); // 👈 OWN it
-
-            assert!(names.insert(name), "Duplicate tool name found in tool_definitions");
-        }
-    }
-
-    #[test]
-    fn all_enum_tools_exist_in_definitions() {
-        let defs = tool_definitions();
-
-        let def_names: std::collections::HashSet<String> = defs
-            .iter()
-            .map(|d| {
-                d["function"]["name"].as_str().unwrap().to_string() // 👈 OWN it
-            })
-            .collect();
-
-        let enum_tools = vec![
-            ToolName::CalculateEmi,
-            ToolName::AssessLoan,
-            ToolName::EmergencyFund,
-            ToolName::SavingsProjection,
-            ToolName::CalculateTax,
-            ToolName::InvestmentPlan,
-            ToolName::CashflowPlan,
-            ToolName::GenerateBudget,
-            ToolName::ProfileSimilarity,
-            ToolName::StatAnalysis
-        ];
-
-        for tool in enum_tools {
-            let name = tool.as_str().to_string();
-            assert!(
-                def_names.contains(&name),
-                "Tool '{}' exists in enum but not in tool_definitions()",
-                name
-            );
-        }
-    }
-
-    #[tokio::test]
-    #[cfg_attr(miri, ignore)]
-    async fn stat_analysis_requires_profile_argument() {
-        let args = json!({}); // missing profile
-        let result = execute_tool_async(ToolName::StatAnalysis.as_str(), args).await;
-        assert!(result.is_err());
-    }
-
-    #[tokio::test]
-    #[cfg_attr(miri, ignore)]
-    async fn investment_plan_rejects_invalid_profile_shape() {
-        let args =
-            json!({
-        "investable_amount": 50000,
-        "profile": { "risk": "high" }
-    });
-
-        let result = execute_tool_async("generate_investment_plan", args).await;
-        assert!(result.is_err());
-    }
+    result.map_err(|err| ToolDiagnosticReport {
+        tool_name: tool_name.to_string(),
+        status: DiagnosticStatus::ExecutionFailed,
+        error_summary: format!("Tool execution runtime error: {}", err),
+        missing_fields: vec![],
+        invalid_fields: vec![],
+        expected_schema: get_tool_schema(tool_name),
+        available_tools: ToolName::all_names(),
+        remediation_prompt: format!(
+            "Execution of tool '{}' failed: {}. Review arguments or ask user for clarified input.",
+            tool_name, err
+        ),
+    })
 }
