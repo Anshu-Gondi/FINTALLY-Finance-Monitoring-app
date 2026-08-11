@@ -1,0 +1,60 @@
+version: 2.1
+
+executors:
+  docker-builder:
+    machine:
+      image: ubuntu-2204:current
+      docker_layer_caching: true
+
+jobs:
+  build-and-push-t4:
+    executor: docker-builder
+    steps:
+      - checkout
+
+      - run:
+          name: Log in to GitHub Container Registry (GHCR)
+          command: |
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+
+      - run:
+          name: Build and Push Docker Image (T4 - CUDA 75)
+          command: |
+            # Lowercase repository path for GHCR compliance
+            REPO_USER=$(echo "${CIRCLE_PROJECT_USERNAME}" | tr '[:upper:]' '[:lower:]')
+            REPO_NAME=$(echo "${CIRCLE_PROJECT_REPONAME}" | tr '[:upper:]' '[:lower:]')
+            IMAGE_PATH="ghcr.io/${REPO_USER}/${REPO_NAME}"
+
+            SHORT_SHA=$(echo "${CIRCLE_SHA1}" | cut -c1-7)
+
+            # Construct image tags
+            TAG_FLAGS="-t ${IMAGE_PATH}:sha-${SHORT_SHA}-t4"
+
+            if [ "${CIRCLE_BRANCH}" = "main" ]; then
+              TAG_FLAGS="${TAG_FLAGS} -t ${IMAGE_PATH}:latest-t4 -t ${IMAGE_PATH}:main-t4"
+            fi
+
+            if [ -n "${CIRCLE_TAG}" ]; then
+              TAG_FLAGS="${TAG_FLAGS} -t ${IMAGE_PATH}:${CIRCLE_TAG}-t4"
+            fi
+
+            # Build image
+            docker build \
+              --file ./fintally_core/dockerfile \
+              --build-arg CUDA_COMPUTE_CAP=75 \
+              ${TAG_FLAGS} \
+              .
+
+            # Push built tags
+            docker push --all-tags ${IMAGE_PATH}
+
+workflows:
+  version: 2
+  production-release:
+    jobs:
+      - build-and-push-t4:
+          filters:
+            branches:
+              only: main
+            tags:
+              only: /^v.*/
