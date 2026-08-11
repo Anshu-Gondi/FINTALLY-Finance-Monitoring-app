@@ -36,10 +36,7 @@ jobs:
             tag_suffix: "-hopper"
 
     steps:
-      - name: Checkout Source Code Repository
-        uses: actions/checkout@v4
-
-      # 🧹 TRICK 3: Maximize Disk Space reliably (~30-40GB freed)
+      # 1. MUST BE FIRST: Re-partition disk before checking out code
       - name: Maximize Runner Disk Space
         uses: easimon/maximize-build-space@v10
         with:
@@ -50,6 +47,10 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
+
+      # 2. MUST BE SECOND: Checkout code into the freshly configured space
+      - name: Checkout Source Code Repository
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -80,7 +81,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # 🧹 TRICK 4: Change mode=max to mode=min to stop bloating disk with internal stage caches
           cache-from: type=gha,scope=${{ matrix.gpu_tier }}
           cache-to: type=gha,mode=min,scope=${{ matrix.gpu_tier }}
           build-args: |
