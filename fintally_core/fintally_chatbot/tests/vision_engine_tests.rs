@@ -64,51 +64,88 @@ startxref
 
 #[test]
 fn test_thermal_metrics_api() {
+    // 1. Check thermal metric reading
     let metrics = VisionEngine::get_thermal_metrics();
     println!(
         "Thermal Status: {:?}, Max Temp: {:.1}°C",
         metrics.status, metrics.max_temp_celsius
     );
-    assert!(metrics.max_temp_celsius >= -50.0);
+    assert!(
+        metrics.max_temp_celsius >= -50.0,
+        "Invalid thermal sensor output"
+    );
+
+    // 2. Test thermal thresholds configuration
+    VisionEngine::set_thermal_thresholds(75.0, 90.0);
 }
 
 #[test]
-fn test_vision_engine_synthetic_inputs() {
-    let model_dir = Path::new("llm_models/ocr/florence2_base_output");
+fn test_got_ocr2_engine_construction() {
+    let model_dir = Path::new("llm_models/ocr/got_ocr2_0_output");
 
-    // Skip weight loading assertions if local HuggingFace weights aren't downloaded yet
     if !model_dir.join("tokenizer.json").exists() {
-        println!("Skipping full model inference test: model_dir assets not present");
+        println!("Skipping engine constructor test: GOT-OCR 2.0 assets not downloaded");
+        return;
+    }
+
+    // Test default constructor pointing to GOT-OCR 2.0 directory
+    let default_engine = VisionEngine::new();
+    assert!(
+        default_engine.is_ok(),
+        "Failed to instantiate VisionEngine::new(): {:?}",
+        default_engine.err()
+    );
+}
+
+#[test]
+fn test_got_ocr2_synthetic_inputs() {
+    let model_dir = Path::new("llm_models/ocr/got_ocr2_0_output");
+
+    // Skip inference tests if HuggingFace GOT-OCR weights aren't present
+    if !model_dir.join("tokenizer.json").exists() {
+        println!("Skipping GOT-OCR 2.0 inference test: model_dir assets not present");
         return;
     }
 
     let mut engine = VisionEngine::from_model_dir(model_dir)
-        .expect("Failed to construct VisionEngine from model directory");
+        .expect("Failed to construct VisionEngine from GOT-OCR 2.0 model directory");
 
-    // 1. Test Raw Synthetic Image Input
-    let synthetic_image = create_synthetic_bmp_bytes(640, 480);
+    // 1. Test Raw Synthetic Image Input with GOT-OCR formatted prompt ("format")
+    let synthetic_image = create_synthetic_bmp_bytes(1024, 1024);
     let img_result = engine.process_input(
         DocumentInput::RawImageBytes(&synthetic_image),
-        "Extract text",
+        "format",
     );
-    assert!(img_result.is_ok(), "Image processing failed: {:?}", img_result.err());
+    assert!(
+        img_result.is_ok(),
+        "GOT-OCR 2.0 image processing failed: {:?}",
+        img_result.err()
+    );
 
-    // 2. Test Synthetic PDF Stream Input
+    // 2. Test Synthetic PDF Stream Input with GOT-OCR plain text prompt ("plain")
     let synthetic_pdf = create_synthetic_pdf_bytes();
     let pdf_result = engine.process_input(
         DocumentInput::PdfDocumentBytes(&synthetic_pdf),
-        "Parse financial table",
+        "plain",
     );
-    assert!(pdf_result.is_ok(), "PDF processing failed: {:?}", pdf_result.err());
+    assert!(
+        pdf_result.is_ok(),
+        "GOT-OCR 2.0 PDF processing failed: {:?}",
+        pdf_result.err()
+    );
 
-    // 3. Test Synthetic Financial Chart Input with custom target dimensions
-    let synthetic_chart = create_synthetic_bmp_bytes(1024, 768);
+    // 3. Test Synthetic Financial Chart Input with GOT-OCR custom target dimensions (1024x1024)
+    let synthetic_chart = create_synthetic_bmp_bytes(1024, 1024);
     let chart_result = engine.process_input_with_dims(
         DocumentInput::FinancialChartBytes(&synthetic_chart),
-        "Analyze chart trend",
-        1280,
-        720,
+        "Parse financial table into Markdown",
+        1024,
+        1024,
         3,
     );
-    assert!(chart_result.is_ok(), "Chart processing failed: {:?}", chart_result.err());
+    assert!(
+        chart_result.is_ok(),
+        "GOT-OCR 2.0 Chart processing failed: {:?}",
+        chart_result.err()
+    );
 }

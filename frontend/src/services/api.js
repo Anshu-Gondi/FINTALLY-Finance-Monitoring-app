@@ -180,8 +180,10 @@ export const analyticsApi = {
 // ─── CHATBOT ENGINE MODULE ──────────────────────────────────────────────────
 
 export const chatApi = {
+  // Fetch list of active/past chat session IDs
   getSessions: () => get(`${BASE}/api/chat/sessions`),
 
+  // Fetch full history for a session or general chat history
   getHistory: (sessionId = null, limit = 50) => {
     const url = new URL(`${BASE}/api/chat/history`);
     if (sessionId) url.searchParams.set("session_id", sessionId);
@@ -189,11 +191,16 @@ export const chatApi = {
     return get(url.toString());
   },
 
+  // Delete a specific chat session by session ID
+  deleteSession: (sessionId) => del(`${BASE}/api/chat/sessions/${sessionId}`),
+
+  // Clear all history or history for a specific query session
   clearHistory: (sessionId = null) => {
     const url = new URL(`${BASE}/api/chat/history`);
     if (sessionId) url.searchParams.set("session_id", sessionId);
     return del(url.toString());
   },
 
-  getStreamUrl: () => `${BASE}/api/chat`
+  // Base streaming SSE endpoint URL
+  getStreamUrl: () => `${BASE}/api/chat`,
 };

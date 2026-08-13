@@ -465,3 +465,289 @@
 .markdown-container .katex-display > .katex {
   color: #00f0ff !important;
 }
+
+/* History Drawer Toggle Button */
+.history-toggle-btn {
+  background: rgba(57, 255, 20, 0.1);
+  border: 1px solid #39ff14;
+  color: #39ff14;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-family: 'Consolas', monospace;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-toggle-btn:hover {
+  background: #39ff14;
+  color: #000;
+  box-shadow: 0 0 10px #39ff14;
+}
+
+/* Chat History Drawer */
+.chat-history-drawer {
+  background: #010812;
+  border-bottom: 1px solid #00f0ff;
+  padding: 12px 20px;
+  font-family: 'Consolas', monospace;
+  animation: slideDown 0.25s ease-out;
+}
+
+.history-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.history-drawer-title {
+  color: #00f0ff;
+  font-size: 0.8rem;
+  font-weight: bold;
+  letter-spacing: 0.05rem;
+}
+
+.history-drawer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.new-chat-btn {
+  background: rgba(57, 255, 20, 0.15);
+  border: 1px solid #39ff14;
+  color: #39ff14;
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.new-chat-btn:hover {
+  background: #39ff14;
+  color: #000;
+}
+
+.purge-all-btn {
+  background: rgba(255, 0, 85, 0.15);
+  border: 1px solid #ff0055;
+  color: #ff0055;
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.purge-all-btn:hover {
+  background: #ff0055;
+  color: #fff;
+}
+
+.history-session-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.no-history-text {
+  font-size: 0.75rem;
+  color: rgba(0, 240, 255, 0.5);
+}
+
+.session-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  color: #00f0ff;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.session-chip:hover,
+.session-chip.active {
+  background: rgba(0, 240, 255, 0.25);
+  border-color: #00f0ff;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
+}
+
+.session-delete-btn {
+  background: transparent;
+  border: none;
+  color: #ff0055;
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.session-delete-btn:hover {
+  color: #fff;
+}
+
+
+/* ==========================================================================
+   Responsive Adaptations for Small Mobile Devices (Galaxy Note 3 & ~360px)
+   ========================================================================== */
+
+@media screen and (max-width: 480px) {
+  /* Page & Main Container */
+  .chatbot-page-wrapper {
+    padding: 4px;
+    min-height: calc(100vh - 60px);
+  }
+
+  .chatbot-box-wrapper {
+    height: 92vh;
+    border-radius: 10px;
+    border-width: 1px;
+  }
+
+  /* Header Section */
+  .chatbot-window-header {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .header-title-block {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .chatbot-title {
+    font-size: 0.82rem !important;
+    letter-spacing: 0.02rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: space-between;
+  }
+
+  .guidelines-toggle-btn,
+  .history-toggle-btn,
+  .engine-badge {
+    font-size: 0.62rem;
+    padding: 3px 6px;
+  }
+
+  /* Drawers (Guidelines & History) */
+  .llm-guidelines-drawer,
+  .chat-history-drawer {
+    padding: 10px;
+  }
+
+  .guidelines-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .guideline-card {
+    padding: 8px;
+  }
+
+  .history-drawer-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .history-session-grid {
+    max-height: 90px;
+  }
+
+  /* Chat Viewport & Messages */
+  .chatbot-messages-viewport {
+    padding: 12px 10px;
+    gap: 12px;
+  }
+
+  .chatbot-msg-bubble {
+    max-width: 95%;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    border-radius: 10px;
+  }
+
+  .msg-body-content {
+    font-size: 0.82rem;
+    letter-spacing: 0;
+  }
+
+  /* Quick Commands Scrollbar */
+  .quick-commands-bar {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .quick-commands-bar button {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+  }
+
+  /* Input Dock */
+  .chatbot-form-input-dock {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .chatbot-form-input-dock .neonInput {
+    font-size: 0.8rem;
+    padding: 8px 10px;
+  }
+
+  .chatbot-submit-btn {
+    padding: 0 12px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+  }
+
+  /* Embedded Tool Cards */
+  .chatbot-tool-card {
+    padding: 8px 10px;
+  }
+
+  .tool-metric-row {
+    font-size: 0.75rem;
+  }
+
+  /* Status Bar */
+  .chatbot-status-bar {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    text-align: center;
+  }
+}
+
+/* Extra Tight Viewports (Galaxy Note 3 width: ~360px and smaller) */
+@media screen and (max-width: 360px) {
+  .chatbot-title {
+    font-size: 0.75rem !important;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+
+  .guidelines-toggle-btn,
+  .history-toggle-btn {
+    font-size: 0.58rem;
+    padding: 2px 4px;
+  }
+
+  .chatbot-msg-bubble {
+    max-width: 100%;
+  }
+}

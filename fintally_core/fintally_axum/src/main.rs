@@ -6,6 +6,9 @@ use fintally_db::chat_service::ChatHistoryService;
 use fintally_chatbot::core::llm::native_engine::NativeLlamaEngine;
 use fintally_chatbot::core::llm::engine::LlmEngine;
 
+// Vision imports
+use fintally_chatbot::core::vision::engine::{DocumentInput, VisionEngine};
+
 use axum::{ routing::{ get, post, delete }, Router, response::IntoResponse, Json, Extension };
 use tower_http::cors::{ CorsLayer, Any };
 use futures_util::StreamExt;
@@ -43,9 +46,9 @@ async fn manual_rag_sync_handler(
                 axum::http::StatusCode::OK,
                 Json(
                     serde_json::json!({
-                "status": "success",
-                "message": "Pure Rust Google Drive indexing completed successfully."
-            })
+                        "status": "success",
+                        "message": "Pure Rust Google Drive indexing completed successfully."
+                    })
                 ),
             ),
         Err(err) =>
@@ -53,9 +56,9 @@ async fn manual_rag_sync_handler(
                 axum::http::StatusCode::INTERNAL_SERVER_ERROR,
                 Json(
                     serde_json::json!({
-                "status": "error",
-                "detail": format!("{:?}", err)
-            })
+                        "status": "error",
+                        "detail": format!("{:?}", err)
+                    })
                 ),
             ),
     }
@@ -107,14 +110,13 @@ async fn main() {
     // ─── 1. Initialize Native Llama Engine Model ────────────────────────────
     println!("⏳ Loading Native Qwen LLM weights into system memory...");
 
-    // FIXED: Swapped out .new() for .load_from_vault() matching your exact model layout tree path
     let native_engine = Arc::new(
         NativeLlamaEngine::load_from_vault("./llm_models/chat/qwen_safetensors_output").expect(
             "Failed to instantiate native Qwen inference engine from specified path layout"
         )
     );
 
-    // ─── 2. Execute Async Model Warmup Sequence ─────────────────────────────
+    // ─── 2. Execute Async LLM Warmup Sequence ─────────────────────────────
     println!("🔥 Warming up LLM core engine (Compiling execution graphs / Allocating buffers)...");
     let warmup_prompt = "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n<|im_start|>user\nHi<|im_end|>\n<|im_start|>assistant\n";
 
@@ -132,7 +134,30 @@ async fn main() {
         }
     }
 
-    // ─── 3. Instantiate Orchestrator and Context States ────────────────────
+    // ─── 3. Execute Async GOT-OCR 2.0 Vision Engine Warmup Sequence ─────────
+    println!("👁️ Warming up GOT-OCR 2.0 Vision Engine (Pre-allocating C++ FFI buffers & CUDA tensors)...");
+
+    // Non-blocking offload for Vision Engine instantiation and dummy pass
+    let vision_warmup_result = tokio::task::spawn_blocking(|| {
+        // Uses default path "llm_models/ocr/got_ocr2_0_output"
+        let mut vision_engine = VisionEngine::new()?;
+
+        // Minimal 1x1 black image buffer to compile Candle Vision CUDA/CPU kernels
+        let dummy_pixel_bytes: [u8; 3] = [0, 0, 0];
+
+        vision_engine.process_input(
+            DocumentInput::RawImageBytes(&dummy_pixel_bytes),
+            "format"
+        )
+    }).await;
+
+    match vision_warmup_result {
+        Ok(Ok(_)) => println!("✅ GOT-OCR 2.0 Vision Engine successfully warmed up."),
+        Ok(Err(e)) => eprintln!("⚠️ Warning: Vision engine warmup failed: {:?}. First OCR request may experience latency.", e),
+        Err(e) => eprintln!("⚠️ Warning: Vision engine warmup thread join error: {:?}", e),
+    }
+
+    // ─── 4. Instantiate Orchestrator and Context States ────────────────────
     let orchestrator = Arc::new(
         ChatbotOrchestrator::new(pool.clone(), rag_service.clone(), native_engine)
     );
@@ -144,7 +169,7 @@ async fn main() {
         history_service,
     });
 
-    // ─── 4. Build Unified Core App Router ────────────────────────────────────
+    // ─── 5. Build Unified Core App Router ────────────────────────────────────
 
     let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
 

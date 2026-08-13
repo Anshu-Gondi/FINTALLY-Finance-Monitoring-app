@@ -1,10 +1,13 @@
 pub mod llm;
 pub mod finance;
 pub mod rag;
+pub mod vision;
+
+pub use vision::OcrService;
 
 use crate::native_layer::llm::chat::create_llm;
 
-/// Optional: A clean aggregate structural configuration struct for initializing 
+/// Optional: A clean aggregate structural configuration struct for initializing
 /// the entire chatbot workspace dependencies in a single step inside your web server.
 pub struct ChatbotServices {
     pub llm: std::sync::Arc<crate::core::llm::model::LLM>,
@@ -18,7 +21,7 @@ impl ChatbotServices {
         model_vault_path: &str,
     ) -> Result<Self, crate::core::rag::errors::RagError> {
         let llm = create_llm(max_tokens);
-        
+
         let rag_engine = rag::RagEngine::new(
             model_vault_path,
             512,  // chunk_size

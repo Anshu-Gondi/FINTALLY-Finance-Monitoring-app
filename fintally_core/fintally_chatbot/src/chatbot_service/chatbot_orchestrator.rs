@@ -56,6 +56,7 @@ impl ChatbotOrchestrator {
             // ── Phase 1: Context Gathering ──
             let context_timeout = Duration::from_millis(4000);
 
+            // Fetch user financial snapshot & RAG concurrently with defenses
             let user_ctx_fut = get_user_context(&self.pool, user_id);
             let rag_ctx_fut = self.rag_service.search_knowledge(&user_message, 2);
 
@@ -64,8 +65,12 @@ impl ChatbotOrchestrator {
                 tokio::time::timeout(context_timeout, rag_ctx_fut)
             );
 
-            let user_context = user_context_res.unwrap_or_default();
+            // Gracefully fallback to empty strings if queries time out or fail
+            let user_context_raw = user_context_res.unwrap_or_default();
             let rag_context = rag_context_res.unwrap_or_default();
+
+            // Format the user's financial snapshot specifically for the LLM prompt
+            let user_context = format_context_for_prompt(&user_context_raw);
 
             // ── Phase 2: System Prompt Engineering ──
             let full_system_prompt = self.build_system_prompt(&user_context, &rag_context);

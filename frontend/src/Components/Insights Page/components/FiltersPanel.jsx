@@ -47,8 +47,8 @@ export default function FiltersPanel({
 
   const hasActiveFilters =
     mode !== "monthly" ||
-    startDate ||
-    endDate ||
+    startDate !== null ||
+    endDate !== null ||
     type !== "all" ||
     keyword !== "" ||
     trendMode !== "6months";
@@ -155,8 +155,9 @@ export default function FiltersPanel({
           <div className="control has-icons-left">
             <Flatpickr
               options={{ dateFormat: "Y-m-d", allowInput: true }}
-              value={startDate}
-              onChange={([d]) => setStartDate(d || null)}
+              value={startDate || ""}
+              onChange={([selectedDate]) => setStartDate(selectedDate || null)}
+              onClear={() => setStartDate(null)}
               className="input is-small"
               placeholder="YYYY-MM-DD"
             />
@@ -174,8 +175,9 @@ export default function FiltersPanel({
           <div className="control has-icons-left">
             <Flatpickr
               options={{ dateFormat: "Y-m-d", allowInput: true }}
-              value={endDate}
-              onChange={([d]) => setEndDate(d || null)}
+              value={endDate || ""}
+              onChange={([selectedDate]) => setEndDate(selectedDate || null)}
+              onClear={() => setEndDate(null)}
               className="input is-small"
               placeholder="YYYY-MM-DD"
             />
@@ -251,9 +253,9 @@ FiltersPanel.propTypes = {
   setType: PropTypes.func.isRequired,
   keyword: PropTypes.string.isRequired,
   setKeyword: PropTypes.func.isRequired,
-  startDate: PropTypes.instanceOf(Date),
+  startDate: PropTypes.oneOfType([PropTypes.instanceOf(Date), PropTypes.string]),
   setStartDate: PropTypes.func.isRequired,
-  endDate: PropTypes.instanceOf(Date),
+  endDate: PropTypes.oneOfType([PropTypes.instanceOf(Date), PropTypes.string]),
   setEndDate: PropTypes.func.isRequired,
   trendMode: PropTypes.string.isRequired,
   setTrendMode: PropTypes.func.isRequired,

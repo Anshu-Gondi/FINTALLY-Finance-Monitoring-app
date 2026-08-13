@@ -15,16 +15,13 @@ const preprocessMarkdown = (content) => {
 
   let cleaned = content;
 
-  // 1. If the model streams raw JSON structure, attempt to extract conversational_response
   if (cleaned.trim().startsWith("{")) {
     try {
-      // Try parsing complete JSON payload
       const parsed = JSON.parse(cleaned);
       if (parsed.conversational_response) {
         cleaned = parsed.conversational_response;
       }
     } catch (e) {
-      // If still streaming incomplete JSON, strip JSON structure fields using regex
       cleaned = cleaned
         .replace(/\{\s*"thought"\s*:\s*".*?"\s*,\s*"tool_call"\s*:\s*null\s*,\s*"conversational_response"\s*:\s*"/gs, "")
         .replace(/^\{\s*"thought"[\s\S]*?"conversational_response"\s*:\s*"/i, "")
@@ -33,22 +30,11 @@ const preprocessMarkdown = (content) => {
   }
 
   return cleaned
-    // 2. Convert standard LaTeX block delimiters \[ equation \] -> $$ equation $$
     .replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, "\n\n$$$1$$\n\n")
-
-    // 3. Convert standard LaTeX inline delimiters \( variable \) -> $ variable $
     .replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, "$$1$")
-
-    // 4. Remove orphaned backslashes sitting on their own lines
     .replace(/^[ \t]*\\+[ \t]*$/gm, "")
-
-    // 5. Remove trailing backslashes inside math blocks before closing dollar signs
     .replace(/\\+(\s*(\$\$|\$))/g, "$1")
-
-    // 6. Convert raw bracketed formulas [ ... ] into KaTeX $$ blocks
     .replace(/\[\s*([\s\S]*?(?:\\times|\\frac|\\text|=|\\approx|\^|\/|\+|\{|\})[\s\S]*?)\s*\]/g, "\n\n$$$1$$\n\n")
-
-    // 7. Convert single letter parenthesized variables "( P )" -> "$P$"
     .replace(/\(\s*([a-zA-Z0-9])\s*\)/g, "$$$1$");
 };
 
@@ -66,15 +52,107 @@ const ChatbotPage = () => {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showGuidelines, setShowGuidelines] = useState(false);
 
+  // ── Session & History State Management ──────────────────────────────────────
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(null);
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+
   const messagesEndRef = useRef(null);
   const timerRef = useRef(null);
 
-  // Auto-scroll to bottom of chat window
+  // Initial session listing load
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const fetchSessions = async () => {
+    try {
+      const data = await chatApi.getSessions();
+      setSessions(data.sessions || []);
+    } catch (err) {
+      console.error("[CHAT_HISTORY] Failed to load sessions:", err);
+    }
+  };
+
+  const handleSelectSession = async (sessionId) => {
+    if (isGenerating) return;
+    setActiveSessionId(sessionId);
+    setSystemStatus(`LOADING SESSION #${sessionId}...`);
+
+    try {
+      const data = await chatApi.getHistory(sessionId, 50);
+      if (data.history && data.history.length > 0) {
+        setMessages(
+          data.history.map((m, idx) => ({
+            id: `hist_${idx}_${Date.now()}`,
+            role: m.role,
+            content: m.content,
+            toolCalled: m.metadata?.tool_called,
+            toolResult: m.metadata?.tool_result,
+          }))
+        );
+      } else {
+        setMessages([
+          {
+            id: "welcome",
+            role: "assistant",
+            content: `SESSION #${sessionId} LOADED. NO PRIOR MESSAGES FOUND.`,
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error("[CHAT_HISTORY] Load error:", err);
+    } finally {
+      setSystemStatus("");
+    }
+  };
+
+  const handleStartNewChat = () => {
+    if (isGenerating) return;
+    setActiveSessionId(null);
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content: "NEW CHAT SESSION INITIALIZED. ENTER FINANCIAL QUERY_",
+      },
+    ]);
+  };
+
+  const handleDeleteSession = async (e, sessionId) => {
+    e.stopPropagation();
+    if (isGenerating) return;
+
+    try {
+      await chatApi.deleteSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s !== sessionId));
+      if (activeSessionId === sessionId) {
+        handleStartNewChat();
+      }
+    } catch (err) {
+      console.error("[CHAT_HISTORY] Delete session failed:", err);
+    }
+  };
+
+  const handleClearAllHistory = async () => {
+    if (isGenerating) return;
+    if (!window.confirm("ARE YOU SURE YOU WANT TO PURGE ALL CHAT SESSIONS?")) return;
+
+    try {
+      await chatApi.clearHistory();
+      setSessions([]);
+      handleStartNewChat();
+    } catch (err) {
+      console.error("[CHAT_HISTORY] Clear all history failed:", err);
+    }
+  };
+
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, systemStatus]);
 
-  // Generation timer tracker
+  // Generation timer
   useEffect(() => {
     if (isGenerating) {
       setElapsedTime(0);
@@ -118,7 +196,7 @@ const ChatbotPage = () => {
         },
         body: JSON.stringify({
           message: userMessage,
-          session_id: null,
+          session_id: activeSessionId,
           max_tokens: 512,
         }),
       });
@@ -194,6 +272,9 @@ const ChatbotPage = () => {
           });
         }
       }
+
+      // Refresh sessions list after successful response
+      fetchSessions();
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -212,11 +293,7 @@ const ChatbotPage = () => {
   const renderToolDataCard = (toolName, result) => {
     if (!result) return null;
     if (result.error) {
-      return (
-        <div className="chatbot-tool-card error-card">
-          CALC_ERR // {result.error}
-        </div>
-      );
+      return <div className="chatbot-tool-card error-card">CALC_ERR // {result.error}</div>;
     }
 
     switch (toolName) {
@@ -226,15 +303,11 @@ const ChatbotPage = () => {
             <div className="tool-card-title">📊 EMI BREAKDOWN DATA</div>
             <div className="tool-metric-row">
               <span>MONTHLY EMI:</span>
-              <strong className="neon-text-green">
-                ₹{result.monthly_emi?.toLocaleString("en-IN")}
-              </strong>
+              <strong className="neon-text-green">₹{result.monthly_emi?.toLocaleString("en-IN")}</strong>
             </div>
             <div className="tool-metric-row">
               <span>TOTAL REPAYMENT:</span>
-              <span className="neon-text-blue">
-                ₹{result.total_repayment?.toLocaleString("en-IN")}
-              </span>
+              <span className="neon-text-blue">₹{result.total_repayment?.toLocaleString("en-IN")}</span>
             </div>
           </div>
         );
@@ -244,15 +317,11 @@ const ChatbotPage = () => {
             <div className="tool-card-title">🛡️ EMERGENCY FUND RECOMMENDATION</div>
             <div className="tool-metric-row">
               <span>MINIMUM COVERAGE (6 Mo):</span>
-              <strong className="neon-text-green">
-                ₹{result.recommended_minimum_size?.toLocaleString("en-IN")}
-              </strong>
+              <strong className="neon-text-green">₹{result.recommended_minimum_size?.toLocaleString("en-IN")}</strong>
             </div>
             <div className="tool-metric-row">
               <span>OPTIMAL COVERAGE (12 Mo):</span>
-              <span className="neon-text-blue">
-                ₹{result.recommended_optimal_size?.toLocaleString("en-IN")}
-              </span>
+              <span className="neon-text-blue">₹{result.recommended_optimal_size?.toLocaleString("en-IN")}</span>
             </div>
           </div>
         );
@@ -263,16 +332,13 @@ const ChatbotPage = () => {
             {result.allocation && (
               <div className="tool-metric-group">
                 <div className="tool-metric-row">
-                  <span>EQUITY:</span>
-                  <strong>{result.allocation.equity}</strong>
+                  <span>EQUITY:</span> <strong>{result.allocation.equity}</strong>
                 </div>
                 <div className="tool-metric-row">
-                  <span>DEBT:</span>
-                  <strong>{result.allocation.debt}</strong>
+                  <span>DEBT:</span> <strong>{result.allocation.debt}</strong>
                 </div>
                 <div className="tool-metric-row">
-                  <span>GOLD:</span>
-                  <strong>{result.allocation.gold}</strong>
+                  <span>GOLD:</span> <strong>{result.allocation.gold}</strong>
                 </div>
               </div>
             )}
@@ -299,21 +365,69 @@ const ChatbotPage = () => {
           <div className="chatbot-window-header">
             <div className="header-title-block">
               <span className={`live-dot ${isGenerating ? "processing" : ""}`}></span>
-              <h2 className="chatbot-title">FINTALLY_CORE_ASSISTANT v1.02</h2>
+              <h2 className="chatbot-title">
+                {activeSessionId ? `SESSION #${activeSessionId}` : "FINTALLY_CORE_ASSISTANT v1.02"}
+              </h2>
             </div>
             <div className="header-actions">
+              <button
+                type="button"
+                className="history-toggle-btn"
+                onClick={() => setShowHistoryDrawer(!showHistoryDrawer)}
+              >
+                {showHistoryDrawer ? "✖ CLOSE HISTORY" : "📜 HISTORY"}
+              </button>
               <button
                 type="button"
                 className="guidelines-toggle-btn"
                 onClick={() => setShowGuidelines(!showGuidelines)}
               >
-                {showGuidelines ? "✖ CLOSE GUIDELINES" : "📜 LLM GUIDELINES"}
+                {showGuidelines ? "✖ CLOSE GUIDELINES" : "📖 LLM GUIDELINES"}
               </button>
               <span className={`engine-badge ${isGenerating ? "busy" : ""}`}>
                 {isGenerating ? `CPU_BUSY [${elapsedTime}s]` : "RUST_ENGINE_ACTIVE"}
               </span>
             </div>
           </div>
+
+          {/* Chat Sessions History Drawer */}
+          {showHistoryDrawer && (
+            <div className="chat-history-drawer">
+              <div className="history-drawer-header">
+                <span className="history-drawer-title">🗄️ CHAT SESSIONS LOG</span>
+                <div className="history-drawer-actions">
+                  <button onClick={handleStartNewChat} className="new-chat-btn">
+                    + NEW SESSION
+                  </button>
+                  <button onClick={handleClearAllHistory} className="purge-all-btn">
+                    PURGE ALL
+                  </button>
+                </div>
+              </div>
+              <div className="history-session-grid">
+                {sessions.length === 0 ? (
+                  <div className="no-history-text">NO STORED SESSIONS FOUND.</div>
+                ) : (
+                  sessions.map((sessId) => (
+                    <div
+                      key={sessId}
+                      className={`session-chip ${activeSessionId === sessId ? "active" : ""}`}
+                      onClick={() => handleSelectSession(sessId)}
+                    >
+                      <span className="session-chip-label">Session #{sessId}</span>
+                      <button
+                        className="session-delete-btn"
+                        onClick={(e) => handleDeleteSession(e, sessId)}
+                        title="Delete Session"
+                      >
+                        ✖
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           {/* LLM Guidelines Accordion/Drawer */}
           {showGuidelines && (
@@ -353,11 +467,8 @@ const ChatbotPage = () => {
             {messages.map((msg) => (
               <div key={msg.id} className={`chatbot-msg-row ${msg.role}`}>
                 <div className="chatbot-msg-bubble">
-                  <div className="msg-meta-tag">
-                    {msg.role.toUpperCase()} {"//"}
-                  </div>
+                  <div className="msg-meta-tag">{msg.role.toUpperCase()} {"//"}</div>
 
-                  {/* Thought Accordion */}
                   {msg.thought && (
                     <details className="thought-accordion">
                       <summary className="thought-summary">💭 INTERNAL REASONING</summary>
@@ -365,14 +476,12 @@ const ChatbotPage = () => {
                     </details>
                   )}
 
-                  {/* Tool Running Indicator */}
                   {msg.toolCalled && !msg.toolResult && (
                     <div className="tool-running-badge">
                       <span className="pulse-dot"></span> EXECUTING ENGINE TOOL: <strong>{msg.toolCalled}</strong>
                     </div>
                   )}
 
-                  {/* Markdown & LaTeX Formatted Content */}
                   <div className="msg-body-content markdown-container">
                     {msg.content ? (
                       <ReactMarkdown
@@ -386,7 +495,6 @@ const ChatbotPage = () => {
                     ) : null}
                   </div>
 
-                  {/* Formatted Tool Card Output */}
                   {msg.toolCalled && msg.toolResult && (
                     <div className="tool-card-mount-point">
                       {renderToolDataCard(msg.toolCalled, msg.toolResult)}

@@ -11,14 +11,11 @@ fn download_hf_repo(
 ) -> Result<()> {
     println!("\n📦 Connection initialized for: {}", repo_id);
 
-    // Read your custom environment variable name for the Hugging Face token
     let token = env::var("hugging_face_read_only_key")
         .or_else(|_| env::var("HF_TOKEN"))
         .ok();
 
-    // Set up HF API with progress bar and optional token
     let mut api_builder = ApiBuilder::new().with_progress(true);
-
     if let Some(t) = token {
         api_builder = api_builder.with_token(Some(t));
     }
@@ -36,7 +33,7 @@ fn download_hf_repo(
     for sibling in repo_info.siblings {
         let filename = &sibling.rfilename;
 
-        // Match files based on target filter or default safe asset extensions
+        // PURE RUST FILTER: Only download model weights, JSON configs, and tokenizer assets
         let is_matched = match target_file_filter {
             Some(filter) => filename.eq_ignore_ascii_case(filter)
                 || filename.ends_with(".json")
@@ -52,7 +49,6 @@ fn download_hf_repo(
         if is_matched {
             let destination = out_path.join(filename);
 
-            // Skip existing, complete local files
             if destination.exists() {
                 if let Ok(metadata) = fs::metadata(&destination) {
                     if metadata.len() > 0 {
@@ -64,7 +60,6 @@ fn download_hf_repo(
 
             println!("📥 Syncing file: {}", filename);
 
-            // Retry loop to handle transient drops
             let mut retries = 3;
             let mut cached_path = None;
 
@@ -124,14 +119,25 @@ fn main() -> Result<()> {
         None,
     )?;
 
-    // Task 3: Download Lightweight Vision-Language Model (Microsoft Florence-2-base)
-    // At ~0.23B parameters, this is ultra-lightweight for T4 GPUs and handles high-speed OCR/chart parse.
-    let florence_target_dir = "llm_models/ocr/florence2_base_output";
+    // Task 3: Download GOT-OCR 2.0 (StepFun)
+    let got_target_dir = "llm_models/ocr/got_ocr2_0_output";
     download_hf_repo(
-        "microsoft/Florence-2-base",
-        florence_target_dir,
+        "stepfun-ai/GOT-OCR2_0",
+        got_target_dir,
         None,
     )?;
+
+    // Task 4: Explicitly fetch compiled tokenizer.json (Qwen2 base) for GOT-OCR 2.0
+    // GOT-OCR 2.0 uses Qwen2's tokenizer vocabulary, but HF repo lacks compiled tokenizer.json
+    let got_tokenizer_file = Path::new(got_target_dir).join("tokenizer.json");
+    if !got_tokenizer_file.exists() || fs::metadata(&got_tokenizer_file)?.len() == 0 {
+        println!("\n📥 GOT-OCR 2.0 lacks compiled tokenizer.json. Downloading base Qwen2 tokenizer.json...");
+        download_hf_repo(
+            "Qwen/Qwen2-0.5B",
+            got_target_dir,
+            Some("tokenizer.json"),
+        )?;
+    }
 
     println!("\n🎉 Pipeline complete! Lightweight T4-optimized model binaries ready.");
     Ok(())

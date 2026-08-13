@@ -46,8 +46,9 @@ pub fn chat_routes(state: Arc<ChatState>) -> Router {
         .route("/", post(chat_stream_endpoint))
         .route("/once", post(chat_once_endpoint))
         .route("/history", get(get_chat_history_endpoint))
-        .route("/sessions", get(get_sessions_endpoint))
         .route("/history", delete(clear_chat_history_endpoint))
+        .route("/sessions", get(get_sessions_endpoint))
+        .route("/sessions/:session_id", delete(delete_session_endpoint)) // Add this
         .with_state(state)
 }
 
@@ -257,6 +258,28 @@ async fn clear_chat_history_endpoint(
 
     match state.history_service.clear_history(user_id, query.session_id).await {
         Ok(_) => (StatusCode::OK, Json(serde_json::json!({ "message": "Chat history cleared successfully" }))).into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
+}
+
+
+// Handler for deleting a specific chat session
+async fn delete_session_endpoint(
+    State(state): State<Arc<ChatState>>,
+    claims: Claims,
+    axum::extract::Path(session_id): axum::extract::Path<i64>,
+) -> impl IntoResponse {
+    let user_id: i64 = match claims.user_id.parse() {
+        Ok(id) => id,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    match state.history_service.clear_history(user_id, Some(session_id)).await {
+        Ok(_) => (
+            StatusCode::OK,
+            Json(serde_json::json!({ "message": "Session deleted successfully" })),
+        )
+            .into_response(),
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }

@@ -14,6 +14,20 @@ export default function useBarAndCategoryData({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Helper function to safely format dates to YYYY-MM-DD
+  const formatDateSafely = (dateVal) => {
+    if (!dateVal) return undefined;
+
+    const d = dateVal instanceof Date ? dateVal : new Date(dateVal);
+
+    // Check if the date object is valid
+    if (isNaN(d.getTime())) {
+      return undefined;
+    }
+
+    return d.toISOString().split("T")[0];
+  };
+
   useEffect(() => {
     // Skip if user is unauthenticated
     if (!token) return;
@@ -45,8 +59,8 @@ export default function useBarAndCategoryData({
 
         // ── 2. Fetch Category Data ──────────────────────────────────────
         const catRes = await analyticsApi.categorySummary({
-          start: startDate ? new Date(startDate).toISOString().split("T")[0] : undefined,
-          end: endDate ? new Date(endDate).toISOString().split("T")[0] : undefined,
+          start: formatDateSafely(startDate),
+          end: formatDateSafely(endDate),
           type: type !== "all" ? type : undefined,
           keyword: keyword?.trim() || undefined,
         });

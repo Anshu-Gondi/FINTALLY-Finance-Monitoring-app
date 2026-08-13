@@ -9,61 +9,56 @@ import {
   Sector,
 } from "recharts";
 
-// Color palettes for income vs expense categories
-const EXPENSE_COLORS = [
+// General color palette for categories
+const CATEGORY_COLORS = [
   "#3273dc", // Link Blue
   "#ff3860", // Danger Red
   "#ff8c00", // Dark Orange
   "#b86bff", // Purple
   "#ffdd57", // Yellow/Gold
   "#9b59b6", // Amethyst
-];
-
-const INCOME_COLORS = [
   "#48c774", // Success Green
   "#00d1b2", // Teal
-  "#23d160", // Bright Green
+  "#3298dc", // Cyan
   "#00c4a7", // Dark Teal
 ];
 
-// Custom Tooltip component
-const CustomTooltip = ({ active, payload, totalExpense, totalIncome }) => {
+// Helper to safely extract total numerical value
+const getDbValue = (item) => {
+  const val = item?.price ?? item?.total ?? item?.amount ?? 0;
+  const num = typeof val === "string" ? parseFloat(val) : val;
+  return isNaN(num) ? 0 : Math.abs(num);
+};
+
+// Custom Tooltip Component
+const CustomTooltip = ({ active, payload, overallTotal }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const value = data.total ?? 0;
-    const isIncome = data.tx_type?.toLowerCase() === "income";
-
-    const totalBase = isIncome ? totalIncome : totalExpense;
-    const pct = totalBase > 0 ? ((value / totalBase) * 100).toFixed(1) : 0;
+    const value = data.totalValue;
+    const pct = overallTotal > 0 ? ((value / overallTotal) * 100).toFixed(1) : 0;
 
     return (
       <div className="box p-3 shadow-sm border" style={{ minWidth: "160px" }}>
         <div className="is-flex is-align-items-center mb-1">
-          <span
-            className={`tag is-small ${
-              isIncome ? "is-success is-light" : "is-danger is-light"
-            } mr-2`}
-          >
-            {isIncome ? "INCOME" : "EXPENSE"}
-          </span>
           <strong className="is-size-7">{data.category || "Uncategorized"}</strong>
         </div>
 
-        <p
-          className={`is-size-6 has-text-weight-bold is-family-monospace ${
-            isIncome ? "has-text-success-dark" : "has-text-danger-dark"
-          } mb-0`}
-        >
-          {isIncome ? "+" : "-"}₹
+        <p className="is-size-6 has-text-weight-bold is-family-monospace has-text-dark mb-0">
+          ₹
           {value.toLocaleString("en-IN", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}
         </p>
 
-        <p className="is-size-7 has-text-grey mt-1">
-          {pct}% of {isIncome ? "Income" : "Expense"} total
+        <p className="is-size-7 has-text-grey mt-1 mb-0">
+          {pct}% of Total Volume
         </p>
+        {data.count !== undefined && (
+          <p className="is-size-7 has-text-grey">
+            {data.count} {data.count === 1 ? "transaction" : "transactions"}
+          </p>
+        )}
       </div>
     );
   }
@@ -73,8 +68,7 @@ const CustomTooltip = ({ active, payload, totalExpense, totalIncome }) => {
 CustomTooltip.propTypes = {
   active: PropTypes.bool,
   payload: PropTypes.array,
-  totalExpense: PropTypes.number,
-  totalIncome: PropTypes.number,
+  overallTotal: PropTypes.number,
 };
 
 // Render enlarged sector when active/hovered
@@ -97,7 +91,6 @@ const renderActiveShape = (props) => {
 
 export default function PieChartBlock({ data }) {
   const [activeIndex, setActiveIndex] = useState(null);
-  const [filterType, setFilterType] = useState("all"); // 'all' | 'expense' | 'income'
 
   if (!data || !data.length) {
     return (
@@ -110,70 +103,52 @@ export default function PieChartBlock({ data }) {
     );
   }
 
-  // Calculate global totals
-  const totalExpense = data
-    .filter((item) => item.tx_type?.toLowerCase() !== "income")
-    .reduce((acc, item) => acc + (item.total ?? 0), 0);
+  // Aggregate total transaction value and count by category
+  const aggregatedMap = data.reduce((acc, item) => {
+    const categoryName = item.category || item.name || "Uncategorized";
+    const value = getDbValue(item);
+    const count = item.count ?? 1;
 
-  const totalIncome = data
-    .filter((item) => item.tx_type?.toLowerCase() === "income")
-    .reduce((acc, item) => acc + (item.total ?? 0), 0);
-
-  // Filter data based on tab selection
-  const filteredData = data
-    .filter((item) => {
-      const isIncome = item.tx_type?.toLowerCase() === "income";
-      if (filterType === "expense") return !isIncome;
-      if (filterType === "income") return isIncome;
-      return true; // 'all'
-    })
-    .sort((a, b) => (b.total ?? 0) - (a.total ?? 0));
-
-  // Determine cell color based on tx_type
-  const getCellColor = (item, idx) => {
-    const isIncome = item.tx_type?.toLowerCase() === "income";
-    if (isIncome) {
-      return INCOME_COLORS[idx % INCOME_COLORS.length];
+    if (!acc[categoryName]) {
+      acc[categoryName] = {
+        category: categoryName,
+        totalValue: 0,
+        count: 0,
+      };
     }
-    return EXPENSE_COLORS[idx % EXPENSE_COLORS.length];
-  };
+
+    acc[categoryName].totalValue += value;
+    acc[categoryName].count += count;
+
+    return acc;
+  }, {});
+
+  const categoryData = Object.values(aggregatedMap).sort(
+    (a, b) => b.totalValue - a.totalValue
+  );
+
+  const overallTotalValue = categoryData.reduce(
+    (acc, item) => acc + item.totalValue,
+    0
+  );
+
+  const overallTotalCount = categoryData.reduce(
+    (acc, item) => acc + item.count,
+    0
+  );
 
   return (
     <div className="box p-4">
-      {/* Card Header & Filter Switcher */}
+      {/* Card Header */}
       <div className="level is-mobile mb-4">
         <div className="level-left">
           <div>
             <h3 className="title is-5 mb-1">
-              <span className="mr-2">🍕</span> Category Breakdown
+              <span className="mr-2">🍕</span> Category Volume
             </h3>
             <p className="subtitle is-7 has-text-grey">
-              Combined Income & Expense distribution
+              Total transaction volume aggregated by category
             </p>
-          </div>
-        </div>
-
-        {/* Filter Buttons */}
-        <div className="level-right">
-          <div className="buttons has-addons are-small mb-0">
-            <button
-              className={`button ${filterType === "all" ? "is-link is-selected" : ""}`}
-              onClick={() => setFilterType("all")}
-            >
-              All
-            </button>
-            <button
-              className={`button ${filterType === "expense" ? "is-danger is-selected" : ""}`}
-              onClick={() => setFilterType("expense")}
-            >
-              Expenses
-            </button>
-            <button
-              className={`button ${filterType === "income" ? "is-success is-selected" : ""}`}
-              onClick={() => setFilterType("income")}
-            >
-              Income
-            </button>
           </div>
         </div>
       </div>
@@ -185,8 +160,8 @@ export default function PieChartBlock({ data }) {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={filteredData}
-                  dataKey="total"
+                  data={categoryData}
+                  dataKey="totalValue"
                   nameKey="category"
                   cx="50%"
                   cy="50%"
@@ -198,20 +173,17 @@ export default function PieChartBlock({ data }) {
                   onMouseEnter={(_, index) => setActiveIndex(index)}
                   onMouseLeave={() => setActiveIndex(null)}
                 >
-                  {filteredData.map((entry, index) => (
+                  {categoryData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={getCellColor(entry, index)}
+                      fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
                       style={{ outline: "none" }}
                     />
                   ))}
                 </Pie>
                 <Tooltip
                   content={
-                    <CustomTooltip
-                      totalExpense={totalExpense}
-                      totalIncome={totalIncome}
-                    />
+                    <CustomTooltip overallTotal={overallTotalValue} />
                   }
                 />
               </PieChart>
@@ -228,32 +200,15 @@ export default function PieChartBlock({ data }) {
                 pointerEvents: "none",
               }}
             >
-              <p className="is-size-7 has-text-grey mb-0">
-                {filterType === "income"
-                  ? "Total Income"
-                  : filterType === "expense"
-                  ? "Total Expense"
-                  : "Net Surplus"}
-              </p>
-              <p
-                className={`has-text-weight-bold is-size-6 is-family-monospace mb-0 ${
-                  filterType === "all"
-                    ? totalIncome - totalExpense >= 0
-                      ? "has-text-success"
-                      : "has-text-danger"
-                    : filterType === "income"
-                    ? "has-text-success"
-                    : "has-text-danger"
-                }`}
-              >
+              <p className="is-size-7 has-text-grey mb-0">Total Volume</p>
+              <p className="has-text-weight-bold is-size-6 is-family-monospace mb-0 has-text-link">
                 ₹
-                {Math.abs(
-                  filterType === "income"
-                    ? totalIncome
-                    : filterType === "expense"
-                    ? totalExpense
-                    : totalIncome - totalExpense
-                ).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                {overallTotalValue.toLocaleString("en-IN", {
+                  maximumFractionDigits: 0,
+                })}
+              </p>
+              <p className="is-size-7 has-text-grey-light mb-0">
+                {overallTotalCount} txns
               </p>
             </div>
           </div>
@@ -264,12 +219,12 @@ export default function PieChartBlock({ data }) {
           <div
             style={{ maxHeight: "240px", overflowY: "auto", paddingRight: "4px" }}
           >
-            {filteredData.map((item, idx) => {
-              const amount = item.total ?? 0;
-              const isIncome = item.tx_type?.toLowerCase() === "income";
-              const totalBase = isIncome ? totalIncome : totalExpense;
-              const pct = totalBase > 0 ? ((amount / totalBase) * 100).toFixed(1) : "0.0";
-              const color = getCellColor(item, idx);
+            {categoryData.map((item, idx) => {
+              const pct =
+                overallTotalValue > 0
+                  ? ((item.totalValue / overallTotalValue) * 100).toFixed(1)
+                  : "0.0";
+              const color = CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
               const isHovered = activeIndex === idx;
 
               return (
@@ -298,30 +253,17 @@ export default function PieChartBlock({ data }) {
                       }}
                     />
                     <div>
-                      <div className="is-flex is-align-items-center">
-                        <p className="is-size-7 has-text-weight-semibold has-text-dark mb-0 mr-1">
-                          {item.category || "Uncategorized"}
-                        </p>
-                        <span
-                          className={`tag is-small style-tag ${
-                            isIncome ? "is-success is-light" : "is-danger is-light"
-                          }`}
-                          style={{ fontSize: "0.65rem", height: "1.4em" }}
-                        >
-                          {isIncome ? "INC" : "EXP"}
-                        </span>
-                      </div>
-                      <p className="is-size-7 has-text-grey-light mb-0">{pct}%</p>
+                      <p className="is-size-7 has-text-weight-semibold has-text-dark mb-0">
+                        {item.category}
+                      </p>
+                      <p className="is-size-7 has-text-grey-light mb-0">
+                        {pct}% • {item.count} {item.count === 1 ? "txn" : "txns"}
+                      </p>
                     </div>
                   </div>
 
-                  <span
-                    className={`is-size-7 is-family-monospace has-text-weight-bold ${
-                      isIncome ? "has-text-success-dark" : "has-text-dark"
-                    }`}
-                  >
-                    {isIncome ? "+" : "-"}₹
-                    {amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                  <span className="is-size-7 is-family-monospace has-text-weight-bold has-text-dark">
+                    ₹{item.totalValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                   </span>
                 </div>
               );
@@ -337,8 +279,11 @@ PieChartBlock.propTypes = {
   data: PropTypes.arrayOf(
     PropTypes.shape({
       category: PropTypes.string,
-      total: PropTypes.number,
-      tx_type: PropTypes.string, // e.g., 'income' or 'expense'
+      name: PropTypes.string,
+      total: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      amount: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      count: PropTypes.number,
     })
   ),
 };
