@@ -1,2 +1,0 @@
-"/usr/bin/gcc-ar-15" qc libfin_ocr_native.a CMakeFiles/fin_ocr_native.dir/src/ffi_bridge.cpp.o CMakeFiles/fin_ocr_native.dir/src/ocr_pipeline.cpp.o CMakeFiles/fin_ocr_native.dir/src/thermal_sensor.cpp.o
-"/usr/bin/gcc-ranlib-15" libfin_ocr_native.a
