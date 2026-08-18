@@ -34,14 +34,30 @@ typedef struct {
     size_t channels;
     size_t data_len;
     int is_binarized; // Metadata flag: 1 = binarized image, 0 = standard image
+    char* extracted_text; // Pointer to hold the extracted OCR text
 } FinProcessedBuffer;
 
 typedef struct FinOcrEngineContext FinOcrEngineContext;
 
+// Engine Lifecycle Management
 FinOcrEngineContext* fin_engine_create(void);
 void fin_engine_destroy(FinOcrEngineContext* engine);
 
-// Dynamic vision processing pipeline
+// Interrupt-Driven IPC Event Notification API (eventfd)
+void fin_engine_set_notification_fd(FinOcrEngineContext* engine, int event_fd);
+int fin_engine_notify_completion(FinOcrEngineContext* engine);
+
+// Direct Pipeline Invocation (Internal C-FFI / Unit Test API)
+FinProcessedBuffer* execute_vision_pipeline(
+    const uint8_t* input_bytes,
+    size_t input_len,
+    FinInputType input_type,
+    size_t target_width,
+    size_t target_height,
+    size_t target_channels
+);
+
+// High-Level Engine Process API
 FinProcessedBuffer* fin_process_document_bytes(
     FinOcrEngineContext* engine,
     const uint8_t* input_bytes,
@@ -53,6 +69,17 @@ FinProcessedBuffer* fin_process_document_bytes(
 );
 
 void fin_free_processed_buffer(FinProcessedBuffer* buffer);
+
+// Hybrid Text & Layout Recognition API
+char* fin_engine_recognize_text(
+    FinOcrEngineContext* engine,
+    const FinProcessedBuffer* buffer,
+    const uint8_t* input_bytes,
+    size_t input_len,
+    FinInputType input_type
+);
+
+void fin_free_string(char* str);
 
 // Thermal Monitoring C-FFI API
 FinThermalMetrics fin_get_thermal_metrics(void);

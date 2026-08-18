@@ -35,10 +35,14 @@ inline void aligned_free(void* ptr) {
 // Optimized Multi-ISA Binarization with Aligned Memory & Stream Store Support
 inline void binarize_simd(uint8_t* __restrict__ data, size_t length) {
     size_t i = 0;
-    // Pointers guaranteed 64-byte aligned from fin::ops::aligned_alloc
-    uint8_t* ptr = static_cast<uint8_t*>(__builtin_assume_aligned(data, 64));
 
-#if defined(__AVX512BW__) || defined(__AVX512F__)
+#if defined(__GNUC__) || defined(__clang__)
+    uint8_t* ptr = static_cast<uint8_t*>(__builtin_assume_aligned(data, 64));
+#else
+    uint8_t* ptr = data;
+#endif
+
+#if defined(__AVX512BW__)
     const __m512i thresh512 = _mm512_set1_epi8(static_cast<char>(128));
     const __m512i max_val512 = _mm512_set1_epi8(static_cast<char>(255));
     const __m512i zero512 = _mm512_setzero_si512();
@@ -48,7 +52,6 @@ inline void binarize_simd(uint8_t* __restrict__ data, size_t length) {
         __mmask64 mask = _mm512_cmpgt_epu8_mask(chunk, thresh512);
         __m512i result = _mm512_mask_blend_epi8(mask, zero512, max_val512);
 
-        // Use streaming stores for large buffers (>2MB) to prevent RFO cache pollution
         if (length >= 2 * 1024 * 1024) {
             _mm512_stream_si512(reinterpret_cast<__m512i*>(&ptr[i]), result);
         } else {
@@ -90,18 +93,22 @@ inline void binarize_simd(uint8_t* __restrict__ data, size_t length) {
         ptr[i] = (ptr[i] > 128) ? 255 : 0;
     }
 
-    // Fence memory if non-temporal stores were executed
-    #if defined(__AVX2__) || defined(__AVX512F__)
+#if defined(__AVX2__) || defined(__AVX512F__)
     if (length >= 2 * 1024 * 1024) {
         _mm_sfence();
     }
-    #endif
+#endif
 }
 
 // Fast Contrast Boost
 inline void contrast_boost_simd(uint8_t* __restrict__ data, size_t length) {
     size_t i = 0;
+
+#if defined(__GNUC__) || defined(__clang__)
     uint8_t* ptr = static_cast<uint8_t*>(__builtin_assume_aligned(data, 64));
+#else
+    uint8_t* ptr = data;
+#endif
 
 #if defined(__AVX2__)
     const __m256i c38 = _mm256_set1_epi16(38);
@@ -149,11 +156,11 @@ inline void contrast_boost_simd(uint8_t* __restrict__ data, size_t length) {
         ptr[i] = (val > 65280) ? 255 : static_cast<uint8_t>(val >> 8);
     }
 
-    #if defined(__AVX2__) || defined(__AVX512F__)
+#if defined(__AVX2__) || defined(__AVX512F__)
     if (length >= 2 * 1024 * 1024) {
         _mm_sfence();
     }
-    #endif
+#endif
 }
 
 } // namespace ops

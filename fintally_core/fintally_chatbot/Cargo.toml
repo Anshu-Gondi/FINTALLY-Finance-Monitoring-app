@@ -67,6 +67,15 @@ lopdf = "0.35"
 unicode-normalization = "0.1"
 tempfile = "3.27.0"
 
+image = { version = "0.24", features = ["webp", "png", "jpeg"] }
+
+ureq = "2.9"
+flate2 = "1.0"
+tar = "0.4"
+
 [build-dependencies]
 cc = "1.0"
 bindgen = "0.72"
+ureq = "2.9"
+flate2 = "1.0"
+tar = "0.4"

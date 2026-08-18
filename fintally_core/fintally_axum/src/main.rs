@@ -2,6 +2,7 @@ use fintally_db::DbContext;
 use fintally_chatbot::chatbot_service::RagService;
 // Correct structural paths for the service layer
 use fintally_chatbot::chatbot_service::ChatbotOrchestrator;
+use fintally_chatbot::chatbot_service::vision_service::VisionChatbotService; // ◄── Added VisionChatbotService import
 use fintally_db::chat_service::ChatHistoryService;
 use fintally_chatbot::core::llm::native_engine::NativeLlamaEngine;
 use fintally_chatbot::core::llm::engine::LlmEngine;
@@ -157,9 +158,12 @@ async fn main() {
         Err(e) => eprintln!("⚠️ Warning: Vision engine warmup thread join error: {:?}", e),
     }
 
+    // Instantiate Vision Chatbot Service
+    let vision_service = Arc::new(VisionChatbotService::new());
+
     // ─── 4. Instantiate Orchestrator and Context States ────────────────────
     let orchestrator = Arc::new(
-        ChatbotOrchestrator::new(pool.clone(), rag_service.clone(), native_engine)
+        ChatbotOrchestrator::new(pool.clone(), rag_service.clone(), vision_service, native_engine)
     );
     let db_context = DbContext { pool: pool.clone() };
     let history_service = Arc::new(ChatHistoryService::new(db_context));

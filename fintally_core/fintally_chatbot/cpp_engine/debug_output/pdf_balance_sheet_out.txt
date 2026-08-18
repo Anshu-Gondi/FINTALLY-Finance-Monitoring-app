@@ -1,0 +1,19 @@
+[FIN_ENGINE_OCR_OUTPUT]
+Dimensions: 1920x1080
+Channels: 1
+Binarized: YES
+Input Type: SCANNED_PDF_PAGE
+Active Text Region Density: 6.78082%
+Detected Text Lines: 10
+Spatial Bounding Regions:
+  - Text Line 1 [Y:0-16, X:0-1919]: Density 49.8763%, Width 1920px
+  - Text Line 2 [Y:16-32, X:0-1919]: Density 49.362%, Width 1920px
+  - Text Line 3 [Y:32-48, X:0-1919]: Density 47.6074%, Width 1920px
+  - Text Line 4 [Y:48-64, X:0-1919]: Density 48.112%, Width 1920px
+  - Text Line 5 [Y:64-80, X:0-1919]: Density 48.2324%, Width 1920px
+  - Text Line 6 [Y:80-96, X:0-1919]: Density 47.4284%, Width 1920px
+  - Text Line 7 [Y:96-112, X:0-1919]: Density 49.6777%, Width 1920px
+  - Text Line 8 [Y:112-128, X:0-1919]: Density 49.6875%, Width 1920px
+  - Text Line 9 [Y:128-144, X:0-1919]: Density 49.847%, Width 1920px
+  - Text Line 10 [Y:144-160, X:0-1919]: Density 17.8743%, Width 1920px
+Payload Status: VALID_PREPROCESSED_BUFFER

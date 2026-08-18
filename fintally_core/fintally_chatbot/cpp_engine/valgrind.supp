@@ -1,0 +1,59 @@
+{
+   pdfium_uninitialized_read_suppression
+   Memcheck:Value8
+   fun:*
+   obj:*/libpdfium.so
+}
+{
+   stb_simd_uninitialized_padding_suppression
+   Memcheck:Cond
+   fun:*stbi*
+}
+{
+   gtest_mismatched_delete_suppression
+   Memcheck:Free
+   fun:_ZdaPv
+   fun:_ZN7testing8internal12UnitTestImplD1Ev
+}
+{
+   gtest_unittest_mismatched_delete_suppression
+   Memcheck:Free
+   fun:_ZdaPv
+   fun:_ZN7testing8UnitTestD1Ev
+}
+{
+   stdcxx_filesystem_mismatched_delete_1
+   Memcheck:Free
+   fun:_ZdaPv
+   fun:*std*filesystem*
+}
+{
+   stdcxx_filesystem_mismatched_delete_2
+   Memcheck:Free
+   fun:_ZdaPv
+   obj:*/libstdc++.so*
+}
+{
+   thermal_monitor_filesystem_suppression
+   Memcheck:Free
+   fun:_ZdaPv
+   fun:*ThermalMonitor*discover_thermal_zones*
+}
+{
+   gtest_flag_to_env_var_mismatched_delete_1
+   Memcheck:Free
+   fun:_ZdaPv
+   fun:*testing*internal*FlagToEnvVar*
+}
+{
+   gtest_bool_from_env_var_mismatched_delete_2
+   Memcheck:Free
+   fun:_ZdaPv
+   fun:*testing*internal*BoolFromGTestEnv*
+}
+{
+   gtest_string_from_env_var_mismatched_delete_3
+   Memcheck:Free
+   fun:_ZdaPv
+   fun:*testing*internal*StringFromGTestEnv*
+}

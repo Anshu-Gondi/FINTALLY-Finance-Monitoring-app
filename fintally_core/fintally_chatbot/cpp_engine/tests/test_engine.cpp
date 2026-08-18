@@ -1,9 +1,15 @@
 #include <gtest/gtest.h>
 #include "ffi_bridge.h"
 #include "tensor_ops.hpp"
-#include <vector>
-#include <random>
+#include "thermal_sensor.hpp"
+#include "matrix_matcher.hpp"
+
+#include <algorithm>
 #include <cstdint>
+#include <cstring>
+#include <random>
+#include <stdexcept>
+#include <vector>
 
 class TensorOpsTest : public ::testing::Test {
 protected:
@@ -37,12 +43,41 @@ TEST_F(TensorOpsTest, ContrastBoostSimdWorks) {
     EXPECT_NE(buf[0], 100);
 }
 
-TEST(FfiBridgeTest, RejectsInvalidDimensions) {
+TEST(ChartProcessingTest, MultiColorHsvIsolationPreservesHueDifferences) {
+    // 2 adjacent RGB pixels: Pixel A (Pure Red [255, 0, 0]), Pixel B (Pure Green [0, 255, 0])
+    uint8_t rgb_chart[6] = {
+        255, 0, 0,
+        0, 255, 0
+    };
+
+    FinOcrEngineContext* engine = fin_engine_create();
+    ASSERT_NE(engine, nullptr);
+
+    FinProcessedBuffer* chart_buf = fin_process_document_bytes(
+        engine, rgb_chart, sizeof(rgb_chart), FIN_INPUT_FIN_CHART, 2, 1, 3
+    );
+
+    ASSERT_NE(chart_buf, nullptr);
+    ASSERT_EQ(chart_buf->channels, 3);
+
+    // Channel index 2 holds hue delta in isolate_chart_color_channels_avx2
+    const uint8_t red_hue_delta = chart_buf->data[2];
+    const uint8_t green_hue_delta = chart_buf->data[5];
+
+    EXPECT_EQ(red_hue_delta, 255);   // Max delta for pure red
+    EXPECT_EQ(green_hue_delta, 255); // Max delta for pure green
+
+    fin_free_processed_buffer(chart_buf);
+    fin_engine_destroy(engine);
+}
+
+TEST(FfiBridgeTest, ReturnsNullOnInvalidDimensions) {
     FinOcrEngineContext* engine = fin_engine_create();
     ASSERT_NE(engine, nullptr);
 
     uint8_t dummy_input[100] = {0};
 
+    // The C-ABI layer catches exceptions internally and safely returns nullptr
     FinProcessedBuffer* res = fin_process_document_bytes(
         engine, dummy_input, sizeof(dummy_input), FIN_INPUT_RAW_IMAGE, 0, 768, 3
     );
@@ -53,7 +88,10 @@ TEST(FfiBridgeTest, RejectsInvalidDimensions) {
 
 TEST(FfiBridgeTest, VerifiesBinarizedMetadataFlag) {
     FinOcrEngineContext* engine = fin_engine_create();
-    uint8_t dummy_input[1024] = {150};
+    ASSERT_NE(engine, nullptr);
+
+    uint8_t dummy_input[1024];
+    std::fill_n(dummy_input, 1024, 150);
 
     FinProcessedBuffer* pdf_buf = fin_process_document_bytes(
         engine, dummy_input, sizeof(dummy_input), FIN_INPUT_PDF_PAGE, 32, 32, 1
@@ -73,34 +111,64 @@ TEST(FfiBridgeTest, VerifiesBinarizedMetadataFlag) {
     fin_engine_destroy(engine);
 }
 
+TEST(VisionPipelineTest, ThrowsOnInvalidDimensions) {
+    uint8_t dummy_input[100] = {0};
+
+    // Direct C++ pipeline execution raises std::invalid_argument
+    EXPECT_THROW({
+        execute_vision_pipeline(
+            dummy_input, sizeof(dummy_input), FIN_INPUT_RAW_IMAGE, 0, 768, 3
+        );
+    }, std::invalid_argument);
+}
+
+TEST(VisionPipelineTest, DirectPipelineExecutionHandlesRawFallback) {
+    uint8_t raw_rgb[48];
+    std::fill_n(raw_rgb, 48, 200);
+
+    FinProcessedBuffer* res = execute_vision_pipeline(
+        raw_rgb, sizeof(raw_rgb), FIN_INPUT_RAW_IMAGE, 4, 4, 3
+    );
+
+    ASSERT_NE(res, nullptr);
+    EXPECT_EQ(res->width, 4);
+    EXPECT_EQ(res->height, 4);
+    EXPECT_EQ(res->channels, 3);
+    EXPECT_EQ(res->data_len, 48);
+
+    fin_free_processed_buffer(res);
+}
+
 TEST(ThermalMonitorTest, ReadsValidMetrics) {
-    FinThermalMetrics metrics = fin_get_thermal_metrics();
-    EXPECT_GE(static_cast<int>(metrics.status), 0);
-    EXPECT_LE(static_cast<int>(metrics.status), 3);
+    const FinThermalMetrics metrics = fin_get_thermal_metrics();
+    EXPECT_GE(static_cast<int>(metrics.status), static_cast<int>(FIN_THERMAL_NORMAL));
+    EXPECT_LE(static_cast<int>(metrics.status), static_cast<int>(FIN_THERMAL_CRITICAL_COLD));
 }
 
 TEST(ThermalMonitorTest, FallbackOnThermalCritical) {
-    // Force critical threshold to an artificially low value (-50C)
-    // so ambient CPU temperature triggers FIN_THERMAL_CRITICAL_HOT
+    // Set thresholds below sub-zero to force CRITICAL_HOT status
     fin_set_thermal_thresholds(-100.0f, -50.0f);
 
     FinThermalMetrics metrics = fin_get_thermal_metrics();
     EXPECT_EQ(metrics.status, FIN_THERMAL_CRITICAL_HOT);
 
     FinOcrEngineContext* engine = fin_engine_create();
-    uint8_t dummy_input[1024] = {150};
+    ASSERT_NE(engine, nullptr);
 
-    // Execute vision pipeline under forced thermal fallback mode
+    uint8_t dummy_input[1024];
+    std::fill_n(dummy_input, 1024, 150);
+
+    // Verify thermal guard path evaluates scalar thresholding under high heat
     FinProcessedBuffer* pdf_buf = fin_process_document_bytes(
         engine, dummy_input, sizeof(dummy_input), FIN_INPUT_PDF_PAGE, 32, 32, 1
     );
     ASSERT_NE(pdf_buf, nullptr);
     EXPECT_EQ(pdf_buf->is_binarized, 1);
-    EXPECT_EQ(pdf_buf->data[0], 255); // 150 > 128 binarizes to 255
+    EXPECT_EQ(pdf_buf->data[0], 255); // (150 > 128) * 255 = 255
 
     fin_free_processed_buffer(pdf_buf);
     fin_engine_destroy(engine);
 
-    // Restore standard thermal limits
+    // Restore standard operating limits
     fin_set_thermal_thresholds(75.0f, 87.0f);
 }

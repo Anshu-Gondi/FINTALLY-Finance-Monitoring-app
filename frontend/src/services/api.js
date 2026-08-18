@@ -201,6 +201,9 @@ export const chatApi = {
     return del(url.toString());
   },
 
-  // Base streaming SSE endpoint URL
+  // Base streaming SSE endpoint URL for JSON payloads
   getStreamUrl: () => `${BASE}/api/chat`,
+
+  // Stream endpoint URL specifically for FormData / Multipart uploads
+  getMultipartStreamUrl: () => `${BASE}/api/chat/multipart`,
 };

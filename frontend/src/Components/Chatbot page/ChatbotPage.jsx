@@ -1,15 +1,15 @@
 import Navbar from "../../Shared Components/Navbar/Navbar";
 import Footer from "../../Shared Components/Footer/Footer";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css"; // Required for rendering math formulas
+import "katex/dist/katex.min.css";
 import { chatApi } from "../../services/api";
 import "./Chatbot.css";
 
-// LaTeX preprocessor to convert bracketed formulas into KaTeX blocks
+// Improved LaTeX preprocessor
 const preprocessMarkdown = (content) => {
   if (!content) return "";
 
@@ -23,19 +23,27 @@ const preprocessMarkdown = (content) => {
       }
     } catch (e) {
       cleaned = cleaned
-        .replace(/\{\s*"thought"\s*:\s*".*?"\s*,\s*"tool_call"\s*:\s*null\s*,\s*"conversational_response"\s*:\s*"/gs, "")
-        .replace(/^\{\s*"thought"[\s\S]*?"conversational_response"\s*:\s*"/i, "")
+        .replace(
+          /\{\s*"thought"\s*:\s*".*?"\s*,\s*"tool_call"\s*:\s*null\s*,\s*"conversational_response"\s*:\s*"/gs,
+          "",
+        )
+        .replace(
+          /^\{\s*"thought"[\s\S]*?"conversational_response"\s*:\s*"/i,
+          "",
+        )
         .replace(/"\s*\}$/, "");
     }
   }
 
   return cleaned
     .replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, "\n\n$$$1$$\n\n")
-    .replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, "$$1$")
+    .replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, "$$$1$")
     .replace(/^[ \t]*\\+[ \t]*$/gm, "")
     .replace(/\\+(\s*(\$\$|\$))/g, "$1")
-    .replace(/\[\s*([\s\S]*?(?:\\times|\\frac|\\text|=|\\approx|\^|\/|\+|\{|\})[\s\S]*?)\s*\]/g, "\n\n$$$1$$\n\n")
-    .replace(/\(\s*([a-zA-Z0-9])\s*\)/g, "$$$1$");
+    .replace(
+      /\[\s*([\s\S]*?(?:\\times|\\frac|\\text|=|\\approx|\^|\/|\+|\{|\})[\s\S]*?)\s*\]/g,
+      "\n\n$$$1$$\n\n",
+    );
 };
 
 const ChatbotPage = () => {
@@ -43,36 +51,37 @@ const ChatbotPage = () => {
     {
       id: "welcome",
       role: "assistant",
-      content: "SYSTEM ONLINE // FINTALLY AI READY. ENTER FINANCIAL QUERY OR SELECT A QUICK COMMAND BELOW_",
+      content:
+        "SYSTEM ONLINE // FINTALLY AI READY. ENTER FINANCIAL QUERY OR ATTACH A DOCUMENT_",
     },
   ]);
   const [input, setInput] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null); // Added file state
   const [isGenerating, setIsGenerating] = useState(false);
   const [systemStatus, setSystemStatus] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
   const [showGuidelines, setShowGuidelines] = useState(false);
 
-  // ── Session & History State Management ──────────────────────────────────────
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
 
   const messagesEndRef = useRef(null);
   const timerRef = useRef(null);
+  const fileInputRef = useRef(null); // Added file input ref
 
-  // Initial session listing load
-  useEffect(() => {
-    fetchSessions();
-  }, []);
-
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       const data = await chatApi.getSessions();
       setSessions(data.sessions || []);
     } catch (err) {
       console.error("[CHAT_HISTORY] Failed to load sessions:", err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
 
   const handleSelectSession = async (sessionId) => {
     if (isGenerating) return;
@@ -89,7 +98,7 @@ const ChatbotPage = () => {
             content: m.content,
             toolCalled: m.metadata?.tool_called,
             toolResult: m.metadata?.tool_result,
-          }))
+          })),
         );
       } else {
         setMessages([
@@ -110,6 +119,8 @@ const ChatbotPage = () => {
   const handleStartNewChat = () => {
     if (isGenerating) return;
     setActiveSessionId(null);
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     setMessages([
       {
         id: "welcome",
@@ -136,7 +147,8 @@ const ChatbotPage = () => {
 
   const handleClearAllHistory = async () => {
     if (isGenerating) return;
-    if (!window.confirm("ARE YOU SURE YOU WANT TO PURGE ALL CHAT SESSIONS?")) return;
+    if (!window.confirm("ARE YOU SURE YOU WANT TO PURGE ALL CHAT SESSIONS?"))
+      return;
 
     try {
       await chatApi.clearHistory();
@@ -147,12 +159,10 @@ const ChatbotPage = () => {
     }
   };
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, systemStatus]);
 
-  // Generation timer
   useEffect(() => {
     if (isGenerating) {
       setElapsedTime(0);
@@ -168,18 +178,28 @@ const ChatbotPage = () => {
   const handleSendMessage = async (e, customPrompt = null) => {
     if (e) e.preventDefault();
     const userMessage = (customPrompt || input).trim();
-    if (!userMessage || isGenerating) return;
+    if ((!userMessage && !selectedFile) || isGenerating) return;
 
+    // Cache file & clear inputs
+    const currentFile = selectedFile;
     setInput("");
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
     setIsGenerating(true);
     setSystemStatus("INITIALIZING CONNECTION TO RUST BACKEND...");
 
     const userMsgId = Date.now().toString();
     const assistantMsgId = (Date.now() + 1).toString();
 
+    // Display indicator in the UI chat feed
+    const displayContent =
+      userMessage +
+      (currentFile ? `\n\n📎 *[Attached File: ${currentFile.name}]*` : "");
+
     setMessages((prev) => [
       ...prev,
-      { id: userMsgId, role: "user", content: userMessage },
+      { id: userMsgId, role: "user", content: displayContent },
     ]);
 
     let rawAccumulator = "";
@@ -188,17 +208,27 @@ const ChatbotPage = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(chatApi.getStreamUrl(), {
+
+      // Construct FormData payload
+      const formData = new FormData();
+      formData.append("message", userMessage);
+      if (activeSessionId) {
+        formData.append("session_id", activeSessionId.toString());
+      }
+
+      // Rust backend accepts "attachment" or "files"
+      if (currentFile) {
+        formData.append("attachment", currentFile);
+      }
+
+      // Hit the multipart route (/api/chat/multipart) instead of JSON route (/api/chat)
+      const response = await fetch(chatApi.getMultipartStreamUrl(), {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          // Do NOT manually set Content-Type header so browser inserts multipart boundary automatically!
         },
-        body: JSON.stringify({
-          message: userMessage,
-          session_id: activeSessionId,
-          max_tokens: 512,
-        }),
+        body: formData,
       });
 
       if (!response.ok) throw new Error(`HTTP_${response.status}`);
@@ -231,13 +261,11 @@ const ChatbotPage = () => {
             setSystemStatus("");
             break;
           }
-          if (rawPayload === "[CONTEXT_LOADED]") {
-            setSystemStatus("CONTEXT SNAPSHOT INJECTED into LLM...");
-            continue;
-          }
           if (rawPayload.startsWith("[TOOL_CALL:")) {
             currentToolCall = rawPayload.slice(11, -1).trim();
-            setSystemStatus(`RUNNING RUST TOOL ENGINE: ${currentToolCall.toUpperCase()}...`);
+            setSystemStatus(
+              `RUNNING RUST TOOL ENGINE: ${currentToolCall.toUpperCase()}...`,
+            );
             continue;
           }
           if (rawPayload.startsWith("[TOOL_RESULT:")) {
@@ -249,13 +277,8 @@ const ChatbotPage = () => {
             }
             continue;
           }
-          if (rawPayload.startsWith("[ERROR:")) {
-            setSystemStatus(`CORE FAILURE: ${rawPayload.slice(7, -1)}`);
-            continue;
-          }
 
           rawAccumulator += rawPayload;
-          setSystemStatus("STREAMING RESPONSE TO CLIENT...");
 
           setMessages((prev) => {
             const filtered = prev.filter((m) => m.id !== assistantMsgId);
@@ -273,7 +296,6 @@ const ChatbotPage = () => {
         }
       }
 
-      // Refresh sessions list after successful response
       fetchSessions();
     } catch (err) {
       setMessages((prev) => [
@@ -293,7 +315,11 @@ const ChatbotPage = () => {
   const renderToolDataCard = (toolName, result) => {
     if (!result) return null;
     if (result.error) {
-      return <div className="chatbot-tool-card error-card">CALC_ERR // {result.error}</div>;
+      return (
+        <div className="chatbot-tool-card error-card">
+          CALC_ERR // {result.error}
+        </div>
+      );
     }
 
     switch (toolName) {
@@ -303,36 +329,49 @@ const ChatbotPage = () => {
             <div className="tool-card-title">📊 EMI BREAKDOWN DATA</div>
             <div className="tool-metric-row">
               <span>MONTHLY EMI:</span>
-              <strong className="neon-text-green">₹{result.monthly_emi?.toLocaleString("en-IN")}</strong>
+              <strong className="neon-text-green">
+                ₹{result.monthly_emi?.toLocaleString("en-IN")}
+              </strong>
             </div>
             <div className="tool-metric-row">
               <span>TOTAL REPAYMENT:</span>
-              <span className="neon-text-blue">₹{result.total_repayment?.toLocaleString("en-IN")}</span>
+              <span className="neon-text-blue">
+                ₹{result.total_repayment?.toLocaleString("en-IN")}
+              </span>
             </div>
           </div>
         );
       case "emergency_fund":
         return (
           <div className="chatbot-tool-card emergency-card">
-            <div className="tool-card-title">🛡️ EMERGENCY FUND RECOMMENDATION</div>
+            <div className="tool-card-title">
+              🛡️ EMERGENCY FUND RECOMMENDATION
+            </div>
             <div className="tool-metric-row">
               <span>MINIMUM COVERAGE (6 Mo):</span>
-              <strong className="neon-text-green">₹{result.recommended_minimum_size?.toLocaleString("en-IN")}</strong>
+              <strong className="neon-text-green">
+                ₹{result.recommended_minimum_size?.toLocaleString("en-IN")}
+              </strong>
             </div>
             <div className="tool-metric-row">
               <span>OPTIMAL COVERAGE (12 Mo):</span>
-              <span className="neon-text-blue">₹{result.recommended_optimal_size?.toLocaleString("en-IN")}</span>
+              <span className="neon-text-blue">
+                ₹{result.recommended_optimal_size?.toLocaleString("en-IN")}
+              </span>
             </div>
           </div>
         );
       case "generate_investment_plan":
         return (
           <div className="chatbot-tool-card strategy-card">
-            <div className="tool-card-title">📈 PORTFOLIO ALLOCATION STRATEGY</div>
+            <div className="tool-card-title">
+              📈 PORTFOLIO ALLOCATION STRATEGY
+            </div>
             {result.allocation && (
               <div className="tool-metric-group">
                 <div className="tool-metric-row">
-                  <span>EQUITY:</span> <strong>{result.allocation.equity}</strong>
+                  <span>EQUITY:</span>{" "}
+                  <strong>{result.allocation.equity}</strong>
                 </div>
                 <div className="tool-metric-row">
                   <span>DEBT:</span> <strong>{result.allocation.debt}</strong>
@@ -364,9 +403,13 @@ const ChatbotPage = () => {
           {/* Header Panel */}
           <div className="chatbot-window-header">
             <div className="header-title-block">
-              <span className={`live-dot ${isGenerating ? "processing" : ""}`}></span>
+              <span
+                className={`live-dot ${isGenerating ? "processing" : ""}`}
+              ></span>
               <h2 className="chatbot-title">
-                {activeSessionId ? `SESSION #${activeSessionId}` : "FINTALLY_CORE_ASSISTANT v1.02"}
+                {activeSessionId
+                  ? `SESSION #${activeSessionId}`
+                  : "FINTALLY_CORE_ASSISTANT v1.02"}
               </h2>
             </div>
             <div className="header-actions">
@@ -385,7 +428,9 @@ const ChatbotPage = () => {
                 {showGuidelines ? "✖ CLOSE GUIDELINES" : "📖 LLM GUIDELINES"}
               </button>
               <span className={`engine-badge ${isGenerating ? "busy" : ""}`}>
-                {isGenerating ? `CPU_BUSY [${elapsedTime}s]` : "RUST_ENGINE_ACTIVE"}
+                {isGenerating
+                  ? `CPU_BUSY [${elapsedTime}s]`
+                  : "RUST_ENGINE_ACTIVE"}
               </span>
             </div>
           </div>
@@ -394,19 +439,26 @@ const ChatbotPage = () => {
           {showHistoryDrawer && (
             <div className="chat-history-drawer">
               <div className="history-drawer-header">
-                <span className="history-drawer-title">🗄️ CHAT SESSIONS LOG</span>
+                <span className="history-drawer-title">
+                  🗄️ CHAT SESSIONS LOG
+                </span>
                 <div className="history-drawer-actions">
                   <button onClick={handleStartNewChat} className="new-chat-btn">
                     + NEW SESSION
                   </button>
-                  <button onClick={handleClearAllHistory} className="purge-all-btn">
+                  <button
+                    onClick={handleClearAllHistory}
+                    className="purge-all-btn"
+                  >
                     PURGE ALL
                   </button>
                 </div>
               </div>
               <div className="history-session-grid">
                 {sessions.length === 0 ? (
-                  <div className="no-history-text">NO STORED SESSIONS FOUND.</div>
+                  <div className="no-history-text">
+                    NO STORED SESSIONS FOUND.
+                  </div>
                 ) : (
                   sessions.map((sessId) => (
                     <div
@@ -414,7 +466,9 @@ const ChatbotPage = () => {
                       className={`session-chip ${activeSessionId === sessId ? "active" : ""}`}
                       onClick={() => handleSelectSession(sessId)}
                     >
-                      <span className="session-chip-label">Session #{sessId}</span>
+                      <span className="session-chip-label">
+                        Session #{sessId}
+                      </span>
                       <button
                         className="session-delete-btn"
                         onClick={(e) => handleDeleteSession(e, sessId)}
@@ -432,30 +486,54 @@ const ChatbotPage = () => {
           {/* LLM Guidelines Accordion/Drawer */}
           {showGuidelines && (
             <div className="llm-guidelines-drawer">
-              <h3 className="guidelines-title">⚡ SYSTEM GUIDELINES & CAPABILITIES</h3>
+              <h3 className="guidelines-title">
+                ⚡ SYSTEM GUIDELINES & CAPABILITIES
+              </h3>
               <div className="guidelines-grid">
                 <div className="guideline-card">
                   <h4>💡 Prompting Guidelines</h4>
                   <ul>
-                    <li>Specify exact numeric inputs for precise calculations.</li>
-                    <li>For EMI: provide principal, annual interest rate, and tenure in months.</li>
-                    <li>For Budgeting: mention monthly income and profile type.</li>
+                    <li>
+                      Specify exact numeric inputs for precise calculations.
+                    </li>
+                    <li>
+                      For EMI: provide principal, annual interest rate, and
+                      tenure in months.
+                    </li>
+                    <li>
+                      For Budgeting: mention monthly income and profile type.
+                    </li>
                   </ul>
                 </div>
                 <div className="guideline-card">
                   <h4>🛠️ Integrated Engine Tools</h4>
                   <ul>
-                    <li><code>calculate_emi</code> - Loan EMI & repayment schedule</li>
-                    <li><code>generate_budget</code> - Income allocation & savings</li>
-                    <li><code>emergency_fund</code> - 6 to 12 month coverage analysis</li>
-                    <li><code>calculate_tax</code> - Tax liability under Indian regimes</li>
+                    <li>
+                      <code>calculate_emi</code> - Loan EMI & repayment schedule
+                    </li>
+                    <li>
+                      <code>generate_budget</code> - Income allocation & savings
+                    </li>
+                    <li>
+                      <code>emergency_fund</code> - 6 to 12 month coverage
+                      analysis
+                    </li>
+                    <li>
+                      <code>calculate_tax</code> - Tax liability under Indian
+                      regimes
+                    </li>
                   </ul>
                 </div>
                 <div className="guideline-card">
                   <h4>📐 Math Formatting</h4>
                   <ul>
-                    <li>Inline math uses <code>$variable$</code> formatting.</li>
-                    <li>Block equations use standard KaTeX <code>$$ equation $$</code>.</li>
+                    <li>
+                      Inline math uses <code>$variable$</code> formatting.
+                    </li>
+                    <li>
+                      Block equations use standard KaTeX{" "}
+                      <code>$$ equation $$</code>.
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -467,18 +545,23 @@ const ChatbotPage = () => {
             {messages.map((msg) => (
               <div key={msg.id} className={`chatbot-msg-row ${msg.role}`}>
                 <div className="chatbot-msg-bubble">
-                  <div className="msg-meta-tag">{msg.role.toUpperCase()} {"//"}</div>
+                  <div className="msg-meta-tag">
+                    {msg.role.toUpperCase()} {"//"}
+                  </div>
 
                   {msg.thought && (
                     <details className="thought-accordion">
-                      <summary className="thought-summary">💭 INTERNAL REASONING</summary>
+                      <summary className="thought-summary">
+                        💭 INTERNAL REASONING
+                      </summary>
                       <p className="thought-text">{msg.thought}</p>
                     </details>
                   )}
 
                   {msg.toolCalled && !msg.toolResult && (
                     <div className="tool-running-badge">
-                      <span className="pulse-dot"></span> EXECUTING ENGINE TOOL: <strong>{msg.toolCalled}</strong>
+                      <span className="pulse-dot"></span> EXECUTING ENGINE TOOL:{" "}
+                      <strong>{msg.toolCalled}</strong>
                     </div>
                   )}
 
@@ -518,39 +601,103 @@ const ChatbotPage = () => {
           <div className="quick-commands-bar">
             <button
               disabled={isGenerating}
-              onClick={(e) => handleSendMessage(e, "Calculate EMI for ₹5,00,000 loan at 8.5% interest for 36 months")}
+              onClick={(e) =>
+                handleSendMessage(
+                  e,
+                  "Calculate EMI for ₹5,00,000 loan at 8.5% interest for 36 months",
+                )
+              }
             >
               📊 EMI Calculator
             </button>
             <button
               disabled={isGenerating}
-              onClick={(e) => handleSendMessage(e, "Calculate recommended emergency fund for ₹35,000 monthly expense")}
+              onClick={(e) =>
+                handleSendMessage(
+                  e,
+                  "Calculate recommended emergency fund for ₹35,000 monthly expense",
+                )
+              }
             >
               🛡️ Emergency Fund
             </button>
             <button
               disabled={isGenerating}
-              onClick={(e) => handleSendMessage(e, "Generate monthly budget for ₹65,000 income as a young professional")}
+              onClick={(e) =>
+                handleSendMessage(
+                  e,
+                  "Generate monthly budget for ₹65,000 income as a young professional",
+                )
+              }
             >
               💼 Monthly Budget
             </button>
           </div>
 
           {/* Input Dock */}
-          <form onSubmit={handleSendMessage} className="chatbot-form-input-dock">
+          <form
+            onSubmit={handleSendMessage}
+            className="chatbot-form-input-dock"
+          >
+            {/* Hidden native file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: "none" }}
+              accept="image/*,application/pdf,.csv,.txt"
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setSelectedFile(e.target.files[0]);
+                }
+              }}
+            />
+
+            {/* File upload trigger button */}
+            <button
+              type="button"
+              className="file-upload-btn"
+              disabled={isGenerating}
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach Document or Image"
+            >
+              📎
+            </button>
+
+            {/* Selected File Badge Indicator */}
+            {selectedFile && (
+              <div className="selected-file-chip">
+                <span>📄 {selectedFile.name}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                  title="Remove file"
+                >
+                  ✖
+                </button>
+              </div>
+            )}
+
             <input
               type="text"
               className="neonInput input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="ENTER FINANCIAL QUERY..."
+              placeholder={
+                selectedFile
+                  ? "ADD QUERY ABOUT ATTACHED FILE..."
+                  : "ENTER FINANCIAL QUERY..."
+              }
               disabled={isGenerating}
               maxLength={2000}
             />
+
             <button
               type="submit"
               className="chatbot-submit-btn button"
-              disabled={isGenerating || !input.trim()}
+              disabled={isGenerating || (!input.trim() && !selectedFile)}
             >
               {isGenerating ? `${elapsedTime}s...` : "EXECUTE"}
             </button>

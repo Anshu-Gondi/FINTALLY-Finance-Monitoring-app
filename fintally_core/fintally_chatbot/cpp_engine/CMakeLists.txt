@@ -7,7 +7,7 @@ endif()
 
 project(fin_ocr_native VERSION 1.0.0 LANGUAGES C CXX)
 
-# Force C++17 (compatible with modern C++ standards used in LibTorch and OpenCV)
+# Force C++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -16,7 +16,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ----------------------------------------------------------------------
-# Build Configuration Options (llama.cpp style build toggles)
+# Build Configuration Options
 # ----------------------------------------------------------------------
 option(FIN_BUILD_SHARED        "Build shared library instead of static" OFF)
 option(FIN_ENABLE_NATIVE       "Enable -march=native CPU optimizations" ON)
@@ -24,6 +24,49 @@ option(FIN_ENABLE_AVX2         "Enable AVX2 vector instructions" ON)
 option(FIN_ENABLE_AVX512       "Enable AVX512 vector instructions" OFF)
 option(FIN_ENABLE_LTO          "Enable Link Time Optimization (IPO/LTO)" ON)
 option(FIN_WARNINGS_AS_ERRORS  "Treat compiler warnings as errors" OFF)
+
+include(FetchContent)
+
+# ----------------------------------------------------------------------
+# External Dependencies (stb & PDFium)
+# ----------------------------------------------------------------------
+
+# 1. Fetch stb_image (Header-only library for image decoding)
+FetchContent_Declare(
+    stb
+    GIT_REPOSITORY https://github.com/nothings/stb.git
+    GIT_TAG        master
+)
+FetchContent_MakeAvailable(stb)
+
+# 2. PDFium Integration (PDF rasterization engine)
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(PDFIUM QUIET pdfium)
+endif()
+
+if(NOT PDFIUM_FOUND)
+    set(PDFIUM_ROOT_DIR "" CACHE PATH "Path to PDFium installation directory")
+    if(PDFIUM_ROOT_DIR)
+        set(PDFIUM_INCLUDE_DIRS "${PDFIUM_ROOT_DIR}/include")
+        if(EXISTS "${PDFIUM_ROOT_DIR}/lib/libpdfium.so")
+            set(PDFIUM_LIBRARIES "${PDFIUM_ROOT_DIR}/lib/libpdfium.so")
+        else()
+            set(PDFIUM_LIBRARIES "${PDFIUM_ROOT_DIR}/lib/pdfium.lib")
+        endif()
+    else()
+        message(STATUS "[FinOCR] PDFium not found locally. Fetching prebuilt PDFium binaries...")
+        FetchContent_Declare(
+            pdfium_binaries
+            URL https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F6531/pdfium-linux-x64.tgz
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        )
+        FetchContent_MakeAvailable(pdfium_binaries)
+
+        set(PDFIUM_INCLUDE_DIRS "${pdfium_binaries_SOURCE_DIR}/include")
+        set(PDFIUM_LIBRARIES "${pdfium_binaries_SOURCE_DIR}/lib/libpdfium.so")
+    endif()
+endif()
 
 # ----------------------------------------------------------------------
 # Target Definition
@@ -37,6 +80,7 @@ endif()
 target_sources(fin_ocr_native
     PRIVATE
         src/ffi_bridge.cpp
+        src/matrix_matcher.cpp
         src/ocr_pipeline.cpp
         src/thermal_sensor.cpp
 )
@@ -47,6 +91,13 @@ target_include_directories(fin_ocr_native
         $<INSTALL_INTERFACE:include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${stb_SOURCE_DIR}
+        ${PDFIUM_INCLUDE_DIRS}
+)
+
+target_link_libraries(fin_ocr_native
+    PRIVATE
+        ${PDFIUM_LIBRARIES}
 )
 
 # Enable Position Independent Code (-fPIC) for safe Rust/FFI static linking
@@ -70,7 +121,6 @@ endif()
 # Target-Based Compiler & SIMD Optimization Flags
 # ----------------------------------------------------------------------
 if(MSVC)
-    # MSVC Flags
     target_compile_options(fin_ocr_native PRIVATE
         /O2                 # Max speed optimization
         /fp:fast            # Fast floating point behavior
@@ -89,7 +139,6 @@ if(MSVC)
     endif()
 
 else()
-    # GCC / Clang Flags
     target_compile_options(fin_ocr_native PRIVATE
         -O3
         -ffast-math
@@ -104,7 +153,6 @@ else()
         target_compile_options(fin_ocr_native PRIVATE -Werror)
     endif()
 
-    # Hardware Architecture Vectorization Flags
     if(FIN_ENABLE_NATIVE)
         target_compile_options(fin_ocr_native PRIVATE -march=native)
     else()
@@ -117,10 +165,9 @@ else()
 endif()
 
 # ----------------------------------------------------------------------
-# Unit Testing & Benchmarks (FetchContent Integration)
+# Unit Testing & Benchmarks
 # ----------------------------------------------------------------------
 enable_testing()
-include(FetchContent)
 
 # 1. GoogleTest Setup
 FetchContent_Declare(
@@ -131,9 +178,16 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+# Existing Engine Unit Tests
 add_executable(unit_tests tests/test_engine.cpp)
 target_link_libraries(unit_tests PRIVATE fin_ocr_native gtest_main)
 add_test(NAME EngineUnitTests COMMAND unit_tests)
+
+# Real-Dataset Integration Tests
+add_executable(dataset_tests tests/test_dataset.cpp)
+target_link_libraries(dataset_tests PRIVATE fin_ocr_native gtest_main)
+add_test(NAME DatasetUnitTests COMMAND dataset_tests)
+set_tests_properties(DatasetUnitTests PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # 2. Google Benchmark Setup
 FetchContent_Declare(
@@ -144,5 +198,10 @@ FetchContent_Declare(
 set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googlebenchmark)
 
+# Synthetic Pipeline Benchmarks
 add_executable(bench_runner benchmarks/bench_engine.cpp)
 target_link_libraries(bench_runner PRIVATE fin_ocr_native benchmark::benchmark)
+
+# Real-Dataset Benchmarks
+add_executable(bench_dataset benchmarks/bench_dataset.cpp)
+target_link_libraries(bench_dataset PRIVATE fin_ocr_native benchmark::benchmark)
