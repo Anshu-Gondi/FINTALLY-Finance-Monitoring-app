@@ -1,0 +1,84 @@
+[Receipt 1 - Top Left]
+CASH RECEIPT
+Shop Name
+Address: Lorem Ipsum 0/0
+Tel: 0987 123 456 7890
+Date: MM/DD/YYYY
+Manager: Lorem Ipsum
+Lorem: 6.50
+Ipsum: 5.00
+Dolor sit: 1.15
+Amet: 0.40
+Consectetur: 2.90
+Adipiscing elit: 10.15
+Aenean: 1.20
+Euismod nulla: 2.00
+Eget eros: 0.80
+Price: 40.10
+Sale: 0.00
+VAT: 0.00
+Total: 40.10
+THANK YOU
+
+[Receipt 2 - Top Middle]
+CASH RECEIPT
+Shop Name
+Address: Lorem Ipsum 0/0
+Tel: 0987 123 456 7890
+Date: MM/DD/YYYY
+Manager: Lorem Ipsum
+Price: 10.75
+Sale: 1.25
+Total: 12.00
+
+[Receipt 3 - Top Right]
+CASH
+Shop Name
+Date: MM/DD/YYYY
+General: 6.50
+Gross Amt: 15.60
+Amount Paid: 15.60
+
+[Receipt 4 - Bottom Left]
+CASH
+Shop Name
+Date: MM/DD/YYYY
+General: 6.50
+Gross Amt: 15.60
+Amount Paid: 15.60
+
+[Receipt 5 - Bottom Middle]
+CASH RECEIPT
+Shop Name
+Address: Lorem Ipsum 0/0
+Tel: 0987 123 456 7890
+Date: MM/DD/YYYY
+Manager: Lorem Ipsum
+Lorem: 2.20
+Ipsum: 5.75
+Dolor sit: 1.25
+Price: 10.80
+Sale: 1.25
+Total: 12.05
+
+[Receipt 6 - Bottom Right]
+CASH RECEIPT
+Shop Name
+Address: Lorem Ipsum 0/0
+Tel: 0987 123 456 7890
+Date: MM/DD/YYYY
+Manager: Lorem Ipsum
+Lorem: 6.50
+Ipsum: 5.00
+Dolor sit: 1.15
+Amet: 0.40
+Consectetur: 2.90
+Adipiscing elit: 10.15
+Aenean: 1.20
+Euismod nulla: 2.00
+Eget eros: 0.80
+Price: 40.10
+Sale: 0.00
+VAT: 0.00
+Total: 40.10
+THANK YOU

@@ -120,72 +120,612 @@ std::string extract_pdf_native_text(const uint8_t* pdf_bytes, size_t pdf_len) {
     return text_output;
 }
 
-// Raster Image Path: Analyzes the pixel buffer to locate text regions, lines, and bounding coordinates
-std::string extract_raster_layout_analysis(const FinProcessedBuffer* buffer, FinInputType input_type) {
-    if (!buffer || !buffer->data || buffer->data_len == 0) return "";
+// -----------------------------------------------------------------------------
+// Raster Image Path: Analyze OCR-relevant pixels to locate text regions,
+// text lines, and spatial bounding coordinates.
+//
+// IMPORTANT:
+//
+// Do NOT inspect only buffer->data[pixel_idx] for RGB images.
+//
+// RGB layout:
+//     [R][G][B]
+//
+// Financial chart layout:
+//     [saturation][OCR foreground][chroma]
+//
+// Therefore each input type has its own foreground interpretation.
+// -----------------------------------------------------------------------------
 
-    std::string type_str = "RAW_IMAGE_OR_RECEIPT";
+std::string extract_raster_layout_analysis(
+    const FinProcessedBuffer* buffer,
+    FinInputType input_type
+) {
+    if (!buffer ||
+        !buffer->data ||
+        buffer->data_len == 0 ||
+        buffer->width == 0 ||
+        buffer->height == 0 ||
+        buffer->channels == 0) {
+
+        return {};
+    }
+
+    // =========================================================================
+    // Input type string
+    // =========================================================================
+
+    const char* type_str =
+        "RAW_IMAGE_OR_RECEIPT";
+
     if (input_type == FIN_INPUT_FIN_CHART) {
         type_str = "FINANCIAL_CHART";
     } else if (input_type == FIN_INPUT_PDF_PAGE) {
         type_str = "SCANNED_PDF_PAGE";
     }
 
+    // =========================================================================
+    // Foreground predicate
+    //
+    // IMPORTANT:
+    // This follows the same semantic representation used by the OCR pipeline.
+    // =========================================================================
+
+    const auto is_active_pixel =
+        [buffer, input_type](size_t x, size_t y) noexcept -> bool {
+
+            const size_t channels =
+                buffer->channels;
+
+            const size_t pixel_index =
+                (
+                    y * buffer->width +
+                    x
+                ) * channels;
+
+            // -----------------------------------------------------------------
+            // Grayscale / PDF OCR mask
+            // -----------------------------------------------------------------
+
+            if (channels == 1) {
+
+                /*
+                 * Native OCR mask:
+                 *
+                 *     foreground = 255
+                 *     background = 0
+                 */
+                return
+                    buffer->data[pixel_index] > 127;
+            }
+
+            // -----------------------------------------------------------------
+            // Financial chart
+            //
+            //     channel 0 = saturation
+            //     channel 1 = OCR foreground
+            //     channel 2 = chroma
+            //
+            // MatrixMatcher also uses channel 1.
+            // -----------------------------------------------------------------
+
+            if (input_type == FIN_INPUT_FIN_CHART &&
+                channels >= 3) {
+
+                constexpr uint8_t
+                    CHART_FOREGROUND_THRESHOLD = 35;
+
+                return
+                    buffer->data[pixel_index + 1] >=
+                    CHART_FOREGROUND_THRESHOLD;
+            }
+
+            // -----------------------------------------------------------------
+            // Ordinary RGB image / receipt
+            //
+            // Reconstruct the same dark-text -> foreground representation
+            // used by rgb_to_ocr_mask().
+            // -----------------------------------------------------------------
+
+            if (channels >= 3) {
+
+                const uint8_t r =
+                    buffer->data[pixel_index + 0];
+
+                const uint8_t g =
+                    buffer->data[pixel_index + 1];
+
+                const uint8_t b =
+                    buffer->data[pixel_index + 2];
+
+                // Same luminance approximation as rgb_to_ocr_mask().
+                const uint8_t gray =
+                    static_cast<uint8_t>(
+                        (
+                            77u *
+                                static_cast<unsigned>(r) +
+                            150u *
+                                static_cast<unsigned>(g) +
+                            29u *
+                                static_cast<unsigned>(b)
+                        ) >> 8
+                    );
+
+                // Dark pixels become foreground.
+                const uint8_t inverted =
+                    static_cast<uint8_t>(
+                        255u -
+                        static_cast<unsigned>(gray)
+                    );
+
+                // Same threshold as rgb_to_ocr_mask().
+                constexpr uint8_t
+                    LAYOUT_OCR_THRESHOLD = 100;
+
+                return
+                    inverted >
+                    LAYOUT_OCR_THRESHOLD;
+            }
+
+            // -----------------------------------------------------------------
+            // Unknown channel layout.
+            // -----------------------------------------------------------------
+
+            return false;
+        };
+
+    // =========================================================================
+    // Output header
+    // =========================================================================
+
     std::ostringstream ss;
+
     ss << "[FIN_ENGINE_OCR_OUTPUT]\n"
-       << "Dimensions: " << buffer->width << "x" << buffer->height << "\n"
-       << "Channels: " << buffer->channels << "\n"
-       << "Binarized: " << (buffer->is_binarized ? "YES" : "NO") << "\n"
-       << "Input Type: " << type_str << "\n";
+       << "Dimensions: "
+       << buffer->width
+       << "x"
+       << buffer->height
+       << "\n"
+       << "Channels: "
+       << buffer->channels
+       << "\n"
+       << "Binarized: "
+       << (buffer->is_binarized ? "YES" : "NO")
+       << "\n"
+       << "Input Type: "
+       << type_str
+       << "\n";
+
+    // =========================================================================
+    // Scan parameters
+    //
+    // Charts contain much smaller and sparser text than receipts/PDFs.
+    // Use finer horizontal sampling so small dashboard labels aren't merged
+    // into a single large band.
+    // =========================================================================
+
+    const size_t line_height_scan =
+        input_type == FIN_INPUT_FIN_CHART
+            ? 4
+            : std::max<size_t>(
+                  8,
+                  buffer->height / 64
+              );
+
+    // =========================================================================
+    // Global statistics
+    // =========================================================================
 
     size_t total_active_pixels = 0;
-    size_t line_height_scan = std::max<size_t>(8, buffer->height / 64);
+    size_t total_pixels = 0;
     size_t detected_text_lines = 0;
 
-    std::vector<std::string> line_details;
+    struct LineRegion {
 
-    for (size_t y = 0; y < buffer->height; y += line_height_scan) {
+        size_t y0;
+        size_t y1;
+
+        size_t min_x;
+        size_t max_x;
+
+        size_t active_pixels;
+
+        double density;
+    };
+
+    std::vector<LineRegion> regions;
+
+    regions.reserve(
+        buffer->height / line_height_scan + 1
+    );
+
+    // =========================================================================
+    // Scan horizontal bands
+    // =========================================================================
+
+    for (
+        size_t y = 0;
+        y < buffer->height;
+        y += line_height_scan
+    ) {
+
+        const size_t end_y =
+            std::min(
+                y + line_height_scan,
+                buffer->height
+            );
+
+        const size_t band_height =
+            end_y - y;
+
+        if (band_height == 0) {
+            continue;
+        }
+
         size_t row_active_pixels = 0;
-        size_t min_x = buffer->width;
+
+        size_t min_x =
+            buffer->width;
+
         size_t max_x = 0;
 
-        size_t end_y = std::min(y + line_height_scan, buffer->height);
-        for (size_t ry = y; ry < end_y; ++ry) {
-            for (size_t x = 0; x < buffer->width; ++x) {
-                size_t pixel_idx = (ry * buffer->width + x) * buffer->channels;
-                if (buffer->data[pixel_idx] > 128) {
-                    row_active_pixels++;
-                    total_active_pixels++;
-                    if (x < min_x) min_x = x;
-                    if (x > max_x) max_x = x;
+        // ---------------------------------------------------------------------
+        // Scan pixels
+        // ---------------------------------------------------------------------
+
+        for (
+            size_t ry = y;
+            ry < end_y;
+            ++ry
+        ) {
+
+            for (
+                size_t x = 0;
+                x < buffer->width;
+                ++x
+            ) {
+
+                ++total_pixels;
+
+                if (
+                    !is_active_pixel(
+                        x,
+                        ry
+                    )
+                ) {
+                    continue;
                 }
+
+                ++row_active_pixels;
+                ++total_active_pixels;
+
+                min_x =
+                    std::min(
+                        min_x,
+                        x
+                    );
+
+                max_x =
+                    std::max(
+                        max_x,
+                        x
+                    );
             }
         }
 
-        double band_density = (static_cast<double>(row_active_pixels) / (buffer->width * (end_y - y))) * 100.0;
-        if (band_density > 1.5 && max_x > min_x) {
-            detected_text_lines++;
-            std::ostringstream line_ss;
-            line_ss << "  - Text Line " << detected_text_lines
-                    << " [Y:" << y << "-" << end_y
-                    << ", X:" << min_x << "-" << max_x << "]: "
-                    << "Density " << band_density << "%, Width " << (max_x - min_x + 1) << "px";
-            line_details.push_back(line_ss.str());
+        // ---------------------------------------------------------------------
+        // Band density
+        // ---------------------------------------------------------------------
+
+        const size_t band_pixels =
+            buffer->width *
+            band_height;
+
+        const double band_density =
+            band_pixels == 0
+                ? 0.0
+                : (
+                    static_cast<double>(
+                        row_active_pixels
+                    ) /
+                    static_cast<double>(
+                        band_pixels
+                    )
+                ) * 100.0;
+
+        // ---------------------------------------------------------------------
+        // Text-line heuristic
+        // ---------------------------------------------------------------------
+        //
+        // Normal images:
+        //     preserve existing 0.75% density gate.
+        //
+        // Charts:
+        //     text is much sparser, so use a very low density gate and
+        //     an absolute-pixel guard to prevent completely empty bands.
+        // ---------------------------------------------------------------------
+
+        const bool has_horizontal_extent =
+            max_x > min_x;
+
+        const bool likely_text_line =
+            input_type == FIN_INPUT_FIN_CHART
+                ? (
+                    row_active_pixels >= 8 &&
+                    has_horizontal_extent &&
+                    band_density >= 0.001
+                )
+                : (
+                    row_active_pixels > 0 &&
+                    has_horizontal_extent &&
+                    band_density >= 0.75
+                );
+
+        if (
+            !likely_text_line
+        ) {
+            continue;
+        }
+
+        // ---------------------------------------------------------------------
+        // Chart-specific artifact rejection
+        //
+        // Full-width horizontal structures are much more likely to be:
+        //
+        //     - chart axes
+        //     - borders
+        //     - separators
+        //     - grid structures
+        //
+        // than text.
+        // ---------------------------------------------------------------------
+
+        if (
+            input_type == FIN_INPUT_FIN_CHART
+        ) {
+
+            const size_t region_width =
+                max_x -
+                min_x +
+                1;
+
+            const double width_ratio =
+                buffer->width == 0
+                    ? 0.0
+                    : static_cast<double>(
+                          region_width
+                      ) /
+                      static_cast<double>(
+                          buffer->width
+                      );
+
+            /*
+             * Very thin, almost full-width structures are unlikely
+             * to be text lines.
+             */
+            if (
+                width_ratio >= 0.90 &&
+                band_height <= 16 &&
+                band_density >= 0.05
+            ) {
+                continue;
+            }
+
+            /*
+             * Extremely wide low-density structures are generally
+             * chart geometry rather than actual text.
+             */
+            if (
+                width_ratio >= 0.90 &&
+                band_density < 0.50
+            ) {
+                continue;
+            }
+        }
+
+        regions.push_back({
+            y,
+            end_y,
+            min_x,
+            max_x,
+            row_active_pixels,
+            band_density
+        });
+    }
+
+    // =========================================================================
+    // Merge neighboring detected bands belonging to one line
+    // =========================================================================
+
+    std::vector<LineRegion> merged_regions;
+
+    merged_regions.reserve(
+        regions.size()
+    );
+
+    for (
+        const LineRegion& current :
+        regions
+    ) {
+
+        if (
+            merged_regions.empty()
+        ) {
+
+            merged_regions.push_back(
+                current
+            );
+
+            continue;
+        }
+
+        LineRegion& previous =
+            merged_regions.back();
+
+        const size_t vertical_gap =
+            current.y0 > previous.y1
+                ? current.y0 -
+                  previous.y1
+                : 0;
+
+        /*
+         * Fine chart scanning means multiple 4px bands can belong
+         * to the same text line.
+         */
+        const size_t allowed_vertical_gap =
+            input_type == FIN_INPUT_FIN_CHART
+                ? 4
+                : 2;
+
+        const bool close_vertically =
+            vertical_gap <=
+            allowed_vertical_gap;
+
+        const bool x_overlap =
+            !(
+                current.max_x <
+                    previous.min_x ||
+                previous.max_x <
+                    current.min_x
+            );
+
+        if (
+            close_vertically &&
+            x_overlap
+        ) {
+
+            previous.y1 =
+                std::max(
+                    previous.y1,
+                    current.y1
+                );
+
+            previous.min_x =
+                std::min(
+                    previous.min_x,
+                    current.min_x
+                );
+
+            previous.max_x =
+                std::max(
+                    previous.max_x,
+                    current.max_x
+                );
+
+            previous.active_pixels +=
+                current.active_pixels;
+
+            // Recompute density over the merged region.
+            const size_t merged_height =
+                previous.y1 -
+                previous.y0;
+
+            const size_t merged_area =
+                buffer->width *
+                merged_height;
+
+            previous.density =
+                merged_area == 0
+                    ? 0.0
+                    : (
+                        static_cast<double>(
+                            previous.active_pixels
+                        ) /
+                        static_cast<double>(
+                            merged_area
+                        )
+                    ) * 100.0;
+
+        } else {
+
+            merged_regions.push_back(
+                current
+            );
         }
     }
 
-    double overall_density = (static_cast<double>(total_active_pixels) / buffer->data_len) * 100.0;
-    ss << "Active Text Region Density: " << overall_density << "%\n"
-       << "Detected Text Lines: " << detected_text_lines << "\n";
+    // =========================================================================
+    // Final region statistics
+    // =========================================================================
 
-    if (!line_details.empty()) {
+    detected_text_lines =
+        merged_regions.size();
+
+    const double overall_density =
+        total_pixels == 0
+            ? 0.0
+            : (
+                static_cast<double>(
+                    total_active_pixels
+                ) /
+                static_cast<double>(
+                    total_pixels
+                )
+            ) * 100.0;
+
+    ss << "Active Text Region Density: "
+       << overall_density
+       << "%\n";
+
+    ss << "Detected Text Lines: "
+       << detected_text_lines
+       << "\n";
+
+    // =========================================================================
+    // Spatial regions
+    // =========================================================================
+
+    if (
+        !merged_regions.empty()
+    ) {
+
         ss << "Spatial Bounding Regions:\n";
-        for (const auto& detail : line_details) {
-            ss << detail << "\n";
+
+        size_t line_number = 0;
+
+        for (
+            const LineRegion& region :
+            merged_regions
+        ) {
+
+            ++line_number;
+
+            const size_t region_width =
+                region.max_x -
+                region.min_x +
+                1;
+
+            const size_t region_height =
+                region.y1 -
+                region.y0;
+
+            ss << "  - Text Line "
+               << line_number
+               << " [Y:"
+               << region.y0
+               << "-"
+               << region.y1
+               << ", X:"
+               << region.min_x
+               << "-"
+               << region.max_x
+               << "]: "
+               << "Density "
+               << region.density
+               << "%, Width "
+               << region_width
+               << "px, Height "
+               << region_height
+               << "px\n";
         }
     }
+
+    // =========================================================================
+    // Payload contract
+    // =========================================================================
 
     ss << "Payload Status: VALID_PREPROCESSED_BUFFER\n";
+
     return ss.str();
 }
 
@@ -267,6 +807,19 @@ FinProcessedBuffer* fin_process_document_bytes(
     }
 }
 
+// -----------------------------------------------------------------------------
+// Final text extraction API
+//
+// Priority:
+//
+//   1. Text already extracted by native/model-free OCR pipeline.
+//   2. Native PDF text stream for digital PDFs.
+//   3. Raster/layout analysis as final diagnostic fallback.
+//
+// This function is intentionally model-free.
+// No embedding model, OCR neural network, or LLM is required here.
+// -----------------------------------------------------------------------------
+
 char* fin_engine_recognize_text(
     FinOcrEngineContext* engine,
     const FinProcessedBuffer* buffer,
@@ -274,40 +827,130 @@ char* fin_engine_recognize_text(
     size_t input_len,
     FinInputType input_type
 ) {
-    if (!engine || !buffer) return nullptr;
+    if (!engine || !buffer) {
+        return nullptr;
+    }
 
     try {
-        std::string final_payload;
 
-        // 1. Check if direct matrix-matched chart OCR text exists on the buffer
-        if (buffer->extracted_text && std::strlen(buffer->extracted_text) > 0) {
-            final_payload = "[EXTRACTED_CHART_LABELS]\n" + std::string(buffer->extracted_text);
-        }
+        // ---------------------------------------------------------------------
+        // ALWAYS begin with the structured buffer payload.
+        //
+        // This guarantees that PDF/image/chart callers receive:
+        //
+        //   [FIN_ENGINE_OCR_OUTPUT]
+        //   Dimensions:
+        //   Channels:
+        //   Binarized:
+        //   Input Type:
+        //   ...
+        //   Payload Status: VALID_PREPROCESSED_BUFFER
+        //
+        // before any literal OCR text.
+        // ---------------------------------------------------------------------
 
-        // 2. Digital PDF path: Extract actual text characters from the document stream
-        if (final_payload.empty() && input_type == FIN_INPUT_PDF_PAGE && input_bytes && input_len > 0) {
-            std::string pdf_text = extract_pdf_native_text(input_bytes, input_len);
+        std::string final_payload =
+            extract_raster_layout_analysis(
+                buffer,
+                input_type
+            );
+
+        // ---------------------------------------------------------------------
+        // Digital PDF text stream.
+        //
+        // Preserve actual PDF text when available.
+        // ---------------------------------------------------------------------
+
+        if (input_type == FIN_INPUT_PDF_PAGE &&
+            input_bytes != nullptr &&
+            input_len > 0) {
+
+            const std::string pdf_text =
+                extract_pdf_native_text(
+                    input_bytes,
+                    input_len
+                );
+
             if (!pdf_text.empty()) {
-                final_payload = "[EXTRACTED_PDF_TEXT_STREAM]\n" + pdf_text;
+
+                final_payload +=
+                    "\n[EXTRACTED_PDF_TEXT_STREAM]\n";
+
+                final_payload +=
+                    pdf_text;
             }
         }
 
-        // 3. Image/Receipt/Chart/Scanned PDF path fallback: Compute bounding boxes & spatial regions
-        if (final_payload.empty()) {
-            final_payload = extract_raster_layout_analysis(buffer, input_type);
+        // ---------------------------------------------------------------------
+        // Model-free literal OCR.
+        //
+        // For:
+        //
+        //   - charts
+        //   - scanned PDFs
+        //   - receipts
+        //   - ordinary images
+        //
+        // MatrixMatcher output is preserved verbatim.
+        // ---------------------------------------------------------------------
+
+        if (buffer->extracted_text &&
+            std::strlen(buffer->extracted_text) > 0) {
+
+            // Financial charts already have their own structured header in
+            // extracted_text. Preserve that path without wrapping it twice.
+
+            if (input_type == FIN_INPUT_FIN_CHART) {
+
+                final_payload +=
+                    "\n[EXTRACTED_CHART_LABELS]\n";
+
+                final_payload +=
+                    buffer->extracted_text;
+
+            } else {
+
+                final_payload +=
+                    "\n[EXTRACTED_MODEL_FREE_OCR]\n";
+
+                final_payload +=
+                    buffer->extracted_text;
+            }
         }
+
+        // ---------------------------------------------------------------------
+        // Valid structured payload should never be empty for a valid buffer.
+        // ---------------------------------------------------------------------
 
         if (final_payload.empty()) {
             return nullptr;
         }
 
-        // Allocate heap memory for FFI caller return
-        char* out_text = static_cast<char*>(std::malloc(final_payload.size() + 1));
-        if (out_text) {
-            std::memcpy(out_text, final_payload.c_str(), final_payload.size() + 1);
+        // ---------------------------------------------------------------------
+        // Allocate C-ABI string.
+        // ---------------------------------------------------------------------
+
+        char* out_text =
+            static_cast<char*>(
+                std::malloc(
+                    final_payload.size() + 1
+                )
+            );
+
+        if (!out_text) {
+            return nullptr;
         }
+
+        std::memcpy(
+            out_text,
+            final_payload.c_str(),
+            final_payload.size() + 1
+        );
+
         return out_text;
+
     } catch (...) {
+
         return nullptr;
     }
 }

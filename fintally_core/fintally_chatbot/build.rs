@@ -1,141 +1,335 @@
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    fs,
+    path::{Path, PathBuf},
+    process::{Command, Stdio},
+};
 
-fn download_stb_image(out_dir: &Path) -> PathBuf {
-    let stb_dir = out_dir.join("stb");
-    let header_path = stb_dir.join("stb_image.h");
+// ============================================================================
+// Configuration
+// ============================================================================
 
-    if header_path.exists() {
-        return stb_dir;
+const CPP_ENGINE_DIR: &str = "cpp_engine";
+const CPP_HEADER: &str = "cpp_engine/include/ffi_bridge.h";
+const CMAKE_NATIVE_TARGET: &str = "fin_ocr_native";
+
+// ============================================================================
+// Environment helpers
+// ============================================================================
+
+fn env_bool(name: &str, default: bool) -> bool {
+    match env::var(name) {
+        Ok(value) => match value.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "on" | "yes" => true,
+            "0" | "false" | "off" | "no" => false,
+            other => panic!("[FinOCR] Invalid boolean value for {name}: {other}"),
+        },
+        Err(_) => default,
     }
-
-    fs::create_dir_all(&stb_dir).expect("Failed to create stb directory");
-
-    let url = "https://raw.githubusercontent.com/nothings/stb/master/stb_image.h";
-    println!("cargo:warning=Downloading stb_image.h from GitHub...");
-
-    let response = ureq::get(url).call().expect("Failed to download stb_image.h");
-    let mut file = fs::File::create(&header_path).expect("Failed to create stb_image.h file");
-
-    let mut reader = response.into_reader();
-    std::io::copy(&mut reader, &mut file).expect("Failed to write stb_image.h");
-
-    stb_dir
 }
 
-fn download_and_extract_pdfium(out_dir: &Path) -> (PathBuf, PathBuf) {
-    let pdfium_dir = out_dir.join("pdfium");
-    let include_dir = pdfium_dir.join("include");
-    let lib_dir = pdfium_dir.join("lib");
-
-    if include_dir.exists() && lib_dir.exists() {
-        return (include_dir, lib_dir);
+fn cmake_bool(value: bool) -> &'static str {
+    if value {
+        "ON"
+    } else {
+        "OFF"
     }
-
-    let url = "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F6531/pdfium-linux-x64.tgz";
-    println!("cargo:warning=Downloading PDFium binaries from GitHub...");
-
-    let response = ureq::get(url).call().expect("Failed to download PDFium binaries");
-    let tar_gz = flate2::read::GzDecoder::new(response.into_reader());
-    let mut archive = tar::Archive::new(tar_gz);
-
-    fs::create_dir_all(&pdfium_dir).expect("Failed to create PDFium output directory");
-    archive.unpack(&pdfium_dir).expect("Failed to unpack PDFium binaries");
-
-    (include_dir, lib_dir)
 }
 
-fn main() {
-    let cpp_header = "cpp_engine/include/ffi_bridge.h";
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+// ============================================================================
+// Command helpers
+// ============================================================================
 
-    // 1. Resolve Third-Party Dependencies (PDFium & stb_image)
-    let (pdfium_include, pdfium_lib) = if let (Ok(inc), Ok(lib)) = (env::var("PDFIUM_INCLUDE_DIR"), env::var("PDFIUM_LIB_DIR")) {
-        (PathBuf::from(inc), PathBuf::from(lib))
-    } else {
-        download_and_extract_pdfium(&out_dir)
-    };
+fn run_command(command: &mut Command, description: &str) {
+    let status = command.status().unwrap_or_else(|error| {
+        panic!("[FinOCR] Failed to execute {description}: {error}")
+    });
 
-    let stb_include = download_stb_image(&out_dir);
-
-    // 2. Configure C++ Compilation
-    let mut build = cc::Build::new();
-
-    build
-        .cpp(true)
-        .std("c++17")
-        .pic(true)
-        .warnings(true)
-        .extra_warnings(false)
-        .file("cpp_engine/src/ffi_bridge.cpp")
-        .file("cpp_engine/src/ocr_pipeline.cpp")
-        .file("cpp_engine/src/thermal_sensor.cpp")
-        .file("cpp_engine/src/matrix_matcher.cpp")
-        .include("cpp_engine/include")
-        .include("cpp_engine/src")
-        .include(&pdfium_include)
-        .include(&stb_include);
-
-    // Check for local vendor paths if available
-    if Path::new("third_party/stb").exists() {
-        build.include("third_party/stb");
+    if !status.success() {
+        panic!("[FinOCR] {description} failed with status: {status}");
     }
+}
 
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+fn command_exists(command: &str) -> bool {
+    Command::new(command)
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
 
-    if build.get_compiler().is_like_msvc() {
-        build.flag("/O2").flag("/fp:fast").flag("/permissive-");
-        #[cfg(target_feature = "avx2")]
-        build.flag("/arch:AVX2");
-    } else {
-        build
-            .flag_if_supported("-O3")
-            .flag_if_supported("-ffast-math")
-            .flag_if_supported("-fvisibility=hidden");
+// ============================================================================
+// Recursive file search
+// ============================================================================
 
-        if target_arch == "x86_64" {
-            build.flag_if_supported("-msse4.2");
-            build.flag_if_supported("-mavx2");
+fn find_file(root: &Path, filename: &str) -> Option<PathBuf> {
+    let entries = fs::read_dir(root).ok()?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+
+        if path.is_file() {
+            if path
+                .file_name()
+                .and_then(|name| name.to_str())
+                == Some(filename)
+            {
+                return Some(path);
+            }
+        } else if path.is_dir() {
+            if let Some(found) = find_file(&path, filename) {
+                return Some(found);
+            }
         }
     }
 
-    build.compile("fin_ocr_native");
+    None
+}
 
-    // 3. Linker Configuration
-    println!("cargo:rustc-link-search=native={}", pdfium_lib.display());
-    println!("cargo:rustc-link-lib=pdfium");
+// ============================================================================
+// Find CMake-generated native library (Target OS aware)
+// ============================================================================
 
-    if target_os == "linux" {
-        println!("cargo:rustc-link-lib=dylib=stdc++");
+fn find_native_library(
+    cmake_build_dir: &Path,
+    shared: bool,
+    target_os: &str,
+) -> PathBuf {
+    let candidates: &[&str] = if target_os == "windows" {
+        if shared {
+            &["fin_ocr_native.lib", "fin_ocr_native.dll"]
+        } else {
+            &["fin_ocr_native.lib"]
+        }
     } else if target_os == "macos" {
-        println!("cargo:rustc-link-lib=dylib=c++");
+        if shared {
+            &["libfin_ocr_native.dylib"]
+        } else {
+            &["libfin_ocr_native.a"]
+        }
+    } else {
+        if shared {
+            &["libfin_ocr_native.so"]
+        } else {
+            &["libfin_ocr_native.a"]
+        }
+    };
+
+    for candidate in candidates {
+        if let Some(path) = find_file(cmake_build_dir, candidate) {
+            return path;
+        }
     }
 
-    // 4. Track Changes for Incremental Rebuilds
-    println!("cargo:rerun-if-env-changed=PDFIUM_INCLUDE_DIR");
-    println!("cargo:rerun-if-env-changed=PDFIUM_LIB_DIR");
-    println!("cargo:rerun-if-changed={}", cpp_header);
-    println!("cargo:rerun-if-changed=cpp_engine/include/tensor_ops.hpp");
-    println!("cargo:rerun-if-changed=cpp_engine/include/thermal_sensor.hpp");
-    println!("cargo:rerun-if-changed=cpp_engine/include/matrix_matcher.hpp");
-    println!("cargo:rerun-if-changed=cpp_engine/src/ffi_bridge.cpp");
-    println!("cargo:rerun-if-changed=cpp_engine/src/ocr_pipeline.cpp");
-    println!("cargo:rerun-if-changed=cpp_engine/src/thermal_sensor.cpp");
-    println!("cargo:rerun-if-changed=cpp_engine/src/matrix_matcher.cpp");
+    panic!(
+        "[FinOCR] Could not find '{CMAKE_NATIVE_TARGET}' under:\n{}",
+        cmake_build_dir.display()
+    );
+}
 
-    // 5. Generate Bindgen Bindings
-    let bindings = bindgen::Builder::default()
-        .header(cpp_header)
+// ============================================================================
+// PDFium discovery (Target OS aware)
+// ============================================================================
+
+fn find_pdfium_library(root: &Path, target_os: &str) -> Option<PathBuf> {
+    let candidates: &[&str] = if target_os == "windows" {
+        &["pdfium.lib", "libpdfium.lib", "pdfium.dll"]
+    } else if target_os == "macos" {
+        &["libpdfium.dylib", "libpdfium.a"]
+    } else {
+        &["libpdfium.so", "libpdfium.a"]
+    };
+
+    for candidate in candidates {
+        if let Some(path) = find_file(root, candidate) {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+// ============================================================================
+// Emit cargo native link directives
+// ============================================================================
+
+fn setup_native_link(shared: bool, target_os: &str) {
+    if shared {
+        println!("cargo:rustc-link-lib=dylib=fin_ocr_native");
+    } else if target_os == "linux" {
+        // Force the linker to keep all C/C++ symbols from the static library
+        println!("cargo:rustc-link-lib=static:+whole-archive=fin_ocr_native");
+    } else {
+        println!("cargo:rustc-link-lib=static=fin_ocr_native");
+    }
+}
+
+// ============================================================================
+// Main
+// ============================================================================
+
+fn main() {
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+
+    let manifest_dir = PathBuf::from(
+        env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is not set"),
+    );
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR is not set"));
+
+    let cpp_engine_dir = manifest_dir.join(CPP_ENGINE_DIR);
+    let cmake_build_dir = out_dir.join("fin_ocr_cmake");
+
+    fs::create_dir_all(&cmake_build_dir)
+        .expect("[FinOCR] Failed to create CMake build directory");
+
+    // Rebuild triggers - Source files
+    println!("cargo:rerun-if-changed={}", cpp_engine_dir.join("CMakeLists.txt").display());
+    println!("cargo:rerun-if-changed={}", manifest_dir.join(CPP_HEADER).display());
+    println!("cargo:rerun-if-changed={}", manifest_dir.join("cpp_engine/src/ffi_bridge.cpp").display());
+    println!("cargo:rerun-if-changed={}", manifest_dir.join("cpp_engine/src/ocr_pipeline.cpp").display());
+
+    // Rebuild triggers - Environment variables
+    println!("cargo:rerun-if-env-changed=PDFIUM_ROOT_DIR");
+    println!("cargo:rerun-if-env-changed=FIN_BUILD_SHARED");
+    println!("cargo:rerun-if-env-changed=FIN_ENABLE_NATIVE");
+    println!("cargo:rerun-if-env-changed=FIN_ENABLE_AVX2");
+    println!("cargo:rerun-if-env-changed=FIN_ENABLE_AVX512");
+    println!("cargo:rerun-if-env-changed=FIN_ENABLE_LTO");
+    println!("cargo:rerun-if-env-changed=FIN_ENABLE_TESSERACT");
+    println!("cargo:rerun-if-env-changed=FIN_WARNINGS_AS_ERRORS");
+    println!("cargo:rerun-if-env-changed=NUM_JOBS");
+
+    // Options
+    let fin_build_shared = env_bool("FIN_BUILD_SHARED", false);
+    let fin_enable_native = env_bool("FIN_ENABLE_NATIVE", true);
+    let fin_enable_avx2 = env_bool("FIN_ENABLE_AVX2", true);
+    let fin_enable_avx512 = env_bool("FIN_ENABLE_AVX512", true);
+    let fin_enable_lto = env_bool("FIN_ENABLE_LTO", false);
+    let fin_enable_tesseract = env_bool("FIN_ENABLE_TESSERACT", true);
+    let fin_warnings_as_errors = env_bool("FIN_WARNINGS_AS_ERRORS", false);
+
+    // CMake Configure
+    let mut configure = Command::new("cmake");
+    configure
+        .arg("-S").arg(&cpp_engine_dir)
+        .arg("-B").arg(&cmake_build_dir)
+        .arg("-DCMAKE_BUILD_TYPE=Release")
+        .arg(format!("-DFIN_BUILD_SHARED={}", cmake_bool(fin_build_shared)))
+        .arg(format!("-DFIN_ENABLE_NATIVE={}", cmake_bool(fin_enable_native)))
+        .arg(format!("-DFIN_ENABLE_AVX2={}", cmake_bool(fin_enable_avx2)))
+        .arg(format!("-DFIN_ENABLE_AVX512={}", cmake_bool(fin_enable_avx512)))
+        .arg(format!("-DFIN_ENABLE_LTO={}", cmake_bool(fin_enable_lto)))
+        .arg(format!("-DFIN_ENABLE_TESSERACT={}", cmake_bool(fin_enable_tesseract)))
+        .arg(format!("-DFIN_WARNINGS_AS_ERRORS={}", cmake_bool(fin_warnings_as_errors)));
+
+    if let Ok(pdfium_root) = env::var("PDFIUM_ROOT_DIR") {
+        configure.arg(format!("-DPDFIUM_ROOT_DIR={pdfium_root}"));
+    }
+
+    if command_exists("ninja") {
+        configure.arg("-G").arg("Ninja");
+    }
+
+    run_command(&mut configure, "CMake configuration");
+
+    // CMake Build
+    let mut build = Command::new("cmake");
+    build
+        .arg("--build").arg(&cmake_build_dir)
+        .arg("--target").arg(CMAKE_NATIVE_TARGET)
+        .arg("--config").arg("Release");
+
+    if let Ok(num_jobs) = env::var("NUM_JOBS") {
+        if let Ok(jobs) = num_jobs.parse::<usize>() {
+            build.arg("--parallel").arg(jobs.to_string());
+        }
+    }
+
+    run_command(&mut build, "CMake native compilation");
+
+    // Locate Built Native Library
+    let native_library = find_native_library(&cmake_build_dir, fin_build_shared, &target_os);
+    let native_library_dir = native_library.parent().expect("[FinOCR] Missing parent dir");
+
+    // Emit search paths first
+    println!("cargo:rustc-link-search=native={}", native_library_dir.display());
+    println!("cargo:rustc-link-search=native={}", cmake_build_dir.display());
+    println!("cargo:rustc-link-search=native={}", cmake_build_dir.join("lib").display());
+
+    setup_native_link(fin_build_shared, &target_os);
+
+    // Tesseract + Leptonica via pkg-config
+    if fin_enable_tesseract {
+        let mut cfg = pkg_config::Config::new();
+        cfg.cargo_metadata(false);
+
+        let tess_lib = cfg
+            .probe("tesseract")
+            .expect("[FinOCR] Failed to probe 'tesseract' via pkg-config");
+
+        let lept_lib = cfg
+            .probe("leptonica")
+            .or_else(|_| cfg.probe("lept"))
+            .expect("[FinOCR] Failed to probe 'leptonica' or 'lept' via pkg-config");
+
+        for path in tess_lib.link_paths.iter().chain(lept_lib.link_paths.iter()) {
+            println!("cargo:rustc-link-search=native={}", path.display());
+        }
+
+        println!("cargo:rustc-link-lib=dylib=tesseract");
+        println!("cargo:rustc-link-lib=dylib=leptonica");
+    }
+
+    // PDFium Link Search
+    let pdfium_library = if let Ok(pdfium_root) = env::var("PDFIUM_ROOT_DIR") {
+        find_pdfium_library(&PathBuf::from(pdfium_root), &target_os)
+    } else {
+        find_pdfium_library(&cmake_build_dir, &target_os)
+    };
+
+    if let Some(pdfium_lib) = pdfium_library {
+        if let Some(pdfium_dir) = pdfium_lib.parent() {
+            println!("cargo:rustc-link-search=native={}", pdfium_dir.display());
+        }
+    }
+    println!("cargo:rustc-link-lib=dylib=pdfium");
+
+    // macOS System Search Paths
+    if target_os == "macos" {
+        println!("cargo:rustc-link-search=native=/opt/homebrew/lib");
+        println!("cargo:rustc-link-search=native=/usr/local/lib");
+    }
+
+    // Standard C++ Runtime
+    match target_os.as_str() {
+        "linux" => println!("cargo:rustc-link-lib=dylib=stdc++"),
+        "macos" => println!("cargo:rustc-link-lib=dylib=c++"),
+        _ => {}
+    }
+
+    // Bindgen
+    let include_dir = cpp_engine_dir.join("include");
+    let mut builder = bindgen::Builder::default()
+        .header(manifest_dir.join(CPP_HEADER).to_string_lossy().into_owned())
+        .clang_arg(format!("-I{}", include_dir.display()))
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .allowlist_function("fin_.*")
         .allowlist_type("Fin.*")
-        .size_t_is_usize(true)
+        .size_t_is_usize(true);
+
+    if target_os == "macos" {
+        builder = builder
+            .clang_arg("-I/opt/homebrew/include")
+            .clang_arg("-I/usr/local/include");
+    }
+
+    let bindings = builder
         .generate()
-        .expect("Unable to generate C++ FFI bindings via bindgen");
+        .expect("[FinOCR] Unable to generate C++ FFI bindings");
 
     bindings
         .write_to_file(out_dir.join("bindings.rs"))
-        .expect("Couldn't write bindgen FFI output!");
+        .expect("[FinOCR] Failed to write bindings.rs");
 }

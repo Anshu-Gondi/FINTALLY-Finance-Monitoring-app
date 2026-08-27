@@ -1,169 +1,550 @@
 #ifndef TENSOR_OPS_HPP
 #define TENSOR_OPS_HPP
 
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 
 #if defined(_MSC_VER)
-    #include <intrin.h>
+    #include <malloc.h>
+    #include <immintrin.h>
 #else
     #include <immintrin.h>
 #endif
 
-namespace fin {
-namespace ops {
+namespace fin::ops {
 
-inline void* aligned_alloc(size_t alignment, size_t size) {
+// =============================================================================
+// Aligned allocation
+// =============================================================================
+
+inline void* aligned_alloc(
+    std::size_t alignment,
+    std::size_t size
+) noexcept {
+
 #if defined(_MSC_VER) || defined(__MINGW32__)
+
     return _aligned_malloc(size, alignment);
+
 #else
+
     void* ptr = nullptr;
-    if (posix_memalign(&ptr, alignment, size) != 0) return nullptr;
+
+    if (posix_memalign(&ptr, alignment, size) != 0) {
+        return nullptr;
+    }
+
     return ptr;
+
 #endif
 }
 
-inline void aligned_free(void* ptr) {
+inline void aligned_free(void* ptr) noexcept {
+
 #if defined(_MSC_VER) || defined(__MINGW32__)
+
     _aligned_free(ptr);
+
 #else
-    free(ptr);
+
+    std::free(ptr);
+
 #endif
 }
 
-// Optimized Multi-ISA Binarization with Aligned Memory & Stream Store Support
-inline void binarize_simd(uint8_t* __restrict__ data, size_t length) {
-    size_t i = 0;
+// =============================================================================
+// Helpers
+// =============================================================================
 
-#if defined(__GNUC__) || defined(__clang__)
-    uint8_t* ptr = static_cast<uint8_t*>(__builtin_assume_aligned(data, 64));
-#else
-    uint8_t* ptr = data;
-#endif
+inline bool is_aligned(
+    const void* ptr,
+    std::size_t alignment
+) noexcept {
+
+    return (
+        reinterpret_cast<std::uintptr_t>(ptr)
+        & (alignment - 1)
+    ) == 0;
+}
+
+// =============================================================================
+// Binarization
+//
+// result = 255 if pixel > 128
+//          0 otherwise
+//
+// Supports:
+//   AVX-512BW
+//   AVX2
+//   SSE2
+//   scalar
+//
+// Unaligned memory is intentionally supported.
+// =============================================================================
+
+inline void binarize_simd(
+    std::uint8_t* __restrict__ data,
+    std::size_t length
+) noexcept {
+
+    if (data == nullptr || length == 0) {
+        return;
+    }
+
+    std::size_t i = 0;
 
 #if defined(__AVX512BW__)
-    const __m512i thresh512 = _mm512_set1_epi8(static_cast<char>(128));
-    const __m512i max_val512 = _mm512_set1_epi8(static_cast<char>(255));
-    const __m512i zero512 = _mm512_setzero_si512();
 
-    for (; i + 63 < length; i += 64) {
-        __m512i chunk = _mm512_load_si512(reinterpret_cast<const __m512i*>(&ptr[i]));
-        __mmask64 mask = _mm512_cmpgt_epu8_mask(chunk, thresh512);
-        __m512i result = _mm512_mask_blend_epi8(mask, zero512, max_val512);
+    // Exact scalar semantics:
+    //
+    // data[i] > 128
+    //
+    // Therefore 128 itself must produce 0.
 
-        if (length >= 2 * 1024 * 1024) {
-            _mm512_stream_si512(reinterpret_cast<__m512i*>(&ptr[i]), result);
-        } else {
-            _mm512_store_si512(reinterpret_cast<__m512i*>(&ptr[i]), result);
-        }
+    const __m512i threshold =
+        _mm512_set1_epi8(static_cast<char>(128));
+
+    const __m512i max_value =
+        _mm512_set1_epi8(static_cast<char>(0xFF));
+
+    for (; i + 64 <= length; i += 64) {
+
+        const __m512i x =
+            _mm512_loadu_si512(
+                reinterpret_cast<const void*>(data + i)
+            );
+
+        const __mmask64 mask =
+            _mm512_cmpgt_epu8_mask(
+                x,
+                threshold
+            );
+
+        const __m512i result =
+            _mm512_maskz_mov_epi8(
+                mask,
+                max_value
+            );
+
+        _mm512_storeu_si512(
+            reinterpret_cast<void*>(data + i),
+            result
+        );
     }
+
 #elif defined(__AVX2__)
-    const __m256i sign_flip = _mm256_set1_epi8(static_cast<char>(0x80));
-    const __m256i thresh256 = _mm256_set1_epi8(static_cast<char>(128));
-    const __m256i thresh_flipped = _mm256_xor_si256(thresh256, sign_flip);
 
-    for (; i + 31 < length; i += 32) {
-        __m256i chunk = _mm256_load_si256(reinterpret_cast<const __m256i*>(&ptr[i]));
-        __m256i chunk_flipped = _mm256_xor_si256(chunk, sign_flip);
-        __m256i mask = _mm256_cmpgt_epi8(chunk_flipped, thresh_flipped);
+    const __m256i sign_bit =
+        _mm256_set1_epi8(static_cast<char>(0x80));
 
-        if (length >= 2 * 1024 * 1024) {
-            _mm256_stream_si256(reinterpret_cast<__m256i*>(&ptr[i]), mask);
-        } else {
-            _mm256_store_si256(reinterpret_cast<__m256i*>(&ptr[i]), mask);
-        }
+    // 128 ^ 128 = 0x00.
+    //
+    // After sign-bit flipping:
+    //
+    // unsigned 128 -> signed 0
+    //
+    // We want:
+    //
+    // x > 128
+    //
+    // therefore compare against 0.
+
+    const __m256i threshold =
+        _mm256_setzero_si256();
+
+    const __m256i max_value =
+        _mm256_set1_epi8(static_cast<char>(0xFF));
+
+    for (; i + 32 <= length; i += 32) {
+
+        const __m256i x =
+            _mm256_loadu_si256(
+                reinterpret_cast<const __m256i*>(data + i)
+            );
+
+        const __m256i flipped =
+            _mm256_xor_si256(
+                x,
+                sign_bit
+            );
+
+        const __m256i mask =
+            _mm256_cmpgt_epi8(
+                flipped,
+                threshold
+            );
+
+        const __m256i result =
+            _mm256_and_si256(
+                mask,
+                max_value
+            );
+
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(data + i),
+            result
+        );
     }
-#elif defined(__SSE4_2__) || defined(__SSSE3__)
-    const __m128i sign_flip = _mm_set1_epi8(static_cast<char>(0x80));
-    const __m128i thresh128 = _mm_set1_epi8(static_cast<char>(128));
-    const __m128i thresh_flipped = _mm_xor_si128(thresh128, sign_flip);
 
-    for (; i + 15 < length; i += 16) {
-        __m128i chunk = _mm_load_si128(reinterpret_cast<const __m128i*>(&ptr[i]));
-        __m128i chunk_flipped = _mm_xor_si128(chunk, sign_flip);
-        __m128i mask = _mm_cmpgt_epi8(chunk_flipped, thresh_flipped);
+#elif defined(__SSE2__)
 
-        _mm_store_si128(reinterpret_cast<__m128i*>(&ptr[i]), mask);
+    const __m128i sign_bit =
+        _mm_set1_epi8(static_cast<char>(0x80));
+
+    const __m128i threshold =
+        _mm_setzero_si128();
+
+    const __m128i max_value =
+        _mm_set1_epi8(static_cast<char>(0xFF));
+
+    for (; i + 16 <= length; i += 16) {
+
+        const __m128i x =
+            _mm_loadu_si128(
+                reinterpret_cast<const __m128i*>(data + i)
+            );
+
+        const __m128i flipped =
+            _mm_xor_si128(
+                x,
+                sign_bit
+            );
+
+        const __m128i mask =
+            _mm_cmpgt_epi8(
+                flipped,
+                threshold
+            );
+
+        const __m128i result =
+            _mm_and_si128(
+                mask,
+                max_value
+            );
+
+        _mm_storeu_si128(
+            reinterpret_cast<__m128i*>(data + i),
+            result
+        );
     }
+
 #endif
 
-    // Scalar tail processing
+    // Scalar tail.
+
     for (; i < length; ++i) {
-        ptr[i] = (ptr[i] > 128) ? 255 : 0;
-    }
 
-#if defined(__AVX2__) || defined(__AVX512F__)
-    if (length >= 2 * 1024 * 1024) {
-        _mm_sfence();
+        data[i] =
+            (data[i] > 128u)
+                ? 255u
+                : 0u;
     }
-#endif
 }
 
-// Fast Contrast Boost
-inline void contrast_boost_simd(uint8_t* __restrict__ data, size_t length) {
-    size_t i = 0;
+// =============================================================================
+// Contrast boost
+//
+// Exact scalar reference:
+//
+//     value  = input * 294
+//     result = value >> 8
+//     result = min(result, 255)
+//
+// Supports:
+//   AVX-512BW
+//   AVX2
+//   SSE2
+//   scalar
+// =============================================================================
 
-#if defined(__GNUC__) || defined(__clang__)
-    uint8_t* ptr = static_cast<uint8_t*>(__builtin_assume_aligned(data, 64));
-#else
-    uint8_t* ptr = data;
+inline void contrast_boost_simd(
+    std::uint8_t* __restrict__ data,
+    std::size_t length
+) noexcept {
+    if (data == nullptr || length == 0) {
+        return;
+    }
+
+    std::size_t i = 0;
+
+#if defined(__AVX512BW__)
+
+    // Exact transformation:
+    //
+    //     floor(x * 294 / 256)
+    //
+    // rewritten as:
+    //
+    //     x + floor(x * 38 / 256)
+    //
+    // because:
+    //
+    //     294 = 256 + 38
+    //
+    // Maximum intermediate:
+    //
+    //     255 * 38 = 9690
+    //
+    // which safely fits in uint16_t.
+
+    const __m512i factor = _mm512_set1_epi16(38);
+    const __m512i max_value = _mm512_set1_epi16(255);
+
+    for (; i + 64 <= length; i += 64) {
+
+        const __m512i raw =
+            _mm512_loadu_si512(
+                reinterpret_cast<const void*>(data + i)
+            );
+
+        const __m256i raw_lo =
+            _mm512_castsi512_si256(raw);
+
+        const __m256i raw_hi =
+            _mm512_extracti64x4_epi64(raw, 1);
+
+        const __m512i lo =
+            _mm512_cvtepu8_epi16(raw_lo);
+
+        const __m512i hi =
+            _mm512_cvtepu8_epi16(raw_hi);
+
+        const __m512i lo_extra =
+            _mm512_srli_epi16(
+                _mm512_mullo_epi16(lo, factor),
+                8
+            );
+
+        const __m512i hi_extra =
+            _mm512_srli_epi16(
+                _mm512_mullo_epi16(hi, factor),
+                8
+            );
+
+        __m512i lo_result =
+            _mm512_add_epi16(lo, lo_extra);
+
+        __m512i hi_result =
+            _mm512_add_epi16(hi, hi_extra);
+
+        lo_result =
+            _mm512_min_epu16(
+                lo_result,
+                max_value
+            );
+
+        hi_result =
+            _mm512_min_epu16(
+                hi_result,
+                max_value
+            );
+
+        const __m256i packed_lo =
+            _mm512_cvtusepi16_epi8(lo_result);
+
+        const __m256i packed_hi =
+            _mm512_cvtusepi16_epi8(hi_result);
+
+        const __m512i result =
+            _mm512_castsi256_si512(packed_lo);
+
+        const __m512i final_result =
+            _mm512_inserti64x4(
+                result,
+                packed_hi,
+                1
+            );
+
+        _mm512_storeu_si512(
+            reinterpret_cast<void*>(data + i),
+            final_result
+        );
+    }
+
+#elif defined(__AVX2__)
+
+    const __m256i factor =
+        _mm256_set1_epi16(38);
+
+    const __m256i max_value =
+        _mm256_set1_epi16(255);
+
+    for (; i + 32 <= length; i += 32) {
+
+        const __m256i raw =
+            _mm256_loadu_si256(
+                reinterpret_cast<const __m256i*>(data + i)
+            );
+
+        const __m128i raw_lo =
+            _mm256_castsi256_si128(raw);
+
+        const __m128i raw_hi =
+            _mm256_extracti128_si256(raw, 1);
+
+        const __m256i lo =
+            _mm256_cvtepu8_epi16(raw_lo);
+
+        const __m256i hi =
+            _mm256_cvtepu8_epi16(raw_hi);
+
+        // x * 38 cannot overflow uint16_t.
+        const __m256i lo_extra =
+            _mm256_srli_epi16(
+                _mm256_mullo_epi16(lo, factor),
+                8
+            );
+
+        const __m256i hi_extra =
+            _mm256_srli_epi16(
+                _mm256_mullo_epi16(hi, factor),
+                8
+            );
+
+        __m256i out_lo =
+            _mm256_add_epi16(lo, lo_extra);
+
+        __m256i out_hi =
+            _mm256_add_epi16(hi, hi_extra);
+
+        out_lo =
+            _mm256_min_epu16(
+                out_lo,
+                max_value
+            );
+
+        out_hi =
+            _mm256_min_epu16(
+                out_hi,
+                max_value
+            );
+
+        const __m256i packed =
+            _mm256_packus_epi16(
+                out_lo,
+                out_hi
+            );
+
+        // _mm256_packus_epi16 operates independently
+        // on each 128-bit lane.
+        //
+        // Layout after pack:
+        //
+        //   lo[0..7]
+        //   hi[0..7]
+        //   lo[8..15]
+        //   hi[8..15]
+        //
+        // Rearrange into:
+        //
+        //   lo[0..15]
+        //   hi[0..15]
+        //
+        const __m256i result =
+            _mm256_permute4x64_epi64(
+                packed,
+                _MM_SHUFFLE(3, 1, 2, 0)
+            );
+
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(data + i),
+            result
+        );
+    }
+
+#elif defined(__SSE2__)
+
+    const __m128i factor =
+        _mm_set1_epi16(38);
+
+    const __m128i max_value =
+        _mm_set1_epi16(255);
+
+    const __m128i zero =
+        _mm_setzero_si128();
+
+    for (; i + 16 <= length; i += 16) {
+
+        const __m128i raw =
+            _mm_loadu_si128(
+                reinterpret_cast<const __m128i*>(data + i)
+            );
+
+        const __m128i lo =
+            _mm_unpacklo_epi8(raw, zero);
+
+        const __m128i hi =
+            _mm_unpackhi_epi8(raw, zero);
+
+        const __m128i lo_extra =
+            _mm_srli_epi16(
+                _mm_mullo_epi16(lo, factor),
+                8
+            );
+
+        const __m128i hi_extra =
+            _mm_srli_epi16(
+                _mm_mullo_epi16(hi, factor),
+                8
+            );
+
+        __m128i out_lo =
+            _mm_add_epi16(
+                lo,
+                lo_extra
+            );
+
+        __m128i out_hi =
+            _mm_add_epi16(
+                hi,
+                hi_extra
+            );
+
+        out_lo =
+            _mm_min_epu16(
+                out_lo,
+                max_value
+            );
+
+        out_hi =
+            _mm_min_epu16(
+                out_hi,
+                max_value
+            );
+
+        const __m128i result =
+            _mm_packus_epi16(
+                out_lo,
+                out_hi
+            );
+
+        _mm_storeu_si128(
+            reinterpret_cast<__m128i*>(data + i),
+            result
+        );
+    }
+
 #endif
 
-#if defined(__AVX2__)
-    const __m256i c38 = _mm256_set1_epi16(38);
-
-    for (; i + 31 < length; i += 32) {
-        __m256i raw = _mm256_load_si256(reinterpret_cast<const __m256i*>(&ptr[i]));
-
-        __m256i lo16 = _mm256_cvtepu8_epi16(_mm256_castsi256_si128(raw));
-        __m256i hi16 = _mm256_cvtepu8_epi16(_mm256_extracti128_si256(raw, 1));
-
-        __m256i prod_lo = _mm256_mullo_epi16(lo16, c38);
-        __m256i prod_hi = _mm256_mullo_epi16(hi16, c38);
-
-        __m256i val_lo = _mm256_add_epi16(lo16, _mm256_srli_epi16(prod_lo, 8));
-        __m256i val_hi = _mm256_add_epi16(hi16, _mm256_srli_epi16(prod_hi, 8));
-
-        __m256i packed = _mm256_packus_epi16(val_lo, val_hi);
-        __m256i result = _mm256_permute4x64_epi64(packed, _MM_SHUFFLE(3, 1, 2, 0));
-
-        if (length >= 2 * 1024 * 1024) {
-            _mm256_stream_si256(reinterpret_cast<__m256i*>(&ptr[i]), result);
-        } else {
-            _mm256_store_si256(reinterpret_cast<__m256i*>(&ptr[i]), result);
-        }
-    }
-#elif defined(__SSE4_2__) || defined(__SSSE3__)
-    const __m128i c38 = _mm_set1_epi16(38);
-
-    for (; i + 15 < length; i += 16) {
-        __m128i raw = _mm_load_si128(reinterpret_cast<const __m128i*>(&ptr[i]));
-
-        __m128i lo16 = _mm_cvtepu8_epi16(raw);
-        __m128i hi16 = _mm_cvtepu8_epi16(_mm_srli_si128(raw, 8));
-
-        __m128i val_lo = _mm_add_epi16(lo16, _mm_srli_epi16(_mm_mullo_epi16(lo16, c38), 8));
-        __m128i val_hi = _mm_add_epi16(hi16, _mm_srli_epi16(_mm_mullo_epi16(hi16, c38), 8));
-
-        __m128i result = _mm_packus_epi16(val_lo, val_hi);
-        _mm_store_si128(reinterpret_cast<__m128i*>(&ptr[i]), result);
-    }
-#endif
-
+    // Scalar tail.
     for (; i < length; ++i) {
-        uint32_t val = static_cast<uint32_t>(ptr[i]) * 294;
-        ptr[i] = (val > 65280) ? 255 : static_cast<uint8_t>(val >> 8);
-    }
 
-#if defined(__AVX2__) || defined(__AVX512F__)
-    if (length >= 2 * 1024 * 1024) {
-        _mm_sfence();
+        const std::uint32_t value =
+            static_cast<std::uint32_t>(data[i]) * 294u;
+
+        const std::uint32_t result =
+            value >> 8u;
+
+        data[i] =
+            static_cast<std::uint8_t>(
+                result > 255u
+                    ? 255u
+                    : result
+            );
     }
-#endif
 }
 
-} // namespace ops
-} // namespace fin
+} // namespace fin::ops
 
 #endif // TENSOR_OPS_HPP

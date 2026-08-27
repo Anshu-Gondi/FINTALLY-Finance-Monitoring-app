@@ -1,5 +1,5 @@
 [package]
-name        = "fintally_chatbot"
+name = "fintally_chatbot"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -19,49 +19,47 @@ path = "src/bin/download_models.rs"
 analytics_engine = { path = "../analytics_engine" }
 fintally_db = { path = "../fintally_db" }
 
-# 🔥 From workspace (NO versions here)
-candle-core         = { workspace = true }
-candle-nn           = { workspace = true }
+# Workspace dependencies
+candle-core = { workspace = true }
+candle-nn = { workspace = true }
 candle-transformers = { workspace = true }
-memmap2             = { workspace = true }
-tokenizers          = { workspace = true }
+memmap2 = { workspace = true }
+tokenizers = { workspace = true }
 
 google-drive3 = "7.0.0"
 yup-oauth2 = "12.0.0"
 http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["client-legacy", "tokio"] }
 
-tokio              = { workspace = true }
-once_cell          = { workspace = true }
-thiserror          = { workspace = true }
-tracing            = { workspace = true }
+tokio = { workspace = true }
+once_cell = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 
-serde              = { workspace = true }
-serde_json         = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
-async-stream       = { workspace = true }
-async-trait        = { workspace = true }
-futures-util       = { workspace = true }
-futures-core       = { workspace = true }
-futures-executor   = { workspace = true }
-tokio-stream       = { workspace = true }
-tokio-util         = { workspace = true }
+async-stream = { workspace = true }
+async-trait = { workspace = true }
+futures-util = { workspace = true }
+futures-core = { workspace = true }
+futures-executor = { workspace = true }
+tokio-stream = { workspace = true }
+tokio-util = { workspace = true }
 
-signal-hook        = { workspace = true }
+signal-hook = { workspace = true }
 
-uuid = { version = "1", features = ["v4"] }
 ndarray = "0.15"
 
-regex              = { workspace = true }
-fxhash             = { workspace = true }
+regex = { workspace = true }
+fxhash = { workspace = true }
 usearch = { workspace = true }
 
 hf-hub = "0.5.0"
 anyhow = "1.0"
 
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json", "uuid",] }
-chrono = { version = "0.4", features = ["serde"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "json", "uuid"] }
 rand = "0.10.2"
 lopdf = "0.35"
 unicode-normalization = "0.1"
@@ -79,3 +77,4 @@ bindgen = "0.72"
 ureq = "2.9"
 flate2 = "1.0"
 tar = "0.4"
+pkg-config = "0.3.34"

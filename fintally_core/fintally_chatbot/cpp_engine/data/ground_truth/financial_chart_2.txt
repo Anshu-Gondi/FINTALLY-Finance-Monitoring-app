@@ -1,0 +1,40 @@
+SAMPLE
+BALANCE SHEET
+
+ASSETS
+Current Assets:
+  Checking Account                             5,000
+  Savings Account                              1,000
+  Petty Cash                                     500
+  Accounts Receivable                         22,000
+  Inventory                                   15,000
+  Prepaid Insurance                            4,000
+Total Current Assets                          47,500
+
+Noncurrent Assets:
+  Accumulated Depreciation                    -4,500
+  Computer                                     7,000
+  Building                                    65,000
+  Land                                        60,000
+Total Noncurrent Assets                      127,000
+
+Total Assets:                                177,000
+
+LIABILITIES & EQUITY
+Liabilities
+Current Liabilities:
+  Accounts Payable                            12,000
+  Line of Credit                              20,000
+  Payroll Liabilities                          7,000
+Total Current Liabilities:                    39,000
+
+Noncurrent Liabilities:
+  Long-term Debt (loan)                       48,000
+Total Liabilities:                            87,000
+
+Equity
+  Owner's Capital                             35,000
+  Retained Earnings                           55,000
+Total Equity:                                 90,000
+
+Total Liabilities & Equity:                  177,000

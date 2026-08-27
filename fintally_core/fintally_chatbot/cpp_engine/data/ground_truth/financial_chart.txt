@@ -1,0 +1,75 @@
+Finance Dashboard: August
+
+[Header Section]
+Current Position:
+Savings: 25,000
+Equity: 142,720
+Mortgage Principal: 215,500
+
+[Current Month Table]
+Activity | Actual | Budget | Variance
+House Expense | 1,927 | 1,924 | -3
+Savings | 1,000 | 1,000 | 0
+Grocery | 530 | 500 | -30
+Car Expense | 421 | 400 | -21
+Dine Out | 393 | 400 | 7
+Entertainment | 221 | 200 | -21
+Misc | 100 | - | -100
+Travel | 98 | 400 | 302
+Interest | 87 | - | -87
+Bank Fees | 11 | 8 | -3
+Clothes | - | 100 | 100
+
+[c. Month Expenses]
+# Expense Detail
+1 Grocery: 530
+2 Condo Fees: 440
+3 Gas: 267
+4 Golf: 221
+5 Car Insurance: 150
+6 Pub/Dining: 132
+7 Fast Food: 128
+8 Cable / Internet: 110
+9 ATM withdrawal: 100
+10 Car Rental: 98
+others: 254
+
+[p12 Months Summary Table]
+Activity | Actual | Budget | Variance | Actual/Budget %
+Savings | 11,500 | 12,000 | -500 | 96%
+Dine Out | 8,864 | 4,800 | -4,064 | 185%
+Entertainment | 6,556 | 2,400 | -4,156 | 273%
+Misc | 5,635 | - | -5,635 | -
+Travel | 4,466 | 4,800 | 334 | 93%
+Car Expense | 3,859 | 4,859 | 1,000 | 79%
+Grocery | 3,682 | 6,000 | 2,318 | 61%
+Clothes | 1,875 | 1,200 | -675 | 156%
+Interest | 348 | - | -348 | -
+Bank Fees | 134 | 107 | -27 | 125%
+
+[p12M > Budget]
+# Activity | Var
+1 Entertainment | -4,156
+2 Dine Out | -4,064
+3 Clothes | -675
+4 Interest | -348
+5 House Expense | -222
+
+[Unbudgeted (misc)]
+# Activity | Var
+1 ATM withdrawal | -4,689
+2 Mortgage Payment | -676
+3 Books | -201
+4 Dry Cleaning | -37
+5 Tools | -32
+
+[p12M < Budget]
+# Activity | Var
+1 Grocery | 2,318
+2 Car Expense | 1,000
+3 Savings | 500
+4 Travel | 334
+
+[Chart: p12 Months Residual Pay]
+Key Values: 1,364 | -7,536 | 2,193
+Months: Sep 10, Oct 10, Nov 10, Dec 10, Jan 11, Feb 11, Mar 11, Apr 11, May 11, Jun 11, Jul 11, Aug 11

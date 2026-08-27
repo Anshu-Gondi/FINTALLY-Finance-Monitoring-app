@@ -247,7 +247,7 @@ impl VisionEngine {
             .filter_map(|(idx, &tok)| if tok == self.image_token_id { Some(idx) } else { None })
             .collect();
 
-        let combined_embeds = if !image_indices.is_empty() {
+        let _combined_embeds = if !image_indices.is_empty() {
             let first_img_idx = image_indices[0];
             let img_count = image_indices.len();
 

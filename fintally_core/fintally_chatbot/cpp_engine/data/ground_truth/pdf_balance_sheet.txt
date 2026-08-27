@@ -1,0 +1,44 @@
+Balance sheet statement example
+(Amount in $ millions)
+
+Assets
+Current assets
+  Cash and Cash Equivalents                    19,700
+  Accounts Receivable                          10,000
+  Inventory                                     7,500
+  Prepaid Expenses                              1,000
+  Total Current Assets                         38,200
+
+Non-Current Assets
+  Property, Plant, and Equipment (PPE)         50,000
+  Goodwill                                     15,000
+  Intangible Assets                             8,000
+  Long-Term Investments                         5,000
+  Total Non-Current Assets                     78,000
+
+Total Assets                                  116,200
+
+Equity
+  Common Stock                                 10,000
+  Additional Paid-In Capital                   15,000
+  Retained Earnings                            30,000
+  Accumulated Other Comprehensive Income        4,200
+  Total Equity                                 59,200
+
+Liabilities
+Current Liabilities
+  Accounts Payable                              8,500
+  Short-Term Debt                               5,000
+  Accrued Expenses                              2,000
+  Income Taxes Payable                          1,500
+  Total Current Liabilities                    17,000
+
+Non-Current Liabilities
+  Long-Term Debt                               30,000
+  Deferred Tax Liabilities                      3,500
+  Pension Liabilities                           4,500
+  Other Long-Term Liabilities                   2,000
+  Total Non-Current Liabilities                40,000
+
+Total Liabilities                              57,000
+Total Liabilities and Equity                  116,200
