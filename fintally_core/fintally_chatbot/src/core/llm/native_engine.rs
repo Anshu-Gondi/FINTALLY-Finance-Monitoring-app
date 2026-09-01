@@ -27,6 +27,7 @@ pub struct TokenOutputStream {
 }
 
 impl TokenOutputStream {
+    #[inline]
     pub fn new(tokenizer: Tokenizer) -> Self {
         Self {
             tokenizer,
@@ -156,13 +157,13 @@ impl NativeLlamaEngine {
         )))
     }
 
-    /// Creates request-local ModelWeights by parsing GGUF content on demand from memory
+    /// Reads GGUF metadata from mmap RAM and constructs ModelWeights for the request
     fn create_request_model(&self) -> Result<ModelWeights, AppError> {
         let mut reader = Cursor::new(&self.mmap[..]);
-        let gguf_content = gguf_file::Content::read(&mut reader)
-            .map_err(|e| AppError::InferenceError(format!("Failed parsing GGUF metadata: {e}")))?;
+        let content = gguf_file::Content::read(&mut reader)
+            .map_err(|e| AppError::InferenceError(format!("Failed reading GGUF header: {e}")))?;
 
-        ModelWeights::from_gguf(gguf_content, &mut reader, &self.device)
+        ModelWeights::from_gguf(content, &mut reader, &self.device)
             .map_err(|e| AppError::InferenceError(format!("Failed instantiating GGUF model: {e}")))
     }
 
@@ -230,7 +231,6 @@ impl LlmEngine for NativeLlamaEngine {
             let mut logits_processor = LogitsProcessor::new(seed, Some(0.7), Some(0.8));
             let repetition_penalty: f32 = 1.15;
 
-            // Stream decoder handles multi-byte UTF-8 token boundaries safely
             let mut token_stream = TokenOutputStream::new(tokenizer_instance);
             let mut seen_tokens: HashSet<u32> = HashSet::with_capacity(max_tokens);
             let mut generated_tokens = 0;
@@ -306,7 +306,6 @@ impl LlmEngine for NativeLlamaEngine {
                     }
                 };
 
-                // Sanitize NaNs / Inf values
                 for v in logits_vec.iter_mut() {
                     if !v.is_finite() {
                         *v = -1e9;
@@ -337,7 +336,6 @@ impl LlmEngine for NativeLlamaEngine {
 
                 seen_tokens.insert(next_token_id);
 
-                // Stream decoded text chunk safely via TokenOutputStream
                 if let Ok(Some(token_str)) = token_stream.next_token(next_token_id) {
                     if tx.blocking_send(Ok(token_str)).is_err() {
                         break;
@@ -364,7 +362,6 @@ impl LlmEngine for NativeLlamaEngine {
                 generated_tokens += 1;
             }
 
-            // Flush remaining buffered stream bytes if any
             if let Ok(Some(rest)) = token_stream.decode_rest() {
                 let _ = tx.blocking_send(Ok(rest));
             }

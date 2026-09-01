@@ -54,10 +54,15 @@ function App() {
     }
   }, []);
 
-  useEffect(() => { fetchBudgets(); }, [fetchBudgets]);
+  useEffect(() => {
+    fetchBudgets();
+  }, [fetchBudgets]);
 
   const saveBudget = async () => {
-    if (!budgetAmount) { alert("Please enter budget amount"); return; }
+    if (!budgetAmount) {
+      alert("Please enter budget amount");
+      return;
+    }
     try {
       const json = await budgetApi.save({
         amount: Number(budgetAmount),
@@ -82,6 +87,7 @@ function App() {
 
   const activeEMIs = transactions.filter(
     (t) =>
+      t && // Prevents crash if a transaction is undefined or null
       t.isRecurring &&
       t.emiMeta &&
       t.recurringFrequency === "Monthly" &&
@@ -89,7 +95,8 @@ function App() {
   );
 
   const totalMonthlyEMI = activeEMIs.reduce(
-    (sum, t) => sum + Math.abs(t.price), 0,
+    (sum, t) => sum + Math.abs(t.price),
+    0,
   );
 
   const emiBudgetPercent =
@@ -123,12 +130,15 @@ function App() {
     }
   };
 
-  useEffect(() => { fetchTransactions(page); }, [page, fetchTransactions]);
+  useEffect(() => {
+    fetchTransactions(page);
+  }, [page, fetchTransactions]);
 
   useEffect(() => {
     const handleScroll = () => {
       if (
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 50 &&
+        window.innerHeight + window.scrollY >=
+          document.body.offsetHeight - 50 &&
         hasMore
       ) {
         setPage((prev) => prev + 1);
@@ -194,7 +204,10 @@ function App() {
           category,
           name,
         });
-        if (!json.success) { alert(json.message || "EMI creation failed"); return; }
+        if (!json.success) {
+          alert(json.message || "EMI creation failed");
+          return;
+        }
         resetForm();
         await fetchAndReplaceTransactions();
       } catch (err) {
@@ -229,7 +242,7 @@ function App() {
   const updateTransaction = async (ev) => {
     ev.preventDefault();
     try {
-      const json = await transactionApi.update(
+      await transactionApi.update(
         editingId,
         {
           name,
@@ -242,12 +255,10 @@ function App() {
         },
         receipt,
       );
-      setTransactions((prev) =>
-        prev.map((tx) =>
-          (tx._id || tx.id) === editingId ? json.data : tx,
-        ),
-      );
+
+      // Reset form and refetch to guarantee accurate state
       resetForm();
+      await fetchAndReplaceTransactions();
     } catch (err) {
       alert(err.message || "Failed to update transaction");
     }
@@ -271,7 +282,8 @@ function App() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this transaction?")) return;
+    if (!window.confirm("Are you sure you want to delete this transaction?"))
+      return;
     try {
       await transactionApi.delete(id);
       setTransactions((prev) => prev.filter((t) => (t._id || t.id) !== id));
@@ -317,7 +329,11 @@ function App() {
   );
 
   const uniqueTransactions = Array.from(
-    new Map(filteredTransactions.map((t) => [t._id || t.id, t])).values(),
+    new Map(
+      filteredTransactions
+        .filter((t) => t) // Strip out any undefined values first
+        .map((t) => [t._id || t.id, t]),
+    ).values(),
   );
 
   // ─── Render ──────────────────────────────────────────────────────────────
@@ -390,7 +406,8 @@ function App() {
                 const spent = Math.abs(
                   transactions
                     .filter(
-                      (t) => t.category === b.category || b.category === "Overall",
+                      (t) =>
+                        t.category === b.category || b.category === "Overall",
                     )
                     .reduce((s, t) => s + (t.price < 0 ? t.price : 0), 0),
                 );
@@ -435,9 +452,17 @@ function App() {
         {activeEMIs.length > 0 && (
           <div className="neonBox mt-4">
             <h3 className="title is-5">💳 EMI Load Monitor</h3>
-            <p>📌 Active EMIs: <strong>{activeEMIs.length}</strong></p>
-            <p>💸 Total Monthly EMI: <strong>₹{totalMonthlyEMI.toFixed(2)}</strong></p>
-            <p>📊 EMI Budget Usage: <strong>{emiBudgetPercent.toFixed(1)}%</strong></p>
+            <p>
+              📌 Active EMIs: <strong>{activeEMIs.length}</strong>
+            </p>
+            <p>
+              💸 Total Monthly EMI:{" "}
+              <strong>₹{totalMonthlyEMI.toFixed(2)}</strong>
+            </p>
+            <p>
+              📊 EMI Budget Usage:{" "}
+              <strong>{emiBudgetPercent.toFixed(1)}%</strong>
+            </p>
             <progress
               className={`progress ${emiBudgetPercent > 80 ? "is-danger" : "is-primary"}`}
               value={emiBudgetPercent}
@@ -485,7 +510,9 @@ function App() {
                 disabled={isEMI}
                 onChange={(e) => setPrice(Number(e.target.value))}
                 placeholder={
-                  isEMI ? "Calculated from EMI" : "Amount (negative for expense)"
+                  isEMI
+                    ? "Calculated from EMI"
+                    : "Amount (negative for expense)"
                 }
                 required={!isEMI}
               />
@@ -592,7 +619,9 @@ function App() {
                   value={emiTenure}
                   onChange={(e) => setEmiTenure(e.target.value)}
                 />
-                <p>📆 Monthly EMI: <strong>₹{emiAmount.toFixed(2)}</strong></p>
+                <p>
+                  📆 Monthly EMI: <strong>₹{emiAmount.toFixed(2)}</strong>
+                </p>
                 {!emiAffordable && (
                   <p className="has-text-danger mt-2">
                     🚫 EMI not affordable under current budget
