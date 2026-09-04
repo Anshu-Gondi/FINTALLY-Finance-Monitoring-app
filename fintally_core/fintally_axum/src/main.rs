@@ -13,7 +13,11 @@ use fintally_chatbot::core::vision::engine::{DocumentInput, VisionEngine};
 use axum::{ routing::{ get, post, delete }, Router, response::IntoResponse, Json, Extension };
 use tower_http::cors::{ CorsLayer, Any };
 use futures_util::StreamExt;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+use anyhow::Context;
 
 pub mod auth;
 pub mod routes;
@@ -91,6 +95,297 @@ fn build_analytics_router(pool: sqlx::PgPool) -> Router {
         .with_state(pool)
 }
 
+// =============================================================================
+// Qwen model discovery
+// =============================================================================
+//
+// download_models selects exactly one Qwen variant and installs only the
+// required GGUF artifact(s). main.rs must not hardcode a model filename because
+// the selected variant can differ between machines.
+//
+// The resolver:
+//   1. searches the configured Qwen model directory recursively,
+//   2. ignores temporary/incomplete files,
+//   3. understands both single-file and sharded GGUF layouts,
+//   4. requires every shard of a sharded model to exist and be non-empty,
+//   5. prefers the most specific Qwen Instruct GGUF artifact,
+//   6. fails loudly when the directory is ambiguous.
+//
+// This makes startup deterministic and prevents accidentally loading an old
+// model left behind by a previous hardware profile.
+
+#[derive(Debug, Clone)]
+struct ResolvedQwenModel {
+    root_dir: PathBuf,
+    model_files: Vec<PathBuf>,
+    display_name: String,
+}
+
+fn collect_gguf_files(root: &Path) -> std::io::Result<Vec<PathBuf>> {
+    fn visit(dir: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                visit(&path, files)?;
+                continue;
+            }
+
+            let is_gguf = path
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .map(|ext| ext.eq_ignore_ascii_case("gguf"))
+                .unwrap_or(false);
+
+            if !is_gguf {
+                continue;
+            }
+
+            let filename = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default();
+
+            // Never consider temporary downloads valid.
+            if filename.starts_with('.') || filename.contains(".part-") {
+                continue;
+            }
+
+            let metadata = fs::metadata(&path)?;
+
+            if metadata.is_file() && metadata.len() > 0 {
+                files.push(path);
+            }
+        }
+
+        Ok(())
+    }
+
+    let mut files = Vec::new();
+
+    if root.exists() {
+        visit(root, &mut files)?;
+    }
+
+    Ok(files)
+}
+
+fn parse_shard_name(filename: &str) -> Option<(String, usize, usize)> {
+    // Example:
+    // qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf
+    let lower = filename.to_ascii_lowercase();
+
+    let suffix = lower.strip_suffix(".gguf")?;
+    let marker = "-of-";
+
+    let of_pos = suffix.rfind(marker)?;
+    let before_of = &suffix[..of_pos];
+    let total_start = of_pos + marker.len();
+
+    let total = suffix[total_start..].parse::<usize>().ok()?;
+
+    let dash_pos = before_of.rfind('-')?;
+    let index_str = &before_of[dash_pos + 1..];
+
+    let index = index_str.parse::<usize>().ok()?;
+    let prefix = before_of[..dash_pos].to_owned();
+
+    Some((prefix, index, total))
+}
+
+fn resolve_qwen_model(root: impl AsRef<Path>) -> anyhow::Result<ResolvedQwenModel> {
+    let root = root.as_ref();
+
+    if !root.exists() {
+        anyhow::bail!(
+            "Qwen model directory does not exist: {}",
+            root.display()
+        );
+    }
+
+    let gguf_files = collect_gguf_files(root)
+        .with_context(|| {
+            format!(
+                "failed to inspect Qwen model directory: {}",
+                root.display()
+            )
+        })?;
+
+    if gguf_files.is_empty() {
+        anyhow::bail!(
+            "no usable GGUF model files found under {}",
+            root.display()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // First resolve complete sharded models.
+    // -------------------------------------------------------------------------
+
+    let mut shard_groups:
+        std::collections::BTreeMap<String, Vec<(usize, usize, PathBuf)>> =
+        std::collections::BTreeMap::new();
+
+    for path in &gguf_files {
+        let filename = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default();
+
+        if let Some((prefix, index, total)) = parse_shard_name(filename) {
+            shard_groups
+                .entry(prefix)
+                .or_default()
+                .push((index, total, path.clone()));
+        }
+    }
+
+    let mut complete_sharded_candidates = Vec::new();
+
+    for (prefix, mut shards) in shard_groups {
+        if shards.is_empty() {
+            continue;
+        }
+
+        shards.sort_by_key(|(index, _, _)| *index);
+
+        let expected_total = shards[0].1;
+
+        if expected_total <= 1 || shards.len() != expected_total {
+            continue;
+        }
+
+        let complete = shards
+            .iter()
+            .enumerate()
+            .all(|(position, (index, total, _))| {
+                *total == expected_total && *index == position + 1
+            });
+
+        if complete {
+            complete_sharded_candidates.push((
+                prefix,
+                shards
+                    .into_iter()
+                    .map(|(_, _, path)| path)
+                    .collect::<Vec<_>>(),
+            ));
+        }
+    }
+
+    if !complete_sharded_candidates.is_empty() {
+        // Prefer Qwen Instruct models. Then prefer the largest complete model
+        // only when multiple complete Qwen variants are present.
+        complete_sharded_candidates.sort_by(|a, b| {
+            let a_name = a.0.to_ascii_lowercase();
+            let b_name = b.0.to_ascii_lowercase();
+
+            let a_instruct = a_name.contains("instruct");
+            let b_instruct = b_name.contains("instruct");
+
+            b_instruct
+                .cmp(&a_instruct)
+                .then_with(|| b_name.cmp(&a_name))
+        });
+
+        let (prefix, files) = complete_sharded_candidates
+            .into_iter()
+            .next()
+            .expect("candidate list was checked as non-empty");
+
+        return Ok(ResolvedQwenModel {
+            root_dir: root.to_path_buf(),
+            model_files: files,
+            display_name: format!("{prefix}.gguf (sharded)"),
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Single-file model fallback.
+    // -------------------------------------------------------------------------
+
+    let mut single_file_candidates = gguf_files
+        .into_iter()
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| {
+                    let lower = name.to_ascii_lowercase();
+
+                    lower.contains("qwen")
+                        && lower.contains("instruct")
+                        && !parse_shard_name(name).is_some()
+                })
+                .unwrap_or(false)
+        })
+        .collect::<Vec<_>>();
+
+    if single_file_candidates.is_empty() {
+        anyhow::bail!(
+            "GGUF files exist under {}, but no usable Qwen Instruct model was found",
+            root.display()
+        );
+    }
+
+    single_file_candidates.sort();
+
+    if single_file_candidates.len() > 1 {
+        anyhow::bail!(
+            "multiple single-file Qwen models are installed under {}. \
+             Remove stale models so startup cannot select the wrong artifact. \
+             Candidates: {}",
+            root.display(),
+            single_file_candidates
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
+    }
+
+    let model_file = single_file_candidates
+        .into_iter()
+        .next()
+        .expect("candidate list was checked as non-empty");
+
+    let display_name = model_file
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("qwen-model.gguf")
+        .to_owned();
+
+    Ok(ResolvedQwenModel {
+        root_dir: root.to_path_buf(),
+        model_files: vec![model_file],
+        display_name,
+    })
+}
+
+fn prepare_qwen_model_for_engine(
+    root: impl AsRef<Path>,
+) -> anyhow::Result<ResolvedQwenModel> {
+    let resolved = resolve_qwen_model(root)?;
+
+    println!("🧠 Resolved Qwen runtime model:");
+    println!("   Name : {}", resolved.display_name);
+    println!("   Root : {}", resolved.root_dir.display());
+
+    for file in &resolved.model_files {
+        let size_mb = fs::metadata(file)
+            .map(|m| m.len() as f64 / 1024.0 / 1024.0)
+            .unwrap_or(0.0);
+
+        println!(
+            "   GGUF : {} ({:.2} MB)",
+            file.display(),
+            size_mb
+        );
+    }
+
+    Ok(resolved)
+}
+
 #[tokio::main]
 async fn main() {
     let db_ctx = DbContext::init().await.expect("Failed to initialize Supabase connection pool");
@@ -108,13 +403,37 @@ async fn main() {
     jobs::jobs::start_scheduler(pool.clone(), rag_service.clone());
     println!("⚙️  Thread pool processes registered. Background schedulers operational.");
 
-    // ─── 1. Initialize Native Llama Engine Model ────────────────────────────
-    println!("⏳ Loading Native Qwen LLM weights into system memory...");
+    // ─── 1. Resolve + Initialize Native Llama Engine Model ────────────────
+    //
+    // Do not hardcode "3B", "7B", Q4, Q8, etc. here.
+    // download_models is responsible for selecting the correct model for the
+    // machine; startup discovers exactly what was installed.
+
+    const QWEN_MODEL_ROOT: &str =
+        "./llm_models/chat/qwen_safetensors_output";
+
+    println!("🔎 Resolving installed Qwen model...");
+
+    let resolved_qwen = prepare_qwen_model_for_engine(QWEN_MODEL_ROOT)
+        .expect("Failed to resolve a valid installed Qwen model");
+
+    // NativeLlamaEngine currently consumes the model directory layout, so keep
+    // passing the validated root while ensuring startup has already rejected
+    // incomplete/ambiguous installations.
+    println!(
+        "⏳ Loading Native Qwen LLM weights from {}...",
+        resolved_qwen.root_dir.display()
+    );
 
     let native_engine = Arc::new(
-        NativeLlamaEngine::load_from_vault("./llm_models/chat/qwen_safetensors_output").expect(
-            "Failed to instantiate native Qwen inference engine from specified path layout"
+        NativeLlamaEngine::load_from_vault(
+            resolved_qwen
+                .root_dir
+                .to_str()
+                .context("Qwen model root path is not valid UTF-8")
+                .expect("Invalid Qwen model root path"),
         )
+        .expect("Failed to instantiate native Qwen inference engine from validated model path")
     );
 
     // ─── 2. Execute Async LLM Warmup Sequence ─────────────────────────────

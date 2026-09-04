@@ -18,7 +18,6 @@ use candle_transformers::models::quantized_qwen2::ModelWeights;
 use memmap2::{Mmap, MmapOptions};
 use tokenizers::Tokenizer;
 
-/// Helper struct for streaming decoded tokens without splitting multi-byte UTF-8 sequences.
 pub struct TokenOutputStream {
     tokenizer: Tokenizer,
     tokens: Vec<u32>,
@@ -97,11 +96,8 @@ pub struct NativeLlamaEngine {
     pub vault_dir: PathBuf,
     pub tokenizer: Tokenizer,
     pub device: Device,
-    // Shared memory map across requests
     pub mmap: Arc<Mmap>,
-    // Cached special token IDs to prevent repeated dictionary lookups
-    pub eos_token_id: Option<u32>,
-    pub im_end_token_id: Option<u32>,
+    pub stop_token_ids: HashSet<u32>,
 }
 
 impl NativeLlamaEngine {
@@ -114,15 +110,17 @@ impl NativeLlamaEngine {
         let tokenizer = Tokenizer::from_file(&tokenizer_path)
             .map_err(|e| format!("Failed to parse tokenizer.json: {e}"))?;
 
-        // Cache special EOS token IDs once
+        // Extract all Qwen special stop tokens
         let vocab = tokenizer.get_vocab(true);
-        let eos_token_id = vocab.get("<|endoftext|>").copied();
-        let im_end_token_id = vocab.get("<|im_end|>").copied();
+        let mut stop_token_ids = HashSet::new();
+        for &stop_str in &["<|endoftext|>", "<|im_end|>", "<|im_start|>"] {
+            if let Some(&id) = vocab.get(stop_str) {
+                stop_token_ids.insert(id);
+            }
+        }
 
-        // Locate GGUF File
         let gguf_path = Self::get_gguf_file_from_dir(&path).map_err(|e| e.to_string())?;
 
-        // Open and Mmap the GGUF model file ONCE
         let file = File::open(&gguf_path)
             .map_err(|e| format!("Failed opening GGUF file {:?}: {e}", gguf_path))?;
 
@@ -137,8 +135,7 @@ impl NativeLlamaEngine {
             tokenizer,
             device,
             mmap: Arc::new(mmap),
-            eos_token_id,
-            im_end_token_id,
+            stop_token_ids,
         })
     }
 
@@ -157,7 +154,18 @@ impl NativeLlamaEngine {
         )))
     }
 
-    /// Reads GGUF metadata from mmap RAM and constructs ModelWeights for the request
+    /// Automatically formats raw text into standard Qwen2/2.5 ChatML template if missing.
+    fn format_chatml_prompt(&self, prompt: &str) -> String {
+        if prompt.contains("<|im_start|>") {
+            prompt.to_string()
+        } else {
+            format!(
+                "<|im_start|>system\nYou are a helpful, concise AI assistant.<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+                prompt.trim()
+            )
+        }
+    }
+
     fn create_request_model(&self) -> Result<ModelWeights, AppError> {
         let mut reader = Cursor::new(&self.mmap[..]);
         let content = gguf_file::Content::read(&mut reader)
@@ -167,12 +175,14 @@ impl NativeLlamaEngine {
             .map_err(|e| AppError::InferenceError(format!("Failed instantiating GGUF model: {e}")))
     }
 
+    /// Applies repetition penalty on a sliding window of recent tokens (prevents context corruption)
     #[inline]
-    fn apply_repetition_penalty(logits: &mut [f32], penalty: f32, seen_tokens: &HashSet<u32>) {
-        if penalty == 1.0 || seen_tokens.is_empty() {
+    fn apply_windowed_repetition_penalty(logits: &mut [f32], penalty: f32, recent_tokens: &[u32]) {
+        if (penalty - 1.0).abs() < f32::EPSILON || recent_tokens.is_empty() {
             return;
         }
-        for &token_id in seen_tokens {
+        let unique_recent: HashSet<&u32> = recent_tokens.iter().collect();
+        for &token_id in unique_recent {
             if let Some(logit) = logits.get_mut(token_id as usize) {
                 if *logit < 0.0 {
                     *logit *= penalty;
@@ -205,9 +215,12 @@ impl LlmEngine for NativeLlamaEngine {
         let (tx, rx) = mpsc::channel::<Result<String, AppError>>(32);
         let cancel = CancellationToken::new();
 
+        // 1. Format input using ChatML
+        let formatted_prompt = self.format_chatml_prompt(prompt);
+
         let tokens = self
             .tokenizer
-            .encode(prompt.trim(), true)
+            .encode(formatted_prompt.as_str(), true)
             .map_err(|e| AppError::InferenceError(format!("Token encoding error: {e}")))?;
 
         let prompt_tokens = tokens.get_ids().to_vec();
@@ -219,8 +232,7 @@ impl LlmEngine for NativeLlamaEngine {
         let tokenizer_instance = self.tokenizer.clone();
         let compute_device = self.device.clone();
         let cancel_child = cancel.clone();
-        let eos_id = self.eos_token_id;
-        let im_end_id = self.im_end_token_id;
+        let stop_tokens = self.stop_token_ids.clone();
 
         tokio::task::spawn_blocking(move || {
             if cancel_child.is_cancelled() {
@@ -228,11 +240,15 @@ impl LlmEngine for NativeLlamaEngine {
             }
 
             let seed = rand::random::<u64>();
-            let mut logits_processor = LogitsProcessor::new(seed, Some(0.7), Some(0.8));
-            let repetition_penalty: f32 = 1.15;
+
+            // 2. Optimized sampling hyperparameters for quantized Qwen models:
+            // Low temperature (0.5) and top_p (0.85) stabilize quantized weight noise.
+            let mut logits_processor = LogitsProcessor::new(seed, Some(0.5), Some(0.85));
+            let repetition_penalty: f32 = 1.05; // Reduced from 1.15 to prevent quality degradation
+            const PENALTY_WINDOW: usize = 64;   // Restrict penalty to the last 64 generated tokens
 
             let mut token_stream = TokenOutputStream::new(tokenizer_instance);
-            let mut seen_tokens: HashSet<u32> = HashSet::with_capacity(max_tokens);
+            let mut recent_tokens: Vec<u32> = Vec::with_capacity(PENALTY_WINDOW);
             let mut generated_tokens = 0;
 
             let mut pos = 0;
@@ -306,13 +322,15 @@ impl LlmEngine for NativeLlamaEngine {
                     }
                 };
 
+                // Filter non-finite logit values
                 for v in logits_vec.iter_mut() {
                     if !v.is_finite() {
                         *v = -1e9;
                     }
                 }
 
-                Self::apply_repetition_penalty(&mut logits_vec, repetition_penalty, &seen_tokens);
+                // Apply windowed repetition penalty
+                Self::apply_windowed_repetition_penalty(&mut logits_vec, repetition_penalty, &recent_tokens);
 
                 let mut logits_tensor = match Tensor::from_vec(logits_vec, (vocab_size,), &Device::Cpu) {
                     Ok(t) => t,
@@ -330,11 +348,16 @@ impl LlmEngine for NativeLlamaEngine {
                     }
                 };
 
-                if Some(next_token_id) == eos_id || Some(next_token_id) == im_end_id {
+                // Stop evaluation on matched stop tokens
+                if stop_tokens.contains(&next_token_id) {
                     break;
                 }
 
-                seen_tokens.insert(next_token_id);
+                // Maintain window for repetition penalty
+                if recent_tokens.len() >= PENALTY_WINDOW {
+                    recent_tokens.remove(0);
+                }
+                recent_tokens.push(next_token_id);
 
                 if let Ok(Some(token_str)) = token_stream.next_token(next_token_id) {
                     if tx.blocking_send(Ok(token_str)).is_err() {

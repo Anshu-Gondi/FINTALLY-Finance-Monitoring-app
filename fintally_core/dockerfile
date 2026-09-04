@@ -1,92 +1,274 @@
 # syntax=docker/dockerfile:1
+
 # ==============================================================================
-# --- Stage 1: Base Environment (Toolchain, Clang/Bindgen, & cargo-chef) ---
+# FINTALLY — Production CUDA + Rust + C++/CMake + Tesseract Build
 # ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Stage 1: Base build environment
+# ------------------------------------------------------------------------------
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04 AS chef-base
 
 ARG CUDA_COMPUTE_CAP=89
-ENV CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP}
-ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies including clang and libclang-dev for bindgen
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    software-properties-common \
+ENV DEBIAN_FRONTEND=noninteractive \
+    CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP} \
+    CUDA_PATH=/usr/local/cuda \
+    PATH=/root/.cargo/bin:/usr/local/cuda/bin:${PATH} \
+    CC=/usr/bin/gcc-12 \
+    CXX=/usr/bin/g++-12 \
+    LIBCLANG_PATH=/usr/lib/llvm-14/lib \
+    \
+    # IMPORTANT:
+    # Ubuntu installs architecture-specific .pc files here.
+    # Tesseract's libtesseract-dev package provides:
+    # /usr/lib/x86_64-linux-gnu/pkgconfig/tesseract.pc
+    PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig \
+    \
+    # Enable native FinOCR/Tesseract backend explicitly.
+    FIN_ENABLE_TESSERACT=ON
+
+# ------------------------------------------------------------------------------
+# System dependencies
+# ------------------------------------------------------------------------------
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        software-properties-common \
     && add-apt-repository ppa:ubuntu-toolchain-r/test \
-    && apt-get update && apt-get install -y --no-install-recommends \
-    pkg-config libssl-dev cmake g++-12 gcc-12 curl ca-certificates \
-    clang libclang-dev \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        \
+        # Build toolchain
+        build-essential \
+        gcc-12 \
+        g++-12 \
+        cmake \
+        pkg-config \
+        make \
+        \
+        # Rust / TLS
+        curl \
+        ca-certificates \
+        libssl-dev \
+        \
+        # Clang / bindgen
+        clang \
+        libclang-dev \
+        \
+        # Tesseract development stack
+        libtesseract-dev \
+        libleptonica-dev \
+        tesseract-ocr \
+        \
     && rm -rf /var/lib/apt/lists/*
 
-ENV CC=/usr/bin/gcc-12
-ENV CXX=/usr/bin/g++-12
+# ------------------------------------------------------------------------------
+# Validate the native OCR toolchain BEFORE Cargo/CMake compilation.
+#
+# This intentionally fails early if:
+#   - tesseract.pc is missing
+#   - pkg-config cannot see it
+#   - Tesseract development files are incomplete
+# ------------------------------------------------------------------------------
+RUN set -eux; \
+    echo "=== Compiler versions ==="; \
+    gcc-12 --version; \
+    g++-12 --version; \
+    cmake --version; \
+    \
+    echo "=== pkg-config search paths ==="; \
+    pkg-config --variable pc_path pkg-config; \
+    echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}"; \
+    \
+    echo "=== Tesseract pkg-config file ==="; \
+    find /usr/lib /usr/local/lib \
+        -type f \
+        -name 'tesseract.pc' \
+        -print; \
+    \
+    test -f /usr/lib/x86_64-linux-gnu/pkgconfig/tesseract.pc; \
+    \
+    echo "=== Tesseract pkg-config metadata ==="; \
+    pkg-config --modversion tesseract; \
+    pkg-config --cflags tesseract; \
+    pkg-config --libs tesseract; \
+    \
+    echo "=== Leptonica pkg-config metadata ==="; \
+    pkg-config --modversion lept; \
+    pkg-config --cflags lept; \
+    pkg-config --libs lept; \
+    \
+    echo "=== Tesseract binary ==="; \
+    tesseract --version
 
-# Explicitly tell bindgen where libclang lives in Ubuntu 22.04
-ENV LIBCLANG_PATH="/usr/lib/llvm-14/lib"
+# ------------------------------------------------------------------------------
+# Install Rust
+# ------------------------------------------------------------------------------
+RUN curl --proto '=https' \
+        --tlsv1.2 \
+        -sSf \
+        https://sh.rustup.rs \
+        | sh -s -- -y
 
-# Install Rust & Cargo Chef
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:/usr/local/cuda/bin:${PATH}"
-ENV CUDA_PATH="/usr/local/cuda"
-
+# ------------------------------------------------------------------------------
 # Install cargo-chef
+# ------------------------------------------------------------------------------
 RUN cargo install cargo-chef --locked
 
 
 # ==============================================================================
-# --- Stage 2: Planner (Analyzes dependencies) ---
+# Stage 2: Planner
 # ==============================================================================
+
 FROM chef-base AS planner
 
 WORKDIR /app
+
 COPY . .
+
 WORKDIR /app/fintally_core
 
-# Generate a recipe.json containing ONLY your dependencies
 RUN cargo chef prepare --recipe-path recipe.json
 
 
 # ==============================================================================
-# --- Stage 3: Builder (Cooks dependencies & builds app) ---
+# Stage 3: Builder
 # ==============================================================================
+
 FROM chef-base AS builder
 
 WORKDIR /app/fintally_core
 
-# 1. Copy ONLY the recipe.json from the planner stage
-COPY --from=planner /app/fintally_core/recipe.json recipe.json
+# ------------------------------------------------------------------------------
+# Copy dependency recipe
+# ------------------------------------------------------------------------------
+COPY --from=planner \
+    /app/fintally_core/recipe.json \
+    recipe.json
 
-# 2. Build dependencies - THIS LAYER GETS CACHED!
-RUN cargo chef cook --release --recipe-path recipe.json
+# ------------------------------------------------------------------------------
+# Build Rust dependency graph
+#
+# This layer remains cacheable until Cargo manifests/lockfiles change.
+# ------------------------------------------------------------------------------
+RUN cargo chef cook \
+    --release \
+    --recipe-path recipe.json
 
-# 3. Copy actual source code
+# ------------------------------------------------------------------------------
+# Copy source
+# ------------------------------------------------------------------------------
 WORKDIR /app
+
 COPY . .
+
 WORKDIR /app/fintally_core
 
+# ------------------------------------------------------------------------------
+# SQLx
+# ------------------------------------------------------------------------------
 ENV SQLX_OFFLINE=true
 
-# 4. Compile and run the model downloader
-RUN cargo build --release -p fintally_chatbot --bin download_models
+# ------------------------------------------------------------------------------
+# Native FinOCR configuration
+# ------------------------------------------------------------------------------
+ENV FIN_ENABLE_TESSERACT=ON \
+    FIN_BUILD_SHARED=OFF \
+    FIN_ENABLE_NATIVE=ON
+
+# ------------------------------------------------------------------------------
+# Re-validate the native environment AFTER source has been copied.
+#
+# This is useful because the Rust build.rs/CMake integration depends on
+# precisely the same environment that will be used below.
+# ------------------------------------------------------------------------------
+RUN set -eux; \
+    echo "=== Final native build environment ==="; \
+    echo "CC=${CC}"; \
+    echo "CXX=${CXX}"; \
+    echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH}"; \
+    echo "FIN_ENABLE_TESSERACT=${FIN_ENABLE_TESSERACT}"; \
+    \
+    pkg-config --exists tesseract; \
+    pkg-config --exists lept; \
+    \
+    echo "Tesseract: $(pkg-config --modversion tesseract)"; \
+    echo "Leptonica: $(pkg-config --modversion lept)"
+
+# ------------------------------------------------------------------------------
+# Build model downloader
+# ------------------------------------------------------------------------------
+RUN cargo build \
+    --release \
+    -p fintally_chatbot \
+    --bin download_models
+
+# ------------------------------------------------------------------------------
+# Download models
+# ------------------------------------------------------------------------------
 RUN ./target/release/download_models
 
-# 5. Compile the primary Axum application
-RUN cargo build --release -p fintally_axum --bin fintally_axum
+# ------------------------------------------------------------------------------
+# Build primary Axum application
+# ------------------------------------------------------------------------------
+RUN cargo build \
+    --release \
+    -p fintally_axum \
+    --bin fintally_axum
 
 
 # ==============================================================================
-# --- Stage 4: Runtime Environment ---
+# Stage 4: Production runtime
 # ==============================================================================
-FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
+FROM nvidia/cuda:12.1.1-runtime-ubuntu22.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ------------------------------------------------------------------------------
+# Runtime OCR dependencies ONLY.
+#
+# No gcc / g++ / cmake / clang / Rust / headers are included here.
+# ------------------------------------------------------------------------------
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        libtesseract5 \
+        liblept5 \
     && rm -rf /var/lib/apt/lists/*
 
+# ------------------------------------------------------------------------------
+# Tesseract language data
+# ------------------------------------------------------------------------------
+ENV TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+
+# ------------------------------------------------------------------------------
+# Application
+# ------------------------------------------------------------------------------
 WORKDIR /app
 
-# Extract binary and downloaded models from builder stage
-COPY --from=builder /app/fintally_core/target/release/fintally_axum /app/fintally_backend
-COPY --from=builder /app/fintally_core/llm_models /app/llm_models
+# ------------------------------------------------------------------------------
+# Production binary
+# ------------------------------------------------------------------------------
+COPY --from=builder \
+    /app/fintally_core/target/release/fintally_axum \
+    /app/fintally_backend
 
+# ------------------------------------------------------------------------------
+# Downloaded LLM models
+# ------------------------------------------------------------------------------
+COPY --from=builder \
+    /app/fintally_core/llm_models \
+    /app/llm_models
+
+# ------------------------------------------------------------------------------
+# Network
+# ------------------------------------------------------------------------------
 EXPOSE 8080
+
+# ------------------------------------------------------------------------------
+# Start FINTALLY
+# ------------------------------------------------------------------------------
 CMD ["./fintally_backend"]

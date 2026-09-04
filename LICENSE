@@ -1,30 +1,13 @@
-FINTALLY SOVEREIGN SOFTWARE & PRIVACY LICENSE AGREEMENT
+FINTALLY OPEN SOURCE SOFTWARE LICENSE
 
-Copyright (c) 2026 Anshu Gondi. All Rights Reserved.
+Copyright © 2026 Anshu Gondi
 
-IMPORTANT—READ CAREFULLY:
-This Software License Agreement ("Agreement") is a legal agreement between you ("User" or "Licensee") and Anshu Gondi ("Licensor"), the sole author and copyright owner of FINTALLY, including its source code, compiled binaries, core algorithms, high-performance C++/Rust execution bridges, local AI engine, and associated documentation (collectively, the "Software").
+FINTALLY is distributed under the Apache License, Version 2.0.
 
-1. GRANT OF LICENSE
-Subject to the terms of this Agreement, Licensor grants User a personal, non-exclusive, non-transferable, revocable license to install and execute the Software solely on local devices owned or controlled by User for personal financial management, monitoring, context storage, and educational purposes.
+You may obtain a copy of the Apache License, Version 2.0 at:
 
-2. RESTRICTIONS & PROHIBITIONS
-User shall not, directly or indirectly, nor permit any third party to:
-  (a) Decompile, disassemble, reverse engineer, inspect runtime memory execution, trace dynamic link calls, or attempt to derive the underlying algorithms or trade secrets of the Software;
-  (b) Copy, modify, adapt, translate, or create derivative works based upon the Software or any portion thereof;
-  (c) Distribute, publish, sublicense, lease, sell, rent, or transfer the Software or any portion thereof to any third party without explicit prior written authorization from Anshu Gondi;
-  (d) Remove, alter, or obscure any copyright notice, trademark, or proprietary legend embedded within or displayed by the Software.
+https://www.apache.org/licenses/LICENSE-2.0
 
-3. OWNERSHIP & INTELLECTUAL PROPERTY
-All title, ownership rights, patents, copyrights, trade secrets, and intellectual property in and to the Software shall remain exclusively with Anshu Gondi. Any suggestions, feature requests, or performance feedback provided by User shall vest exclusively with Licensor upon creation.
+Unless required by applicable law or agreed to in writing, software distributed under the Apache License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 
-4. DATA SOVEREIGNTY & ABSOLUTE PRIVACY GUARANTEE
-  (a) Zero-Knowledge Local Storage: All financial records, ledgers, accounts, context data, and assistant logs remain strictly on User's local execution environment. Licensor maintains zero access, zero control, and zero visibility into User's financial data.
-  (b) No Remote Telemetry or Surveillance: The Software is engineered with zero remote telemetry, zero analytics tracking, and zero hidden network reporting to Licensor or third-party data brokers.
-  (c) Educational Disclaimer: Financial insights, budget models, and assistant responses are provided for informational and educational purposes only and do not constitute professional financial, investment, or legal advice.
-
-5. TERMINATION
-This License is effective until terminated. Licensee’s rights under this Agreement will terminate automatically without notice from Licensor if Licensee fails to comply with any term(s) of this Agreement. Upon termination, Licensee must cease all use of the Software and delete all copies in their possession.
-
-6. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL ANSHU GONDI BE LIABLE FOR ANY CLAIM, DIRECT OR INDIRECT DAMAGES, LOSS OF FINANCIAL DATA, OR OTHER LIABILITY ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR THE USE OF THE SOFTWARE.
+See the Apache License, Version 2.0 for the specific language governing permissions and limitations under the License.
