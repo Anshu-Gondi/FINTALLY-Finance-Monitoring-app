@@ -223,6 +223,14 @@ impl NativeEmbedder {
         attention_mask: &Tensor,
         batch_size: usize,
     ) -> Result<Vec<Vec<f32>>, RagError> {
+        // 1. Validate tensor batch dimension matches expected batch_size
+        let tensor_batch_size = embeddings.dim(0)?;
+        if tensor_batch_size != batch_size {
+            return Err(RagError::EmbeddingError(format!(
+                "Input tensor batch size mismatch: expected {batch_size}, got {tensor_batch_size}"
+            )));
+        }
+
         let mask_expanded = attention_mask
             .unsqueeze(2)?
             .broadcast_as(embeddings.shape())?
@@ -241,6 +249,14 @@ impl NativeEmbedder {
         let flat_vectors = normalized
             .to_vec2::<f32>()
             .map_err(|e| RagError::EmbeddingError(format!("Failed reading batch matrix: {e}")))?;
+
+        // 2. Verify extracted batch dimension length matches batch_size
+        if flat_vectors.len() != batch_size {
+            return Err(RagError::EmbeddingError(format!(
+                "Output matrix size mismatch: expected {batch_size} vectors, got {}",
+                flat_vectors.len()
+            )));
+        }
 
         Ok(flat_vectors)
     }

@@ -86,3 +86,4 @@ fintally_core/client_secret.json
 
 # Ignore local document sources
 fintally_core/trusted_docs_source/
+fintally_core/client_secret.json

@@ -1,0 +1,33 @@
+[FIN_ENGINE_OCR_OUTPUT]
+Dimensions: 1024x1024
+Channels: 3
+Binarized: NO
+Input Type: RAW_IMAGE_OR_RECEIPT
+Active Text Region Density: 2.79789%
+Detected Text Lines: 11
+Spatial Bounding Regions:
+  - Text Line 1 [Y:176-192, X:286-730]: Density 5.37109%, Width 445px, Height 16px
+  - Text Line 2 [Y:208-240, X:406-619]: Density 5.36194%, Width 214px, Height 32px
+  - Text Line 3 [Y:272-288, X:286-730]: Density 4.11987%, Width 445px, Height 16px
+  - Text Line 4 [Y:304-384, X:295-727]: Density 5.05981%, Width 433px, Height 80px
+  - Text Line 5 [Y:400-432, X:295-727]: Density 6.84509%, Width 433px, Height 32px
+  - Text Line 6 [Y:448-480, X:295-727]: Density 7.08923%, Width 433px, Height 32px
+  - Text Line 7 [Y:496-608, X:295-727]: Density 5.78177%, Width 433px, Height 112px
+  - Text Line 8 [Y:624-656, X:296-727]: Density 6.88782%, Width 432px, Height 32px
+  - Text Line 9 [Y:672-688, X:286-730]: Density 2.73438%, Width 445px, Height 16px
+  - Text Line 10 [Y:704-800, X:17-707]: Density 6.57959%, Width 691px, Height 96px
+  - Text Line 11 [Y:816-832, X:17-730]: Density 2.55127%, Width 714px, Height 16px
+Payload Status: VALID_PREPROCESSED_BUFFER
+
+[EXTRACTED_MODEL_FREE_OCR]
+Adobe Stock | #143178684
+1: 0275 Ut wisi enim 2.99
+2:1227 Nibh euismod 1.30
+3:0942 Rdol magna 17.0
+4:0257 Mnonuy nibh 6.99
+5:1693 Kaoreet dolore 12
+6: 9463 Taliquam erat 510
+7:0059 Aeuismod 10.0
+8:3556 Knonuy nib 4.99
+Discount $5.99
+TOTAL $34.50

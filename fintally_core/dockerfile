@@ -64,11 +64,6 @@ RUN apt-get update \
 
 # ------------------------------------------------------------------------------
 # Validate the native OCR toolchain BEFORE Cargo/CMake compilation.
-#
-# This intentionally fails early if:
-#   - tesseract.pc is missing
-#   - pkg-config cannot see it
-#   - Tesseract development files are incomplete
 # ------------------------------------------------------------------------------
 RUN set -eux; \
     echo "=== Compiler versions ==="; \
@@ -148,8 +143,6 @@ COPY --from=planner \
 
 # ------------------------------------------------------------------------------
 # Build Rust dependency graph
-#
-# This layer remains cacheable until Cargo manifests/lockfiles change.
 # ------------------------------------------------------------------------------
 RUN cargo chef cook \
     --release \
@@ -178,9 +171,6 @@ ENV FIN_ENABLE_TESSERACT=ON \
 
 # ------------------------------------------------------------------------------
 # Re-validate the native environment AFTER source has been copied.
-#
-# This is useful because the Rust build.rs/CMake integration depends on
-# precisely the same environment that will be used below.
 # ------------------------------------------------------------------------------
 RUN set -eux; \
     echo "=== Final native build environment ==="; \
@@ -228,15 +218,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ------------------------------------------------------------------------------
 # Runtime OCR dependencies ONLY.
 #
-# No gcc / g++ / cmake / clang / Rust / headers are included here.
+# tesseract-ocr and tesseract-ocr-eng automatically pull in libtesseract5
+# and liblept5 dynamic library dependencies.
 # ------------------------------------------------------------------------------
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         tesseract-ocr \
         tesseract-ocr-eng \
-        libtesseract5 \
-        liblept5 \
     && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------------------------

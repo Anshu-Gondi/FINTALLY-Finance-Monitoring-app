@@ -1,0 +1,28 @@
+[FIN_ENGINE_OCR_OUTPUT]
+Dimensions: 1920x1080
+Channels: 1
+Binarized: YES
+Input Type: SCANNED_PDF_PAGE
+Active Text Region Density: 4.00641%
+Detected Text Lines: 16
+Spatial Bounding Regions:
+  - Text Line 1 [Y:48-80, X:155-1669]: Density 10.7308%, Width 1515px, Height 32px
+  - Text Line 2 [Y:128-192, X:172-1242]: Density 4.22282%, Width 1071px, Height 64px
+  - Text Line 3 [Y:208-224, X:232-1747]: Density 13.4473%, Width 1516px, Height 16px
+  - Text Line 4 [Y:240-272, X:232-1747]: Density 6.14583%, Width 1516px, Height 32px
+  - Text Line 5 [Y:288-304, X:232-1747]: Density 8.52539%, Width 1516px, Height 16px
+  - Text Line 6 [Y:320-384, X:232-1747]: Density 8.14046%, Width 1516px, Height 64px
+  - Text Line 7 [Y:400-416, X:201-1298]: Density 13.0924%, Width 1098px, Height 16px
+  - Text Line 8 [Y:432-496, X:232-1747]: Density 6.72852%, Width 1516px, Height 64px
+  - Text Line 9 [Y:512-528, X:232-1747]: Density 11.7546%, Width 1516px, Height 16px
+  - Text Line 10 [Y:544-608, X:232-1747]: Density 9.20492%, Width 1516px, Height 64px
+  - Text Line 11 [Y:624-640, X:204-1747]: Density 14.9284%, Width 1544px, Height 16px
+  - Text Line 12 [Y:688-704, X:172-246]: Density 2.30794%, Width 75px, Height 16px
+  - Text Line 13 [Y:720-816, X:201-902]: Density 3.25575%, Width 702px, Height 96px
+  - Text Line 14 [Y:832-896, X:232-902]: Density 4.49788%, Width 671px, Height 64px
+  - Text Line 15 [Y:912-928, X:261-902]: Density 6.67643%, Width 642px, Height 16px
+  - Text Line 16 [Y:944-976, X:204-902]: Density 5.75195%, Width 699px, Height 32px
+Payload Status: VALID_PREPROCESSED_BUFFER
+
+[EXTRACTED_MODEL_FREE_OCR]
+EiRi

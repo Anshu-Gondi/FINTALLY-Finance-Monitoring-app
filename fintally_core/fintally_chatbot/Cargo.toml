@@ -65,7 +65,7 @@ lopdf = "0.35"
 unicode-normalization = "0.1"
 tempfile = "3.27.0"
 
-image = { version = "0.24", features = ["webp", "png", "jpeg"] }
+image = { version = "0.24", features = ["webp", "png", "jpeg", "bmp"] }
 
 ureq = "2.9"
 flate2 = "1.0"

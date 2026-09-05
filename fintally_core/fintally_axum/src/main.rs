@@ -1,8 +1,7 @@
 use fintally_db::DbContext;
 use fintally_chatbot::chatbot_service::RagService;
-// Correct structural paths for the service layer
 use fintally_chatbot::chatbot_service::ChatbotOrchestrator;
-use fintally_chatbot::chatbot_service::vision_service::VisionChatbotService; // ◄── Added VisionChatbotService import
+use fintally_chatbot::chatbot_service::vision_service::VisionChatbotService;
 use fintally_db::chat_service::ChatHistoryService;
 use fintally_chatbot::core::llm::native_engine::NativeLlamaEngine;
 use fintally_chatbot::core::llm::engine::LlmEngine;
@@ -11,7 +10,8 @@ use fintally_chatbot::core::llm::engine::LlmEngine;
 use fintally_chatbot::core::vision::engine::{DocumentInput, VisionEngine};
 
 use axum::{ routing::{ get, post, delete }, Router, response::IntoResponse, Json, Extension };
-use tower_http::cors::{ CorsLayer, Any };
+use axum::http::HeaderValue;
+use tower_http::cors::CorsLayer;
 use futures_util::StreamExt;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -386,6 +386,75 @@ fn prepare_qwen_model_for_engine(
     Ok(resolved)
 }
 
+/// Builds the CORS layer from the ALLOWED_ORIGIN env var.
+///
+/// This is a real-user financial API — it must never fall back to a
+/// wildcard origin. If ALLOWED_ORIGIN is unset or invalid, startup fails
+/// loudly instead of silently opening the API to any origin.
+fn build_cors_layer() -> CorsLayer {
+    let allowed_origin = std::env::var("ALLOWED_ORIGIN")
+        .expect(
+            "ALLOWED_ORIGIN environment variable must be set to your frontend's \
+             origin (e.g. https://app.fintally.com). Refusing to start with an \
+             open CORS policy on a financial API."
+        );
+
+    let origin_value = HeaderValue::from_str(&allowed_origin)
+        .expect("ALLOWED_ORIGIN is not a valid header value");
+
+    println!("🔒 CORS restricted to origin: {}", allowed_origin);
+
+    CorsLayer::new()
+        .allow_origin(origin_value)
+        .allow_methods([
+            axum::http::Method::GET,
+            axum::http::Method::POST,
+            axum::http::Method::PUT,
+            axum::http::Method::DELETE,
+        ])
+        .allow_headers([axum::http::header::AUTHORIZATION, axum::http::header::CONTENT_TYPE])
+}
+
+/// Waits for either Ctrl+C or a SIGTERM (container stop / k8s pod eviction)
+/// so axum::serve can drain in-flight requests instead of dropping them.
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    println!("🛑 Shutdown signal received, draining in-flight requests...");
+}
+
+/// A minimal, valid 1x1 black PNG (67 bytes) used purely to force the vision
+/// engine's decode/inference kernels to compile during warmup. The previous
+/// warmup passed 3 raw bytes with no header, which is not a decodable image
+/// and would fail (or worse, silently no-op) on every startup.
+const WARMUP_PNG_1X1: [u8; 69] = [
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+    0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, 0x54, 0x08, 0xD7, 0x63, 0x60, 0x60, 0x60, 0x00,
+    0x00, 0x00, 0x04, 0x00, 0x01, 0x5C, 0xCD, 0xFF, 0x69, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+    0x44, 0xAE, 0x42, 0x60, 0x82,
+];
+
 #[tokio::main]
 async fn main() {
     let db_ctx = DbContext::init().await.expect("Failed to initialize Supabase connection pool");
@@ -396,7 +465,7 @@ async fn main() {
     let rag_service = Arc::new(
         RagService::new(
             "./vector_storage",
-            "./llm_models/embedding/bge_safetensors_output" // ◄── Path to your embedding model directory containing config.json
+            "./llm_models/embedding/bge_safetensors_output"
         ).expect("Failed to build pure-Rust Vector engine service layer")
     );
 
@@ -417,24 +486,29 @@ async fn main() {
     let resolved_qwen = prepare_qwen_model_for_engine(QWEN_MODEL_ROOT)
         .expect("Failed to resolve a valid installed Qwen model");
 
-    // NativeLlamaEngine currently consumes the model directory layout, so keep
-    // passing the validated root while ensuring startup has already rejected
-    // incomplete/ambiguous installations.
+    // Loading multi-GB GGUF weights is CPU/IO-bound and was previously done
+    // directly on a tokio worker thread, which stalls that thread (and the
+    // scheduler jobs started above) for the duration of the load. Moved to
+    // spawn_blocking, matching the pattern already used for vision warmup.
     println!(
         "⏳ Loading Native Qwen LLM weights from {}...",
         resolved_qwen.root_dir.display()
     );
 
-    let native_engine = Arc::new(
-        NativeLlamaEngine::load_from_vault(
-            resolved_qwen
-                .root_dir
-                .to_str()
-                .context("Qwen model root path is not valid UTF-8")
-                .expect("Invalid Qwen model root path"),
-        )
-        .expect("Failed to instantiate native Qwen inference engine from validated model path")
-    );
+    let qwen_root_str = resolved_qwen
+        .root_dir
+        .to_str()
+        .context("Qwen model root path is not valid UTF-8")
+        .expect("Invalid Qwen model root path")
+        .to_owned();
+
+    let native_engine = tokio::task
+        ::spawn_blocking(move || NativeLlamaEngine::load_from_vault(&qwen_root_str))
+        .await
+        .expect("Qwen engine load thread panicked")
+        .expect("Failed to instantiate native Qwen inference engine from validated model path");
+
+    let native_engine = Arc::new(native_engine);
 
     // ─── 2. Execute Async LLM Warmup Sequence ─────────────────────────────
     println!("🔥 Warming up LLM core engine (Compiling execution graphs / Allocating buffers)...");
@@ -442,7 +516,6 @@ async fn main() {
 
     match native_engine.stream_generate(warmup_prompt, 16).await {
         Ok(mut cancelable_stream) => {
-            // Consume tokens silently to force processing pipeline compilation
             while let Some(Ok(_token)) = cancelable_stream.stream.next().await {}
             println!("✅ LLM memory compilation pathways successfully primed.");
         }
@@ -457,17 +530,14 @@ async fn main() {
     // ─── 3. Execute Async GOT-OCR 2.0 Vision Engine Warmup Sequence ─────────
     println!("👁️ Warming up GOT-OCR 2.0 Vision Engine (Pre-allocating C++ FFI buffers & CUDA tensors)...");
 
-    // Non-blocking offload for Vision Engine instantiation and dummy pass
     let vision_warmup_result = tokio::task::spawn_blocking(|| {
-        // Uses default path "llm_models/ocr/got_ocr2_0_output"
         let mut vision_engine = VisionEngine::new()?;
 
-        // Minimal 1x1 black image buffer to compile Candle Vision CUDA/CPU kernels
-        let dummy_pixel_bytes: [u8; 3] = [0, 0, 0];
-
+        // A real, decodable 1x1 PNG — the previous 3 raw bytes with format
+        // string "format" were not a valid image and this step likely failed
+        // (or no-opped) on every startup.
         vision_engine.process_input(
-            DocumentInput::RawImageBytes(&dummy_pixel_bytes),
-            "format"
+            DocumentInput::RawImageBytes(&WARMUP_PNG_1X1)
         )
     }).await;
 
@@ -477,7 +547,6 @@ async fn main() {
         Err(e) => eprintln!("⚠️ Warning: Vision engine warmup thread join error: {:?}", e),
     }
 
-    // Instantiate Vision Chatbot Service
     let vision_service = Arc::new(VisionChatbotService::new());
 
     // ─── 4. Instantiate Orchestrator and Context States ────────────────────
@@ -494,7 +563,7 @@ async fn main() {
 
     // ─── 5. Build Unified Core App Router ────────────────────────────────────
 
-    let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any);
+    let cors = build_cors_layer();
 
     let app = Router::new()
         .route("/api/signup", post(routes::auth::signup))
@@ -539,10 +608,13 @@ async fn main() {
         .parse::<u16>()
         .expect("PORT environment variable must be a valid number");
 
-    // Bind to 0.0.0.0 so the container handles traffic routed from outside
     let bind_address = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&bind_address).await.unwrap();
 
     println!("🚀 Axum core gateway processing on http://{}", bind_address);
-    axum::serve(listener, app).await.unwrap();
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap();
 }

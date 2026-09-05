@@ -1,55 +1,14 @@
 use fintally_chatbot::core::vision::engine::*;
-use std::fs::File;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, OnceLock};
+use std::path::Path;
+use std::sync::Arc;
 use std::thread;
 use std::time::Instant;
-use tempfile::tempdir;
-
-// Global cache for mock model temp directory to eliminate redundant disk writes
-static MOCK_MODEL_DIR: OnceLock<tempfile::TempDir> = OnceLock::new();
 
 // ============================================================================
-// HELPER FUNCTIONS & PATH RESOLUTION
+// HELPER FUNCTIONS & SYNTHETIC DATA GENERATORS
 // ============================================================================
 
-/// Resolves the model directory path relative to the crate/workspace root
-fn get_model_directory_path() -> PathBuf {
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .unwrap_or_else(|_| ".".to_string());
-
-    let base_path = Path::new(&manifest_dir);
-
-    // Search in current directory, parent directory, or relative to manifest
-    let candidate_paths = vec![
-        base_path.join("llm_models").join("ocr").join("got_ocr2_0_output"),
-        base_path.join("..").join("llm_models").join("ocr").join("got_ocr2_0_output"),
-        PathBuf::from("llm_models/ocr/got_ocr2_0_output"),
-        PathBuf::from("../llm_models/ocr/got_ocr2_0_output"),
-    ];
-
-    for path in candidate_paths {
-        if path.join("config.json").exists() {
-            return path;
-        }
-    }
-
-    PathBuf::from("llm_models/ocr/got_ocr2_0_output")
-}
-
-/// Helper that uses real model assets if present, or builds a cached mock fallback
-fn get_model_dir_path_cached() -> PathBuf {
-    let real_path = get_model_directory_path();
-    if real_path.join("config.json").exists() && real_path.join("tokenizer.json").exists() {
-        real_path
-    } else {
-        let temp_dir = MOCK_MODEL_DIR.get_or_init(create_mock_model_directory);
-        temp_dir.path().to_path_buf()
-    }
-}
-
-/// Generates a valid uncompressed 24-bit RGB BMP image using fast vector initialization
+/// Generates a valid uncompressed 24-bit RGB BMP image (exercises non-JPEG transcoding path)
 fn create_synthetic_bmp_bytes(width: u32, height: u32) -> Vec<u8> {
     let row_stride = ((width * 3 + 3) / 4) * 4;
     let image_size = (row_stride * height) as usize;
@@ -74,10 +33,20 @@ fn create_synthetic_bmp_bytes(width: u32, height: u32) -> Vec<u8> {
     bmp.extend_from_slice(&0u32.to_le_bytes());
     bmp.extend_from_slice(&0u32.to_le_bytes());
 
-    // Fast allocation instead of per-pixel loops
     bmp.resize(file_size, 128);
-
     bmp
+}
+
+/// Generates a valid JPEG byte stream in memory (exercises zero-copy JPEG fast-path filter)
+fn create_synthetic_jpeg_bytes(width: u32, height: u32) -> Vec<u8> {
+    let img = image::RgbImage::new(width, height);
+    let mut jpeg_bytes = Vec::new();
+    let mut cursor = std::io::Cursor::new(&mut jpeg_bytes);
+
+    img.write_to(&mut cursor, image::ImageFormat::Jpeg)
+        .expect("Failed to encode synthetic JPEG image");
+
+    jpeg_bytes
 }
 
 /// Generates a valid minimal PDF byte stream in memory
@@ -99,74 +68,8 @@ startxref
         .to_vec()
 }
 
-/// Creates a temporary directory populated with minimal valid model files for fallback testing
-fn create_mock_model_directory() -> tempfile::TempDir {
-    let dir = tempdir().expect("Failed to create temporary directory for mock model");
-
-    let tokenizer_json = r#"{
-        "version": "1.0",
-        "truncation": null,
-        "padding": null,
-        "added_tokens": [
-            {"id": 151645, "content": "<|im_end|>", "single_word": false, "lstrip": false, "rstrip": false, "normalized": false, "special": true}
-        ],
-        "normalizer": null,
-        "pre_tokenizer": null,
-        "post_processor": null,
-        "decoder": null,
-        "model": {
-            "type": "BPE",
-            "dropout": null,
-            "unk_token": null,
-            "continuing_subword_prefix": null,
-            "end_of_word_suffix": null,
-            "fuse_unk": false,
-            "vocab": {
-                "<|im_end|>": 151645,
-                "<image>": 1,
-                "OCR": 2,
-                "with": 3,
-                "format": 4,
-                ":": 5,
-                "\n": 6
-            },
-            "merges": []
-        }
-    }"#;
-    let mut tokenizer_file = File::create(dir.path().join("tokenizer.json")).unwrap();
-    tokenizer_file.write_all(tokenizer_json.as_bytes()).unwrap();
-
-    let config_json = r#"{
-        "architectures": ["Qwen2ForCausalLM"],
-        "model_type": "qwen2",
-        "vocab_size": 151646,
-        "hidden_size": 64,
-        "intermediate_size": 128,
-        "num_hidden_layers": 2,
-        "num_attention_heads": 4,
-        "num_key_value_heads": 4,
-        "hidden_act": "silu",
-        "max_position_embeddings": 2048,
-        "initializer_range": 0.02,
-        "rms_norm_eps": 1e-6,
-        "use_cache": true,
-        "tie_word_embeddings": false,
-        "rope_theta": 10000.0,
-        "sliding_window": 4096,
-        "bos_token_id": 151643,
-        "eos_token_id": 151645
-    }"#;
-    let mut config_file = File::create(dir.path().join("config.json")).unwrap();
-    config_file.write_all(config_json.as_bytes()).unwrap();
-
-    let mut safetensors_file = File::create(dir.path().join("model.safetensors")).unwrap();
-    safetensors_file.write_all(b"DUMMY_SAFETENSORS_HEADER").unwrap();
-
-    dir
-}
-
 // ============================================================================
-// LEVEL 1: NATIVE TELEMETRY & FAST UNIT TESTS
+// LEVEL 1: NATIVE TELEMETRY & ENGINE INSTANTIATION
 // ============================================================================
 
 #[test]
@@ -186,55 +89,50 @@ fn test_thermal_metrics_api() {
 }
 
 #[test]
-fn test_missing_model_directory_error_handling() {
-    let non_existent_dir = Path::new("/path/that/does/not/exist/at/all");
-    let result = VisionEngine::from_model_dir(non_existent_dir);
-
-    assert!(result.is_err(), "Engine should fail on missing model directory");
-    let err_msg = result.err().unwrap().to_string();
+fn test_pure_cpp_engine_construction() {
+    let engine = VisionEngine::new();
     assert!(
-        err_msg.contains("Failed to load GOT-OCR tokenizer") || err_msg.contains("missing"),
-        "Unexpected error message: {}",
-        err_msg
+        engine.is_ok(),
+        "Failed to instantiate pure C++ VisionEngine: {:?}",
+        engine.err()
     );
 }
 
 // ============================================================================
-// LEVEL 2: INTEGRATION TESTS USING DISK MODEL
+// LEVEL 2: INPUT PROCESSING & TRANSCODING FILTER TESTS
 // ============================================================================
 
 #[test]
-fn test_mocked_model_construction_and_preprocessing() {
-    let model_dir = get_model_dir_path_cached();
+fn test_input_processing_and_jpeg_filtering() {
+    let mut engine = VisionEngine::new().expect("Failed to initialize VisionEngine");
 
-    let mut engine = VisionEngine::from_model_dir(&model_dir)
-        .expect("Failed to initialize VisionEngine from model directory");
+    // 1. Non-JPEG Input (BMP) -> Exercises Transcoding Path
+    let synthetic_bmp = create_synthetic_bmp_bytes(512, 512);
+    let bmp_result = engine.process_input(DocumentInput::RawImageBytes(&synthetic_bmp));
+    assert!(bmp_result.is_ok(), "Non-JPEG image processing failed: {:?}", bmp_result.err());
 
-    // 1. Process Raw Image
-    let synthetic_image = create_synthetic_bmp_bytes(512, 512);
-    let img_result = engine.process_input(
-        DocumentInput::RawImageBytes(&synthetic_image),
-        "format",
-    );
-    assert!(img_result.is_ok(), "Image processing failed: {:?}", img_result.err());
+    let bmp_buffer = bmp_result.unwrap();
+    let (width, height, channels) = bmp_buffer.dimensions();
+    assert!(width > 0 && height > 0 && channels > 0);
 
-    // 2. Process PDF Stream
+    // 2. Direct JPEG Input -> Exercises Zero-Copy Fast-Path Filter
+    let synthetic_jpeg = create_synthetic_jpeg_bytes(512, 512);
+    let jpeg_result = engine.process_input(DocumentInput::RawImageBytes(&synthetic_jpeg));
+    assert!(jpeg_result.is_ok(), "JPEG fast-path image processing failed: {:?}", jpeg_result.err());
+
+    // 3. PDF Visual Stream Input
     let synthetic_pdf = create_synthetic_pdf_bytes();
-    let pdf_result = engine.process_input(
-        DocumentInput::PdfDocumentBytes(&synthetic_pdf),
-        "plain",
-    );
-    assert!(pdf_result.is_ok(), "PDF processing failed: {:?}", pdf_result.err());
+    let pdf_result = engine.process_input(DocumentInput::PdfDocumentBytes(&synthetic_pdf));
+    assert!(pdf_result.is_ok(), "PDF stream processing failed: {:?}", pdf_result.err());
 
-    // 3. Process Financial Chart with dynamic dimensions
+    // 4. Financial Chart with Custom Dimensions (1024x1024)
     let chart_result = engine.process_input_with_dims(
-        DocumentInput::FinancialChartBytes(&synthetic_image),
-        "Parse chart",
+        DocumentInput::FinancialChartBytes(&synthetic_bmp),
         1024,
         1024,
         3,
     );
-    assert!(chart_result.is_ok(), "Chart processing failed: {:?}", chart_result.err());
+    assert!(chart_result.is_ok(), "Financial chart processing failed: {:?}", chart_result.err());
 }
 
 // ============================================================================
@@ -243,11 +141,7 @@ fn test_mocked_model_construction_and_preprocessing() {
 
 #[test]
 fn test_vision_engine_multi_threaded_parallel_throughput() {
-    let model_dir = get_model_dir_path_cached();
-
-    // Create a single shared engine wrapped in Arc<Mutex<...>> to avoid OOM
-    let engine = VisionEngine::from_model_dir(&model_dir)
-        .expect("Failed to initialize shared VisionEngine");
+    let engine = VisionEngine::new().expect("Failed to initialize VisionEngine");
     let shared_engine = Arc::new(std::sync::Mutex::new(engine));
 
     let mut handles = vec![];
@@ -258,12 +152,9 @@ fn test_vision_engine_multi_threaded_parallel_throughput() {
             let img = create_synthetic_bmp_bytes(256, 256);
 
             let mut engine_guard = engine_ref.lock().unwrap();
-            let res = engine_guard.process_input(
-                DocumentInput::RawImageBytes(&img),
-                &format!("Thread Prompt {}", thread_id),
-            );
+            let res = engine_guard.process_input(DocumentInput::RawImageBytes(&img));
 
-            assert!(res.is_ok(), "Thread {} failed processing", thread_id);
+            assert!(res.is_ok(), "Thread {} failed processing image input", thread_id);
         });
         handles.push(handle);
     }
@@ -274,39 +165,31 @@ fn test_vision_engine_multi_threaded_parallel_throughput() {
 }
 
 // ============================================================================
-// LEVEL 4: END-TO-END PRODUCTION TESTS (EXPLICIT DIRECTORY LOOKUP)
+// LEVEL 4: END-TO-END PRODUCTION & TEXT EXTRACTION TEST
 // ============================================================================
 
 #[test]
-fn test_got_ocr2_e2e_real_weights_inference() {
-    let real_model_dir = get_model_directory_path();
+fn test_e2e_image_processing_and_text_retrieval() {
+    let mut engine = VisionEngine::new().expect("Failed to instantiate VisionEngine");
 
-    if !real_model_dir.join("tokenizer.json").exists() || !real_model_dir.join("model.safetensors").exists() {
-        println!("⚠️ Skipping E2E Real Weights Test: '{:?}' missing model files.", real_model_dir);
-        return;
-    }
-
-    println!("🔥 Model detected at {:?}! Running End-to-End inference test...", real_model_dir);
-
-    let mut engine = VisionEngine::from_model_dir(&real_model_dir)
-        .expect("Failed to instantiate VisionEngine using local model path");
-
-    // Load a real test sample image instead of synthetic gray bytes
+    // Load real test fixture image if present, or fallback to synthetic input
     let test_image_path = Path::new("tests/fixtures/sample_receipt.png");
     let image_bytes = if test_image_path.exists() {
         std::fs::read(test_image_path).expect("Failed to read test image fixture")
     } else {
-        // Fallback to synthetic if fixture missing
         create_synthetic_bmp_bytes(1024, 1024)
     };
 
-    let output = engine.process_input(
-        DocumentInput::RawImageBytes(&image_bytes),
-        "format",
-    ).expect("End-to-End image OCR processing failed");
+    let buffer = engine
+        .process_input(DocumentInput::RawImageBytes(&image_bytes))
+        .expect("End-to-End image processing failed");
 
-    println!("Output text from GOT-OCR tokenizer decode: {:?}", output);
-    assert!(!output.is_empty(), "E2E output should produce valid text");
+    let (w, h, c) = buffer.dimensions();
+    assert!(w > 0 && h > 0 && c > 0, "Buffer returned invalid dimension bounds");
+
+    if let Some(extracted_text) = buffer.extracted_text() {
+        println!("Extracted OCR Text from native engine: {:?}", extracted_text);
+    }
 }
 
 // ============================================================================
@@ -317,18 +200,13 @@ fn test_got_ocr2_e2e_real_weights_inference() {
 #[ignore = "Performance micro-benchmark; run explicitly with `cargo test -- --ignored`"]
 fn bench_pure_ocr_inference_throughput() {
     let init_start = Instant::now();
-    let model_dir = get_model_dir_path_cached();
-
-    let mut engine = VisionEngine::from_model_dir(&model_dir)
-        .expect("Failed to create engine from model dir");
+    let mut engine = VisionEngine::new().expect("Failed to create engine instance");
     let init_duration = init_start.elapsed();
 
-    let synthetic_image = create_synthetic_bmp_bytes(512, 512);
+    let synthetic_image = create_synthetic_jpeg_bytes(512, 512);
 
-    let _ = engine.process_input(
-        DocumentInput::RawImageBytes(&synthetic_image),
-        "warmup format",
-    );
+    // Engine Warmup Pass
+    let _ = engine.warmup();
 
     let iterations = 100;
     let mut latencies = Vec::with_capacity(iterations);
@@ -336,10 +214,7 @@ fn bench_pure_ocr_inference_throughput() {
     let batch_start = Instant::now();
     for i in 0..iterations {
         let start = Instant::now();
-        let res = engine.process_input(
-            DocumentInput::RawImageBytes(&synthetic_image),
-            "format",
-        );
+        let res = engine.process_input(DocumentInput::RawImageBytes(&synthetic_image));
         let elapsed = start.elapsed();
 
         assert!(res.is_ok(), "Iteration {} failed during benchmark", i);
@@ -357,7 +232,7 @@ fn bench_pure_ocr_inference_throughput() {
     let p95_latency = latencies.get(p95_index).cloned().unwrap_or_default();
 
     println!("\n=======================================================");
-    println!("🔥 OCR ENGINE MICRO-BENCHMARK RESULTS");
+    println!("🔥 NATIVE C++ VISION ENGINE BENCHMARK RESULTS");
     println!("=======================================================");
     println!("Initialization Latency : {:?}", init_duration);
     println!("Total Batch Time ({}) : {:?}", iterations, total_batch_time);

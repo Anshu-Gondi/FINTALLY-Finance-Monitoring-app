@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/CMakeFiles/stb-populate"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/CMakeFiles/stb-populate.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/CMakeFiles/stb-populate-complete.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/src/stb-populate-stamp/stb-populate-build.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/src/stb-populate-stamp/stb-populate-configure.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/src/stb-populate-stamp/stb-populate-download.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/src/stb-populate-stamp/stb-populate-install.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/src/stb-populate-stamp/stb-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/src/stb-populate-stamp/stb-populate-patch.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/src/stb-populate-stamp/stb-populate-test.rule"
+		},
+		{
+			"file" : "/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/src/stb-populate-stamp/stb-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"stb-populate"
+		],
+		"name" : "stb-populate"
+	}
+}

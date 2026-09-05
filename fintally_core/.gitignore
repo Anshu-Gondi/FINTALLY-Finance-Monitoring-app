@@ -68,3 +68,5 @@ __pycache__/
 *.bak
 *.old
 .cache/
+
+fintally_chatbot/cpp_engine/build

@@ -33,69 +33,68 @@ impl OcrService {
         Ok(Self { engine })
     }
 
-    pub fn from_model_dir<P: AsRef<Path>>(model_dir: P) -> Result<Self> {
-        let mut engine = VisionEngine::from_model_dir(model_dir)?;
-
-        if let Err(err) = engine.warmup() {
-            eprintln!("⚠️ Vision engine warmup completed with notice: {}", err);
-        }
-
-        Ok(Self { engine })
+    /// Backwards-compatible constructor pointing to `VisionEngine::new()`
+    pub fn from_model_dir<P: AsRef<Path>>(_model_dir: P) -> Result<Self> {
+        Self::new()
     }
 
-    pub fn process_image(&mut self, image_bytes: &[u8], prompt: &str) -> Result<String> {
+    pub fn process_image(&mut self, image_bytes: &[u8], _prompt: &str) -> Result<String> {
         if image_bytes.is_empty() {
             bail!("Provided image byte buffer is empty");
         }
 
-        let raw_text = self
+        let buffer = self
             .engine
-            .process_input(DocumentInput::RawImageBytes(image_bytes), prompt)
+            .process_input(DocumentInput::RawImageBytes(image_bytes))
             .context("Failed executing VisionEngine on raw image bytes")?;
 
-        Ok(sanitize_ocr_text(&raw_text))
+        let text = buffer.extracted_text().unwrap_or_default();
+        Ok(sanitize_ocr_text(text))
     }
 
-    pub fn process_pdf(&mut self, pdf_bytes: &[u8], prompt: &str) -> Result<String> {
+    pub fn process_pdf(&mut self, pdf_bytes: &[u8], _prompt: &str) -> Result<String> {
         if pdf_bytes.is_empty() {
             bail!("Provided PDF byte buffer is empty");
         }
 
-        let raw_text = self
+        let buffer = self
             .engine
-            .process_input(DocumentInput::PdfDocumentBytes(pdf_bytes), prompt)
+            .process_input(DocumentInput::PdfDocumentBytes(pdf_bytes))
             .context("Failed executing VisionEngine on PDF document bytes")?;
 
-        Ok(sanitize_ocr_text(&raw_text))
+        let text = buffer.extracted_text().unwrap_or_default();
+        Ok(sanitize_ocr_text(text))
     }
 
-    pub fn process_financial_chart(&mut self, chart_bytes: &[u8], prompt: &str) -> Result<String> {
+    pub fn process_financial_chart(&mut self, chart_bytes: &[u8], _prompt: &str) -> Result<String> {
         if chart_bytes.is_empty() {
             bail!("Provided financial chart byte buffer is empty");
         }
 
-        let raw_text = self
+        let buffer = self
             .engine
-            .process_input(DocumentInput::FinancialChartBytes(chart_bytes), prompt)
+            .process_input(DocumentInput::FinancialChartBytes(chart_bytes))
             .context("Failed executing VisionEngine on financial chart bytes")?;
 
-        Ok(sanitize_ocr_text(&raw_text))
+        let text = buffer.extracted_text().unwrap_or_default();
+        Ok(sanitize_ocr_text(text))
     }
 
     pub fn process_custom_dimensions(
         &mut self,
         input: DocumentInput,
-        prompt: &str,
+        _prompt: &str,
         width: usize,
         height: usize,
         channels: usize,
     ) -> Result<String> {
-        let raw_text = self
+        let buffer = self
             .engine
-            .process_input_with_dims(input, prompt, width, height, channels)
+            .process_input_with_dims(input, width, height, channels)
             .context("Failed executing VisionEngine with custom dimensions")?;
 
-        Ok(sanitize_ocr_text(&raw_text))
+        let text = buffer.extracted_text().unwrap_or_default();
+        Ok(sanitize_ocr_text(text))
     }
 
     pub fn get_thermal_metrics() -> FinThermalMetrics {

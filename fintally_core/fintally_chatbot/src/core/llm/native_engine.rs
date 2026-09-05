@@ -228,6 +228,13 @@ impl LlmEngine for NativeLlamaEngine {
             return Err(AppError::InferenceError("Prompt cannot be empty".into()));
         }
 
+        // Truncate incoming prompt tokens if they exceed 4096 to protect 6GB VRAM ceiling
+        let prompt_tokens = if prompt_tokens.len() > 4096 {
+            prompt_tokens[prompt_tokens.len() - 4096..].to_vec()
+        } else {
+            prompt_tokens
+        };
+
         let mut model = self.create_request_model()?;
         let tokenizer_instance = self.tokenizer.clone();
         let compute_device = self.device.clone();
@@ -252,7 +259,7 @@ impl LlmEngine for NativeLlamaEngine {
             let mut generated_tokens = 0;
 
             let mut pos = 0;
-            const TILE_CHUNK_SIZE: usize = 256;
+            const TILE_CHUNK_SIZE: usize = 1024;
             let mut last_logits: Option<Tensor> = None;
 
             // ── STAGE 1: Tiled Prefill Pass ──
