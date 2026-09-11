@@ -2,7 +2,7 @@
 #include "ffi_bridge.h"
 #include "tensor_ops.hpp"
 #include "thermal_sensor.hpp"
-#include "matrix_matcher.hpp"
+#include "fin_ocr/matrix_matcher.hpp"
 
 #include <algorithm>
 #include <cstdint>

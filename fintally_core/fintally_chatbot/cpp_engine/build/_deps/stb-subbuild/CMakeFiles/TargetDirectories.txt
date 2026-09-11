@@ -1,3 +1,0 @@
-/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/CMakeFiles/stb-populate.dir
-/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/CMakeFiles/edit_cache.dir
-/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/CMakeFiles/rebuild_cache.dir

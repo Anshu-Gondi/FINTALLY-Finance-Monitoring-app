@@ -1,7 +1,0 @@
-# This is a generated file and its contents are an internal implementation detail.
-# The patch step will be re-executed if anything in this file changes.
-# No other meaning or use of this file is supported.
-
-command (connected)=/usr/bin/cmake;-Dcan_fetch=YES;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/tmp/stb-populate-gitupdate.cmake
-command (disconnected)=/usr/bin/cmake;-Dcan_fetch=NO;-DCMAKE_MESSAGE_LOG_LEVEL=VERBOSE;-P;/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-subbuild/stb-populate-prefix/tmp/stb-populate-gitupdate.cmake
-work_dir=/home/anshu_gondi/projects/FINTALLY-Finance-Monitoring-app/fintally_core/fintally_chatbot/cpp_engine/build/_deps/stb-src

@@ -1,55 +1,75 @@
 cmake_minimum_required(VERSION 3.16)
 
-# Prevent FetchContent timestamp policy warnings (CMP0135)
+# ==============================================================================
+# FinOCR Native OCR Engine
+# ==============================================================================
+
 if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
 endif()
 
-project(fin_ocr_native VERSION 1.0.0 LANGUAGES C CXX)
+project(
+    fin_ocr_native
+    VERSION 1.0.0
+    LANGUAGES C CXX
+)
 
-# ----------------------------------------------------------------------
-# C++ Configuration
-# ----------------------------------------------------------------------
+# ==============================================================================
+# GLOBAL C++ CONFIGURATION
+# ==============================================================================
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(
+    CMAKE_CXX_STANDARD
+    17
+)
 
-# Export compile_commands.json for clangd, LSP, and static analyzers
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(
+    CMAKE_CXX_STANDARD_REQUIRED
+    ON
+)
 
-# ----------------------------------------------------------------------
-# Build Configuration Options
-# ----------------------------------------------------------------------
+set(
+    CMAKE_CXX_EXTENSIONS
+    OFF
+)
+
+# clangd / clang-tidy / static-analysis support.
+set(
+    CMAKE_EXPORT_COMPILE_COMMANDS
+    ON
+)
+
+# ==============================================================================
+# BUILD OPTIONS
+# ==============================================================================
 
 option(
     FIN_BUILD_SHARED
-    "Build shared library instead of static"
+    "Build FinOCR as a shared library"
     OFF
 )
 
 option(
     FIN_ENABLE_NATIVE
-    "Enable -march=native CPU optimizations"
+    "Enable compiler -march=native optimizations"
     ON
 )
 
 option(
     FIN_ENABLE_AVX2
-    "Enable AVX2 vector instructions"
+    "Enable AVX2 instructions"
     ON
 )
 
 option(
     FIN_ENABLE_AVX512
-    "Enable AVX512 vector instructions"
+    "Enable AVX512 instructions"
     ON
 )
 
-# CRITICAL FIX: Default LTO to OFF for static FFI/Rust integration
 option(
     FIN_ENABLE_LTO
-    "Enable Link Time Optimization (IPO/LTO)"
+    "Enable Link Time Optimization / IPO"
     OFF
 )
 
@@ -65,379 +85,167 @@ option(
     OFF
 )
 
-include(FetchContent)
+# ==============================================================================
+# SANITIZER OPTIONS
+# ==============================================================================
 
-# ----------------------------------------------------------------------
-# External Dependencies
-# ----------------------------------------------------------------------
+option(
+    FIN_SANITIZER_ADDRESS
+    "Enable AddressSanitizer"
+    OFF
+)
 
-# ----------------------------------------------------------------------
-# 1. pkg-config
+option(
+    FIN_SANITIZER_UNDEFINED
+    "Enable UndefinedBehaviorSanitizer"
+    OFF
+)
+
+option(
+    FIN_SANITIZER_LEAK
+    "Enable LeakSanitizer"
+    OFF
+)
+
+# ==============================================================================
+# PROJECT CMAKE MODULE PATH
+# ==============================================================================
+
+list(
+    APPEND
+    CMAKE_MODULE_PATH
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
+)
+
+# ==============================================================================
+# INTERNAL CMAKE MODULES
 #
-# Used for:
-#   - PDFium discovery
-#   - Tesseract discovery
-#   - Leptonica discovery
-# ----------------------------------------------------------------------
-
-find_package(PkgConfig REQUIRED)
-
-# ----------------------------------------------------------------------
-# 2. Tesseract OCR + Leptonica
-# ----------------------------------------------------------------------
-
-if(FIN_ENABLE_TESSERACT)
-
-    message(
-        STATUS
-        "[FinOCR] Tesseract OCR backend ENABLED"
-    )
-
-    pkg_check_modules(
-        TESSERACT
-        REQUIRED
-        IMPORTED_TARGET
-        tesseract
-    )
-
-    pkg_check_modules(
-        LEPTONICA
-        REQUIRED
-        IMPORTED_TARGET
-        lept
-    )
-
-else()
-
-    message(
-        STATUS
-        "[FinOCR] Tesseract OCR backend DISABLED"
-    )
-
-endif()
-
-# ----------------------------------------------------------------------
-# 3. stb_image
-# ----------------------------------------------------------------------
-
-FetchContent_Declare(
-    stb
-    GIT_REPOSITORY https://github.com/nothings/stb.git
-    GIT_TAG master
-)
-
-FetchContent_MakeAvailable(stb)
-
-# ----------------------------------------------------------------------
-# 4. PDFium
-# ----------------------------------------------------------------------
-
-pkg_check_modules(
-    PDFIUM
-    QUIET
-    pdfium
-)
-
-if(NOT PDFIUM_FOUND)
-
-    set(
-        PDFIUM_ROOT_DIR
-        ""
-        CACHE PATH
-        "Path to PDFium installation directory"
-    )
-
-    if(PDFIUM_ROOT_DIR)
-
-        set(
-            PDFIUM_INCLUDE_DIRS
-            "${PDFIUM_ROOT_DIR}/include"
-        )
-
-        if(EXISTS "${PDFIUM_ROOT_DIR}/lib/libpdfium.so")
-
-            set(
-                PDFIUM_LIBRARIES
-                "${PDFIUM_ROOT_DIR}/lib/libpdfium.so"
-            )
-
-        else()
-
-            set(
-                PDFIUM_LIBRARIES
-                "${PDFIUM_ROOT_DIR}/lib/pdfium.lib"
-            )
-
-        endif()
-
-    else()
-
-        message(
-            STATUS
-            "[FinOCR] PDFium not found locally. "
-            "Fetching prebuilt PDFium binaries..."
-        )
-
-        FetchContent_Declare(
-            pdfium_binaries
-            URL https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F6531/pdfium-linux-x64.tgz
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        )
-
-        FetchContent_MakeAvailable(pdfium_binaries)
-
-        set(
-            PDFIUM_INCLUDE_DIRS
-            "${pdfium_binaries_SOURCE_DIR}/include"
-        )
-
-        set(
-            PDFIUM_LIBRARIES
-            "${pdfium_binaries_SOURCE_DIR}/lib/libpdfium.so"
-        )
-
-    endif()
-
-endif()
-
-# ----------------------------------------------------------------------
-# CPU / Compiler Optimization Helper
-# ----------------------------------------------------------------------
-
-function(fin_apply_cpu_optimizations TARGET)
-
-    if(MSVC)
-
-        target_compile_options(
-            ${TARGET}
-            PRIVATE
-
-                /O2
-                /fp:fast
-                /W4
-                /permissive-
-        )
-
-        if(FIN_WARNINGS_AS_ERRORS)
-
-            target_compile_options(
-                ${TARGET}
-                PRIVATE
-                    /WX
-            )
-
-        endif()
-
-        if(FIN_ENABLE_AVX512)
-
-            target_compile_options(
-                ${TARGET}
-                PRIVATE
-                    /arch:AVX512
-            )
-
-        elseif(FIN_ENABLE_AVX2)
-
-            target_compile_options(
-                ${TARGET}
-                PRIVATE
-                    /arch:AVX2
-            )
-
-        endif()
-
-    else()
-
-        target_compile_options(
-            ${TARGET}
-            PRIVATE
-
-                -O3
-                -ffast-math
-                -Wall
-                -Wextra
-                -Wpedantic
-                -Wshadow
-        )
-
-        if(FIN_WARNINGS_AS_ERRORS)
-
-            target_compile_options(
-                ${TARGET}
-                PRIVATE
-                    -Werror
-            )
-
-        endif()
-
-        if(FIN_ENABLE_NATIVE)
-
-            target_compile_options(
-                ${TARGET}
-                PRIVATE
-                    -march=native
-            )
-
-        elseif(FIN_ENABLE_AVX512)
-
-            target_compile_options(
-                ${TARGET}
-                PRIVATE
-                    -mavx512f
-                    -mavx512bw
-                    -mavx2
-                    -msse4.2
-            )
-
-        elseif(FIN_ENABLE_AVX2)
-
-            target_compile_options(
-                ${TARGET}
-                PRIVATE
-                    -mavx2
-                    -msse4.2
-            )
-
-        endif()
-
-    endif()
-
-endfunction()
-
-# ----------------------------------------------------------------------
-# Target Definition
-# ----------------------------------------------------------------------
-
-if(FIN_BUILD_SHARED)
-
-    add_library(
-        fin_ocr_native
-        SHARED
-    )
-
-else()
-
-    add_library(
-        fin_ocr_native
-        STATIC
-    )
-
-endif()
-
-# ----------------------------------------------------------------------
-# Native Library Sources
-# ----------------------------------------------------------------------
-
-target_sources(
-    fin_ocr_native
-    PRIVATE
-
-        src/ffi_bridge.cpp
-        src/matrix_matcher.cpp
-        src/ocr_pipeline.cpp
-        src/thermal_sensor.cpp
-)
-
-# ----------------------------------------------------------------------
-# Include Directories
-# ----------------------------------------------------------------------
-
-target_include_directories(
-    fin_ocr_native
-    PUBLIC
-
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-
-    PRIVATE
-
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${stb_SOURCE_DIR}
-        ${PDFIUM_INCLUDE_DIRS}
-)
-
-if(FIN_ENABLE_TESSERACT)
-
-    target_include_directories(
-        fin_ocr_native
-        PRIVATE
-
-            ${TESSERACT_INCLUDE_DIRS}
-            ${LEPTONICA_INCLUDE_DIRS}
-    )
-
-endif()
-
-# ----------------------------------------------------------------------
-# Native Library Dependencies
-# ----------------------------------------------------------------------
-
-target_link_libraries(
-    fin_ocr_native
-    PRIVATE
-
-        ${PDFIUM_LIBRARIES}
-)
-
-# ----------------------------------------------------------------------
-# Tesseract OCR backend
-# ----------------------------------------------------------------------
-
-if(FIN_ENABLE_TESSERACT)
-
-    target_link_libraries(
-        fin_ocr_native
-        PRIVATE
-
-            PkgConfig::TESSERACT
-            PkgConfig::LEPTONICA
-    )
-
-    target_compile_definitions(
-        fin_ocr_native
-        PRIVATE
-
-            FIN_USE_TESSERACT=1
-    )
-
-endif()
-
-# ----------------------------------------------------------------------
-# Position Independent Code & Visibility
+# CompilerOptions.cmake
+#     compiler flags / CPU configuration
 #
-# CRITICAL FIX: Ensure C FFI symbols are fully exported in static lib
-# ----------------------------------------------------------------------
+# Dependencies.cmake
+#     Tesseract / Leptonica / PDFium / stb
+#
+# Sanitizers.cmake
+#     ASan / UBSan / LSan
+# ==============================================================================
 
-set_target_properties(
-    fin_ocr_native
-    PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
-        CXX_VISIBILITY_PRESET default
-        VISIBILITY_INLINES_HIDDEN OFF
+include(
+    CompilerOptions
 )
 
-# ----------------------------------------------------------------------
-# Apply CPU Optimizations to Native Library
-# ----------------------------------------------------------------------
-
-fin_apply_cpu_optimizations(
-    fin_ocr_native
+include(
+    Dependencies
 )
 
-# ----------------------------------------------------------------------
-# Link-Time Optimization / IPO
-# ----------------------------------------------------------------------
+include(
+    Sanitizers
+)
+
+# ==============================================================================
+# DEPENDENCY SUMMARY
+# ==============================================================================
+
+message(STATUS "")
+message(STATUS "============================================================")
+message(STATUS " FinOCR Native Configuration")
+message(STATUS "============================================================")
+message(STATUS "[FinOCR] Version            : ${PROJECT_VERSION}")
+message(STATUS "[FinOCR] C++ Standard       : C++${CMAKE_CXX_STANDARD}")
+message(STATUS "[FinOCR] Generator          : ${CMAKE_GENERATOR}")
+message(STATUS "[FinOCR] Build Type         : ${CMAKE_BUILD_TYPE}")
+message(STATUS "")
+message(STATUS "[FinOCR] Shared Library     : ${FIN_BUILD_SHARED}")
+message(STATUS "[FinOCR] Native CPU         : ${FIN_ENABLE_NATIVE}")
+message(STATUS "[FinOCR] AVX2               : ${FIN_ENABLE_AVX2}")
+message(STATUS "[FinOCR] AVX512             : ${FIN_ENABLE_AVX512}")
+message(STATUS "[FinOCR] LTO                : ${FIN_ENABLE_LTO}")
+message(STATUS "[FinOCR] Tesseract          : ${FIN_ENABLE_TESSERACT}")
+message(STATUS "[FinOCR] Warnings as Errors : ${FIN_WARNINGS_AS_ERRORS}")
+message(STATUS "")
+message(STATUS "[FinOCR] ASan               : ${FIN_SANITIZER_ADDRESS}")
+message(STATUS "[FinOCR] UBSan              : ${FIN_SANITIZER_UNDEFINED}")
+message(STATUS "[FinOCR] LSan               : ${FIN_SANITIZER_LEAK}")
+message(STATUS "============================================================")
+message(STATUS "")
+
+# ==============================================================================
+# CORE NATIVE LIBRARY
+# ==============================================================================
+#
+# src/CMakeLists.txt is now responsible for:
+#
+#     - creating fin_ocr_native
+#     - adding src/ffi_bridge.cpp
+#     - adding src/thermal_sensor.cpp
+#     - adding src/matrix_matcher.cpp facade
+#     - adding all module subdirectories
+#     - linking module/dependency targets
+#
+# The root deliberately does not enumerate implementation files.
+# ==============================================================================
+
+add_subdirectory(
+    src
+)
+
+# ==============================================================================
+# TESTING
+# ==============================================================================
+#
+# Tests remain an independent build layer.
+#
+# tests/CMakeLists.txt owns:
+#
+#     unit_tests
+#     dataset_tests
+#     tensor_ops_tests
+# ==============================================================================
+
+enable_testing()
+
+add_subdirectory(
+    tests
+)
+
+# ==============================================================================
+# BENCHMARKS
+# ==============================================================================
+#
+# benchmarks/CMakeLists.txt owns:
+#
+#     bench_runner
+#     bench_dataset
+#     bench_tensor_ops
+#     bench_matrix_matcher
+#     bench_dataset_diagnostic
+# ==============================================================================
+
+add_subdirectory(
+    benchmarks
+)
+
+# ==============================================================================
+# LTO / IPO
+# ==============================================================================
+#
+# Applied to the production native library after its target exists.
+# ==============================================================================
 
 if(FIN_ENABLE_LTO)
 
-    include(CheckIPOSupported)
-
-    check_ipo_supported(
-        RESULT ipo_supported
-        OUTPUT error_log
+    include(
+        CheckIPOSupported
     )
 
-    if(ipo_supported)
+    check_ipo_supported(
+        RESULT
+            FIN_IPO_SUPPORTED
+        OUTPUT
+            FIN_IPO_ERROR
+    )
+
+    if(FIN_IPO_SUPPORTED)
 
         set_target_properties(
             fin_ocr_native
@@ -447,272 +255,111 @@ if(FIN_ENABLE_LTO)
 
         message(
             STATUS
-            "[FinOCR] Link Time Optimization (LTO) ENABLED"
+            "[FinOCR] IPO/LTO enabled"
         )
 
     else()
 
         message(
             WARNING
-            "[FinOCR] IPO/LTO requested but not supported "
-            "by compiler: ${error_log}"
+            "[FinOCR] IPO/LTO requested but compiler/toolchain "
+            "does not support it:\n${FIN_IPO_ERROR}"
         )
 
     endif()
 
 endif()
 
-# ----------------------------------------------------------------------
-# Unit Testing
-# ----------------------------------------------------------------------
+# ==============================================================================
+# FINAL TARGET CONFIGURATION
+# ==============================================================================
+#
+# These calls happen after src/CMakeLists.txt creates the target.
+# ==============================================================================
 
-enable_testing()
+if(TARGET fin_ocr_native)
 
-# ----------------------------------------------------------------------
-# GoogleTest
-# ----------------------------------------------------------------------
-
-FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-
-set(
-    gtest_force_shared_crt
-    ON
-    CACHE BOOL
-    ""
-    FORCE
-)
-
-FetchContent_MakeAvailable(
-    googletest
-)
-
-# ----------------------------------------------------------------------
-# Existing Engine Unit Tests
-# ----------------------------------------------------------------------
-
-add_executable(
-    unit_tests
-
-    tests/test_engine.cpp
-)
-
-target_link_libraries(
-    unit_tests
-    PRIVATE
-
+    fin_configure_native_target(
         fin_ocr_native
-        gtest_main
-)
+    )
 
-fin_apply_cpu_optimizations(
-    unit_tests
-)
-
-add_test(
-    NAME EngineUnitTests
-    COMMAND unit_tests
-)
-
-# ----------------------------------------------------------------------
-# Real-Dataset Integration Tests
-# ----------------------------------------------------------------------
-
-add_executable(
-    dataset_tests
-
-    tests/test_dataset.cpp
-)
-
-target_link_libraries(
-    dataset_tests
-    PRIVATE
-
+    fin_apply_sanitizers(
         fin_ocr_native
-        gtest_main
-)
+    )
 
-fin_apply_cpu_optimizations(
-    dataset_tests
-)
+endif()
 
-add_test(
-    NAME DatasetUnitTests
-    COMMAND dataset_tests
-)
-
-set_tests_properties(
-    DatasetUnitTests
-    PROPERTIES
-        WORKING_DIRECTORY
-        "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-
-# ----------------------------------------------------------------------
-# Tensor Operations Unit Tests
-# ----------------------------------------------------------------------
-
-add_executable(
-    tensor_ops_tests
-
-    tests/test_tensor_ops.cpp
-)
-
-target_link_libraries(
-    tensor_ops_tests
-    PRIVATE
-
-        fin_ocr_native
-        gtest_main
-)
-
-fin_apply_cpu_optimizations(
-    tensor_ops_tests
-)
-
-add_test(
-    NAME TensorOpsUnitTests
-    COMMAND tensor_ops_tests
-)
-
-# ----------------------------------------------------------------------
-# Google Benchmark
-# ----------------------------------------------------------------------
-
-FetchContent_Declare(
-    googlebenchmark
-    URL https://github.com/google/benchmark/archive/refs/tags/v1.8.3.tar.gz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-
-set(
-    BENCHMARK_ENABLE_TESTING
-    OFF
-    CACHE BOOL
-    ""
-    FORCE
-)
-
-FetchContent_MakeAvailable(
-    googlebenchmark
-)
-
-# ----------------------------------------------------------------------
-# Existing Synthetic Pipeline Benchmark
-# ----------------------------------------------------------------------
-
-add_executable(
-    bench_runner
-
-    benchmarks/bench_engine.cpp
-)
-
-target_link_libraries(
-    bench_runner
-    PRIVATE
-
-        fin_ocr_native
-        benchmark::benchmark
-)
-
-fin_apply_cpu_optimizations(
-    bench_runner
-)
-
-# ----------------------------------------------------------------------
-# Existing Real-Dataset Benchmark
-# ----------------------------------------------------------------------
-
-add_executable(
-    bench_dataset
-
-    benchmarks/bench_dataset.cpp
-)
-
-target_link_libraries(
-    bench_dataset
-    PRIVATE
-
-        fin_ocr_native
-        benchmark::benchmark
-)
-
-fin_apply_cpu_optimizations(
-    bench_dataset
-)
-
-# ----------------------------------------------------------------------
-# Tensor Operations Benchmark
-# ----------------------------------------------------------------------
-
-add_executable(
-    bench_tensor_ops
-
-    benchmarks/bench_tensor_ops.cpp
-)
-
-target_link_libraries(
-    bench_tensor_ops
-    PRIVATE
-
-        fin_ocr_native
-        benchmark::benchmark
-)
-
-# ----------------------------------------------------------------------
-# MatrixMatcher Benchmark
-# ----------------------------------------------------------------------
-
-add_executable(
-    bench_matrix_matcher
-
-    benchmarks/bench_matrix_matcher.cpp
-)
-
-target_link_libraries(
-    bench_matrix_matcher
-    PRIVATE
-
-        fin_ocr_native
-        benchmark::benchmark
-)
-
-# ----------------------------------------------------------------------
-# Diagnostic Benchmark
-# ----------------------------------------------------------------------
-
-add_executable(
-    bench_dataset_diagnostic
-    benchmarks/bench_dataset_diagnostic.cpp
-)
-
-target_link_libraries(
-    bench_dataset_diagnostic
-    PRIVATE
-
-        fin_ocr_native
-)
-
-fin_apply_cpu_optimizations(
-    bench_tensor_ops
-)
-
-# ----------------------------------------------------------------------
-# Build Configuration Summary
-# ----------------------------------------------------------------------
+# ==============================================================================
+# FINAL BUILD SUMMARY
+# ==============================================================================
 
 message(STATUS "")
-message(STATUS "========== FinOCR Build Configuration ==========")
-message(STATUS "[FinOCR] C++ Standard      : C++${CMAKE_CXX_STANDARD}")
-message(STATUS "[FinOCR] Shared Library    : ${FIN_BUILD_SHARED}")
-message(STATUS "[FinOCR] Native CPU        : ${FIN_ENABLE_NATIVE}")
-message(STATUS "[FinOCR] AVX2              : ${FIN_ENABLE_AVX2}")
-message(STATUS "[FinOCR] AVX-512           : ${FIN_ENABLE_AVX512}")
-message(STATUS "[FinOCR] LTO               : ${FIN_ENABLE_LTO}")
-message(STATUS "[FinOCR] Tesseract OCR     : ${FIN_ENABLE_TESSERACT}")
-message(STATUS "[FinOCR] Warnings as Error : ${FIN_WARNINGS_AS_ERRORS}")
-message(STATUS "================================================")
+message(STATUS "============================================================")
+message(STATUS " FinOCR Target Graph")
+message(STATUS "============================================================")
+
+if(TARGET fin_ocr_native)
+
+    get_target_property(
+        FIN_OCR_LIBRARY_TYPE
+        fin_ocr_native
+        TYPE
+    )
+
+    message(
+        STATUS
+        "[FinOCR] Native target : fin_ocr_native"
+    )
+
+    message(
+        STATUS
+        "[FinOCR] Library type  : ${FIN_OCR_LIBRARY_TYPE}"
+    )
+
+else()
+
+    message(
+        FATAL_ERROR
+        "[FinOCR] fin_ocr_native target was not created by src/CMakeLists.txt"
+    )
+
+endif()
+
+if(TARGET unit_tests)
+
+    message(
+        STATUS
+        "[FinOCR] Unit tests    : ENABLED"
+    )
+
+endif()
+
+if(TARGET dataset_tests)
+
+    message(
+        STATUS
+        "[FinOCR] Dataset tests : ENABLED"
+    )
+
+endif()
+
+if(TARGET tensor_ops_tests)
+
+    message(
+        STATUS
+        "[FinOCR] Tensor tests  : ENABLED"
+    )
+
+endif()
+
+if(TARGET bench_runner)
+
+    message(
+        STATUS
+        "[FinOCR] Benchmarks    : ENABLED"
+    )
+
+endif()
+
+message(STATUS "============================================================")
 message(STATUS "")

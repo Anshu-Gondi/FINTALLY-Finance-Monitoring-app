@@ -1,275 +1,607 @@
 #include "ffi_bridge.h"
-#include "tensor_ops.hpp"
-#include "thermal_sensor.hpp"
 
-// PDFium C-API headers for vector page rasterization & native text stream extraction
+#include "thermal_sensor.hpp"
+#include "tensor_ops.hpp"
+
+#include "fin_ocr/core/ocr_config.hpp"
+#include "fin_ocr/image/luminance.hpp"
+#include "fin_ocr/pipeline/vision_pipeline.hpp"
+
 #include <fpdfview.h>
 #include <fpdf_text.h>
 
-// Linux eventfd for zero-CPU IPC notification interrupts
 #include <sys/eventfd.h>
 #include <unistd.h>
 
-#include <new>
-#include <iostream>
-#include <exception>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <string>
+#include <exception>
+#include <iostream>
+#include <new>
 #include <sstream>
+#include <string>
 #include <vector>
-#include <algorithm>
 
-// Internal context implementation struct
+// =============================================================================
+// INTERNAL ENGINE CONTEXT
+// =============================================================================
+
 struct FinOcrEngineContext {
-    size_t max_buffer_limit;
-    int notification_event_fd{-1}; // File descriptor passed from Rust host
+
+    std::size_t max_buffer_limit = 64ULL * 1024ULL * 1024ULL;
+
+    int notification_event_fd = -1;
 };
 
-// Internal pipeline forward declaration
-FinProcessedBuffer* execute_vision_pipeline(
-    const uint8_t* input_bytes,
-    size_t input_len,
-    FinInputType input_type,
-    size_t target_width,
-    size_t target_height,
-    size_t target_channels
-);
+// =============================================================================
+// INTERNAL HELPERS
+// =============================================================================
 
 namespace {
 
-// Converts UTF-16LE characters returned by PDFium into a standard UTF-8 string
-std::string utf16le_to_utf8(const std::vector<unsigned short>& utf16_buf, size_t char_count) {
+// =============================================================================
+// UTF-16LE / UTF-8 CONVERSION
+// =============================================================================
+//
+// PDFium exposes PDF text through UTF-16 code units.
+//
+// This conversion handles:
+//     - ASCII
+//     - BMP characters
+//     - surrogate pairs
+//
+// Invalid isolated surrogate values are treated conservatively.
+// =============================================================================
+
+std::string utf16le_to_utf8(
+    const std::vector<unsigned short>& utf16_buf,
+    std::size_t char_count
+) {
+
+    if (
+        char_count == 0 ||
+        utf16_buf.empty()
+    ) {
+        return {};
+    }
+
+    const std::size_t safe_count =
+        std::min(
+            char_count,
+            utf16_buf.size()
+        );
+
     std::string utf8_out;
-    utf8_out.reserve(char_count * 2);
 
-    for (size_t i = 0; i < char_count; ++i) {
-        uint32_t cp = utf16_buf[i];
+    utf8_out.reserve(
+        safe_count * 2
+    );
 
-        // Handle surrogate pairs
-        if (cp >= 0xD800 && cp <= 0xDBFF && (i + 1) < char_count) {
-            uint32_t low = utf16_buf[i + 1];
-            if (low >= 0xDC00 && low <= 0xDFFF) {
-                cp = 0x10000 + (((cp & 0x3FF) << 10) | (low & 0x3FF));
-                i++;
+    for (
+        std::size_t i = 0;
+        i < safe_count;
+        ++i
+    ) {
+
+        uint32_t codepoint =
+            static_cast<uint32_t>(
+                utf16_buf[i]
+            );
+
+        // ---------------------------------------------------------------------
+        // Surrogate pair
+        // ---------------------------------------------------------------------
+
+        if (
+            codepoint >= 0xD800 &&
+            codepoint <= 0xDBFF &&
+            i + 1 < safe_count
+        ) {
+
+            const uint32_t low =
+                static_cast<uint32_t>(
+                    utf16_buf[i + 1]
+                );
+
+            if (
+                low >= 0xDC00 &&
+                low <= 0xDFFF
+            ) {
+
+                codepoint =
+                    0x10000u +
+                    (
+                        (
+                            codepoint &
+                            0x3FFu
+                        ) << 10
+                    ) +
+                    (
+                        low &
+                        0x3FFu
+                    );
+
+                ++i;
             }
         }
 
-        if (cp < 0x80) {
-            utf8_out.push_back(static_cast<char>(cp));
-        } else if (cp < 0x800) {
-            utf8_out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
-            utf8_out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
-        } else if (cp < 0x10000) {
-            utf8_out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
-            utf8_out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            utf8_out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        // ---------------------------------------------------------------------
+        // Reject isolated surrogate code units.
+        // ---------------------------------------------------------------------
+
+        if (
+            codepoint >= 0xD800 &&
+            codepoint <= 0xDFFF
+        ) {
+
+            continue;
+        }
+
+        // ---------------------------------------------------------------------
+        // UTF-8
+        // ---------------------------------------------------------------------
+
+        if (
+            codepoint < 0x80
+        ) {
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    codepoint
+                )
+            );
+
+        } else if (
+            codepoint < 0x800
+        ) {
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0xC0u |
+                    (codepoint >> 6)
+                )
+            );
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0x80u |
+                    (codepoint & 0x3Fu)
+                )
+            );
+
+        } else if (
+            codepoint < 0x10000
+        ) {
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0xE0u |
+                    (codepoint >> 12)
+                )
+            );
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0x80u |
+                    (
+                        (codepoint >> 6) &
+                        0x3Fu
+                    )
+                )
+            );
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0x80u |
+                    (codepoint & 0x3Fu)
+                )
+            );
+
         } else {
-            utf8_out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
-            utf8_out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
-            utf8_out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
-            utf8_out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0xF0u |
+                    (codepoint >> 18)
+                )
+            );
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0x80u |
+                    (
+                        (codepoint >> 12) &
+                        0x3Fu
+                    )
+                )
+            );
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0x80u |
+                    (
+                        (codepoint >> 6) &
+                        0x3Fu
+                    )
+                )
+            );
+
+            utf8_out.push_back(
+                static_cast<char>(
+                    0x80u |
+                    (codepoint & 0x3Fu)
+                )
+            );
         }
     }
+
     return utf8_out;
 }
 
-// PDF Path: Extract native text characters directly using PDFium
-std::string extract_pdf_native_text(const uint8_t* pdf_bytes, size_t pdf_len) {
-    if (!pdf_bytes || pdf_len == 0) return "";
+// =============================================================================
+// PDF NATIVE TEXT EXTRACTION
+// =============================================================================
+//
+// This is intentionally separate from raster OCR.
+//
+// Path:
+//
+//     digital PDF
+//          |
+//          +--> PDFium text stream
+//          |
+//          +--> UTF-16
+//          |
+//          +--> UTF-8
+//
+// If no native text exists, the caller can still use the OCR text already
+// generated by VisionPipeline.
+// =============================================================================
 
-    FPDF_InitLibrary();
-    FPDF_DOCUMENT doc = FPDF_LoadMemDocument(pdf_bytes, static_cast<int>(pdf_len), nullptr);
-    if (!doc) {
-        FPDF_DestroyLibrary();
-        return "";
+std::string extract_pdf_native_text(
+    const uint8_t* pdf_bytes,
+    std::size_t pdf_len
+) {
+
+    if (
+        pdf_bytes == nullptr ||
+        pdf_len == 0
+    ) {
+        return {};
     }
 
-    int page_count = FPDF_GetPageCount(doc);
+    if (
+        pdf_len >
+        static_cast<std::size_t>(
+            std::numeric_limits<int>::max()
+        )
+    ) {
+        return {};
+    }
+
+    FPDF_InitLibrary();
+
+    FPDF_DOCUMENT document =
+        FPDF_LoadMemDocument(
+            pdf_bytes,
+            static_cast<int>(
+                pdf_len
+            ),
+            nullptr
+        );
+
+    if (
+        document == nullptr
+    ) {
+
+        FPDF_DestroyLibrary();
+
+        return {};
+    }
+
+    const int page_count =
+        FPDF_GetPageCount(
+            document
+        );
+
+    if (
+        page_count <= 0
+    ) {
+
+        FPDF_CloseDocument(
+            document
+        );
+
+        FPDF_DestroyLibrary();
+
+        return {};
+    }
+
     std::string text_output;
 
-    for (int page_idx = 0; page_idx < page_count; ++page_idx) {
-        FPDF_PAGE page = FPDF_LoadPage(doc, page_idx);
-        if (!page) continue;
+    for (
+        int page_index = 0;
+        page_index < page_count;
+        ++page_index
+    ) {
 
-        FPDF_TEXTPAGE text_page = FPDFText_LoadPage(page);
-        if (text_page) {
-            int char_count = FPDFText_CountChars(text_page);
-            if (char_count > 0) {
-                std::vector<unsigned short> buffer(static_cast<size_t>(char_count) + 1, 0);
-                int retrieved = FPDFText_GetText(text_page, 0, char_count, buffer.data());
-                if (retrieved > 0) {
-                    std::string page_text = utf16le_to_utf8(buffer, static_cast<size_t>(retrieved));
-                    if (!page_text.empty()) {
-                        if (page_count > 1) {
-                            text_output += "--- [PAGE " + std::to_string(page_idx + 1) + "] ---\n";
+        FPDF_PAGE page =
+            FPDF_LoadPage(
+                document,
+                page_index
+            );
+
+        if (
+            page == nullptr
+        ) {
+            continue;
+        }
+
+        FPDF_TEXTPAGE text_page =
+            FPDFText_LoadPage(
+                page
+            );
+
+        if (
+            text_page != nullptr
+        ) {
+
+            const int char_count =
+                FPDFText_CountChars(
+                    text_page
+                );
+
+            if (
+                char_count > 0
+            ) {
+
+                std::vector<unsigned short>
+                    buffer(
+                        static_cast<std::size_t>(
+                            char_count
+                        ) + 1u,
+                        0
+                    );
+
+                const int retrieved =
+                    FPDFText_GetText(
+                        text_page,
+                        0,
+                        char_count,
+                        buffer.data()
+                    );
+
+                if (
+                    retrieved > 0
+                ) {
+
+                    const std::size_t safe_retrieved =
+                        std::min(
+                            static_cast<std::size_t>(
+                                retrieved
+                            ),
+                            buffer.size() - 1
+                        );
+
+                    std::string page_text =
+                        utf16le_to_utf8(
+                            buffer,
+                            safe_retrieved
+                        );
+
+                    if (
+                        !page_text.empty()
+                    ) {
+
+                        if (
+                            page_count > 1
+                        ) {
+
+                            text_output +=
+                                "--- [PAGE " +
+                                std::to_string(
+                                    page_index + 1
+                                ) +
+                                "] ---\n";
                         }
-                        text_output += page_text;
-                        text_output += "\n";
+
+                        text_output +=
+                            page_text;
+
+                        text_output.push_back(
+                            '\n'
+                        );
                     }
                 }
             }
-            FPDFText_ClosePage(text_page);
+
+            FPDFText_ClosePage(
+                text_page
+            );
         }
-        FPDF_ClosePage(page);
+
+        FPDF_ClosePage(
+            page
+        );
     }
 
-    FPDF_CloseDocument(doc);
+    FPDF_CloseDocument(
+        document
+    );
+
     FPDF_DestroyLibrary();
 
     return text_output;
 }
 
-// -----------------------------------------------------------------------------
-// Raster Image Path: Analyze OCR-relevant pixels to locate text regions,
-// text lines, and spatial bounding coordinates.
+// =============================================================================
+// RASTER / BUFFER LAYOUT ANALYSIS
+// =============================================================================
 //
-// IMPORTANT:
+// This is diagnostic/metadata analysis.
 //
-// Do NOT inspect only buffer->data[pixel_idx] for RGB images.
+// It does NOT perform OCR.
 //
-// RGB layout:
-//     [R][G][B]
+// Actual OCR is already performed by:
+//     VisionPipeline
+//         -> DocumentOcr
+//         -> TesseractRecognizer
+//         -> MatrixMatcher
+//         -> ChartLabelRecognizer
 //
-// Financial chart layout:
-//     [saturation][OCR foreground][chroma]
-//
-// Therefore each input type has its own foreground interpretation.
-// -----------------------------------------------------------------------------
+// This function only describes the resulting buffer spatially.
+// =============================================================================
 
 std::string extract_raster_layout_analysis(
     const FinProcessedBuffer* buffer,
     FinInputType input_type
 ) {
-    if (!buffer ||
-        !buffer->data ||
+
+    if (
+        buffer == nullptr ||
+        buffer->data == nullptr ||
         buffer->data_len == 0 ||
         buffer->width == 0 ||
         buffer->height == 0 ||
-        buffer->channels == 0) {
-
+        buffer->channels == 0
+    ) {
         return {};
     }
 
     // =========================================================================
-    // Input type string
+    // Input type
     // =========================================================================
 
     const char* type_str =
         "RAW_IMAGE_OR_RECEIPT";
 
-    if (input_type == FIN_INPUT_FIN_CHART) {
-        type_str = "FINANCIAL_CHART";
-    } else if (input_type == FIN_INPUT_PDF_PAGE) {
-        type_str = "SCANNED_PDF_PAGE";
+    if (
+        input_type ==
+        FIN_INPUT_FIN_CHART
+    ) {
+
+        type_str =
+            "FINANCIAL_CHART";
+
+    } else if (
+        input_type ==
+        FIN_INPUT_PDF_PAGE
+    ) {
+
+        type_str =
+            "SCANNED_PDF_PAGE";
     }
 
     // =========================================================================
     // Foreground predicate
-    //
-    // IMPORTANT:
-    // This follows the same semantic representation used by the OCR pipeline.
     // =========================================================================
 
     const auto is_active_pixel =
-        [buffer, input_type](size_t x, size_t y) noexcept -> bool {
+        [buffer, input_type](
+            std::size_t x,
+            std::size_t y
+        ) noexcept -> bool {
 
-            const size_t channels =
+            const std::size_t channels =
                 buffer->channels;
 
-            const size_t pixel_index =
+            const std::size_t pixel_index =
                 (
-                    y * buffer->width +
+                    y *
+                    buffer->width +
                     x
-                ) * channels;
+                ) *
+                channels;
 
             // -----------------------------------------------------------------
-            // Grayscale / PDF OCR mask
+            // 1-channel public OCR mask
             // -----------------------------------------------------------------
 
-            if (channels == 1) {
+            if (
+                channels == 1
+            ) {
 
                 /*
-                 * Native OCR mask:
+                 * Canonical public MatrixMatcher mask:
                  *
                  *     foreground = 255
                  *     background = 0
                  */
                 return
-                    buffer->data[pixel_index] > 127;
+                    buffer->data[
+                        pixel_index
+                    ] > 127;
             }
 
             // -----------------------------------------------------------------
-            // Financial chart
-            //
-            //     channel 0 = saturation
-            //     channel 1 = OCR foreground
-            //     channel 2 = chroma
-            //
-            // MatrixMatcher also uses channel 1.
+            // Financial chart custom OCR representation
             // -----------------------------------------------------------------
 
-            if (input_type == FIN_INPUT_FIN_CHART &&
-                channels >= 3) {
-
-                constexpr uint8_t
-                    CHART_FOREGROUND_THRESHOLD = 35;
+            if (
+                input_type ==
+                    FIN_INPUT_FIN_CHART &&
+                channels >= 3
+            ) {
 
                 return
-                    buffer->data[pixel_index + 1] >=
-                    CHART_FOREGROUND_THRESHOLD;
+                    buffer->data[
+                        pixel_index + 1
+                    ] >=
+                    fin_ocr::config::CHART_FOREGROUND_THRESHOLD;
             }
 
             // -----------------------------------------------------------------
-            // Ordinary RGB image / receipt
-            //
-            // Reconstruct the same dark-text -> foreground representation
-            // used by rgb_to_ocr_mask().
+            // Ordinary RGB
             // -----------------------------------------------------------------
 
-            if (channels >= 3) {
+            if (
+                channels >= 3
+            ) {
 
                 const uint8_t r =
-                    buffer->data[pixel_index + 0];
+                    buffer->data[
+                        pixel_index + 0
+                    ];
 
                 const uint8_t g =
-                    buffer->data[pixel_index + 1];
+                    buffer->data[
+                        pixel_index + 1
+                    ];
 
                 const uint8_t b =
-                    buffer->data[pixel_index + 2];
+                    buffer->data[
+                        pixel_index + 2
+                    ];
 
-                // Same luminance approximation as rgb_to_ocr_mask().
                 const uint8_t gray =
-                    static_cast<uint8_t>(
-                        (
-                            77u *
-                                static_cast<unsigned>(r) +
-                            150u *
-                                static_cast<unsigned>(g) +
-                            29u *
-                                static_cast<unsigned>(b)
-                        ) >> 8
+                    fin_ocr::image::luminance_rgb(
+                        r,
+                        g,
+                        b
                     );
 
-                // Dark pixels become foreground.
+                /*
+                 * rgb_to_ocr_mask():
+                 *
+                 *     dark source pixel
+                 *         -> foreground
+                 *         -> 255
+                 */
                 const uint8_t inverted =
                     static_cast<uint8_t>(
                         255u -
-                        static_cast<unsigned>(gray)
+                        static_cast<unsigned>(
+                            gray
+                        )
                     );
-
-                // Same threshold as rgb_to_ocr_mask().
-                constexpr uint8_t
-                    LAYOUT_OCR_THRESHOLD = 100;
 
                 return
                     inverted >
-                    LAYOUT_OCR_THRESHOLD;
+                    fin_ocr::config::DEFAULT_THRESHOLD;
             }
-
-            // -----------------------------------------------------------------
-            // Unknown channel layout.
-            // -----------------------------------------------------------------
 
             return false;
         };
@@ -278,65 +610,76 @@ std::string extract_raster_layout_analysis(
     // Output header
     // =========================================================================
 
-    std::ostringstream ss;
+    std::ostringstream output;
 
-    ss << "[FIN_ENGINE_OCR_OUTPUT]\n"
-       << "Dimensions: "
-       << buffer->width
-       << "x"
-       << buffer->height
-       << "\n"
-       << "Channels: "
-       << buffer->channels
-       << "\n"
-       << "Binarized: "
-       << (buffer->is_binarized ? "YES" : "NO")
-       << "\n"
-       << "Input Type: "
-       << type_str
-       << "\n";
+    output
+        << "[FIN_ENGINE_OCR_OUTPUT]\n"
+        << "Dimensions: "
+        << buffer->width
+        << "x"
+        << buffer->height
+        << "\n"
+        << "Channels: "
+        << buffer->channels
+        << "\n"
+        << "Binarized: "
+        << (
+            buffer->is_binarized
+                ? "YES"
+                : "NO"
+        )
+        << "\n"
+        << "Input Type: "
+        << type_str
+        << "\n";
 
     // =========================================================================
-    // Scan parameters
-    //
-    // Charts contain much smaller and sparser text than receipts/PDFs.
-    // Use finer horizontal sampling so small dashboard labels aren't merged
-    // into a single large band.
+    // Scan granularity
     // =========================================================================
 
-    const size_t line_height_scan =
-        input_type == FIN_INPUT_FIN_CHART
-            ? 4
-            : std::max<size_t>(
-                  8,
-                  buffer->height / 64
+    const std::size_t line_height_scan =
+        input_type ==
+            FIN_INPUT_FIN_CHART
+
+            ? 4u
+
+            : std::max<std::size_t>(
+                  8u,
+                  buffer->height / 64u
               );
 
     // =========================================================================
     // Global statistics
     // =========================================================================
 
-    size_t total_active_pixels = 0;
-    size_t total_pixels = 0;
-    size_t detected_text_lines = 0;
+    std::size_t total_active_pixels =
+        0;
+
+    std::size_t total_pixels =
+        0;
 
     struct LineRegion {
 
-        size_t y0;
-        size_t y1;
+        std::size_t y0 = 0;
+        std::size_t y1 = 0;
 
-        size_t min_x;
-        size_t max_x;
+        std::size_t min_x = 0;
+        std::size_t max_x = 0;
 
-        size_t active_pixels;
+        std::size_t active_pixels = 0;
 
-        double density;
+        double density = 0.0;
     };
 
     std::vector<LineRegion> regions;
 
     regions.reserve(
-        buffer->height / line_height_scan + 1
+        buffer->height /
+        std::max<std::size_t>(
+            1u,
+            line_height_scan
+        ) +
+        1u
     );
 
     // =========================================================================
@@ -344,43 +687,47 @@ std::string extract_raster_layout_analysis(
     // =========================================================================
 
     for (
-        size_t y = 0;
+        std::size_t y = 0;
         y < buffer->height;
         y += line_height_scan
     ) {
 
-        const size_t end_y =
+        const std::size_t end_y =
             std::min(
                 y + line_height_scan,
                 buffer->height
             );
 
-        const size_t band_height =
+        const std::size_t band_height =
             end_y - y;
 
-        if (band_height == 0) {
+        if (
+            band_height == 0
+        ) {
             continue;
         }
 
-        size_t row_active_pixels = 0;
+        std::size_t row_active_pixels =
+            0;
 
-        size_t min_x =
+        std::size_t min_x =
             buffer->width;
 
-        size_t max_x = 0;
+        std::size_t max_x =
+            0;
 
         // ---------------------------------------------------------------------
         // Scan pixels
         // ---------------------------------------------------------------------
 
         for (
-            size_t ry = y;
+            std::size_t ry = y;
             ry < end_y;
             ++ry
         ) {
 
             for (
-                size_t x = 0;
+                std::size_t x = 0;
                 x < buffer->width;
                 ++x
             ) {
@@ -417,13 +764,15 @@ std::string extract_raster_layout_analysis(
         // Band density
         // ---------------------------------------------------------------------
 
-        const size_t band_pixels =
+        const std::size_t band_pixels =
             buffer->width *
             band_height;
 
         const double band_density =
             band_pixels == 0
+
                 ? 0.0
+
                 : (
                     static_cast<double>(
                         row_active_pixels
@@ -434,27 +783,22 @@ std::string extract_raster_layout_analysis(
                 ) * 100.0;
 
         // ---------------------------------------------------------------------
-        // Text-line heuristic
-        // ---------------------------------------------------------------------
-        //
-        // Normal images:
-        //     preserve existing 0.75% density gate.
-        //
-        // Charts:
-        //     text is much sparser, so use a very low density gate and
-        //     an absolute-pixel guard to prevent completely empty bands.
+        // Text line heuristic
         // ---------------------------------------------------------------------
 
         const bool has_horizontal_extent =
             max_x > min_x;
 
         const bool likely_text_line =
-            input_type == FIN_INPUT_FIN_CHART
+            input_type ==
+                FIN_INPUT_FIN_CHART
+
                 ? (
                     row_active_pixels >= 8 &&
                     has_horizontal_extent &&
                     band_density >= 0.001
                 )
+
                 : (
                     row_active_pixels > 0 &&
                     has_horizontal_extent &&
@@ -468,30 +812,24 @@ std::string extract_raster_layout_analysis(
         }
 
         // ---------------------------------------------------------------------
-        // Chart-specific artifact rejection
-        //
-        // Full-width horizontal structures are much more likely to be:
-        //
-        //     - chart axes
-        //     - borders
-        //     - separators
-        //     - grid structures
-        //
-        // than text.
+        // Chart artifact rejection
         // ---------------------------------------------------------------------
 
         if (
-            input_type == FIN_INPUT_FIN_CHART
+            input_type ==
+            FIN_INPUT_FIN_CHART
         ) {
 
-            const size_t region_width =
+            const std::size_t region_width =
                 max_x -
                 min_x +
                 1;
 
             const double width_ratio =
                 buffer->width == 0
+
                     ? 0.0
+
                     : static_cast<double>(
                           region_width
                       ) /
@@ -499,10 +837,7 @@ std::string extract_raster_layout_analysis(
                           buffer->width
                       );
 
-            /*
-             * Very thin, almost full-width structures are unlikely
-             * to be text lines.
-             */
+            // Full-width high-density structures are normally axes/borders.
             if (
                 width_ratio >= 0.90 &&
                 band_height <= 16 &&
@@ -511,10 +846,7 @@ std::string extract_raster_layout_analysis(
                 continue;
             }
 
-            /*
-             * Extremely wide low-density structures are generally
-             * chart geometry rather than actual text.
-             */
+            // Full-width sparse structures are generally chart geometry.
             if (
                 width_ratio >= 0.90 &&
                 band_density < 0.50
@@ -534,7 +866,7 @@ std::string extract_raster_layout_analysis(
     }
 
     // =========================================================================
-    // Merge neighboring detected bands belonging to one line
+    // Merge neighboring regions
     // =========================================================================
 
     std::vector<LineRegion> merged_regions;
@@ -562,20 +894,19 @@ std::string extract_raster_layout_analysis(
         LineRegion& previous =
             merged_regions.back();
 
-        const size_t vertical_gap =
+        const std::size_t vertical_gap =
             current.y0 > previous.y1
                 ? current.y0 -
                   previous.y1
                 : 0;
 
-        /*
-         * Fine chart scanning means multiple 4px bands can belong
-         * to the same text line.
-         */
-        const size_t allowed_vertical_gap =
-            input_type == FIN_INPUT_FIN_CHART
-                ? 4
-                : 2;
+        const std::size_t allowed_vertical_gap =
+            input_type ==
+                FIN_INPUT_FIN_CHART
+
+                ? 4u
+
+                : 2u;
 
         const bool close_vertically =
             vertical_gap <=
@@ -615,18 +946,19 @@ std::string extract_raster_layout_analysis(
             previous.active_pixels +=
                 current.active_pixels;
 
-            // Recompute density over the merged region.
-            const size_t merged_height =
+            const std::size_t merged_height =
                 previous.y1 -
                 previous.y0;
 
-            const size_t merged_area =
+            const std::size_t merged_area =
                 buffer->width *
                 merged_height;
 
             previous.density =
                 merged_area == 0
+
                     ? 0.0
+
                     : (
                         static_cast<double>(
                             previous.active_pixels
@@ -645,15 +977,14 @@ std::string extract_raster_layout_analysis(
     }
 
     // =========================================================================
-    // Final region statistics
+    // Final statistics
     // =========================================================================
-
-    detected_text_lines =
-        merged_regions.size();
 
     const double overall_density =
         total_pixels == 0
+
             ? 0.0
+
             : (
                 static_cast<double>(
                     total_active_pixels
@@ -663,13 +994,15 @@ std::string extract_raster_layout_analysis(
                 )
             ) * 100.0;
 
-    ss << "Active Text Region Density: "
-       << overall_density
-       << "%\n";
+    output
+        << "Active Text Region Density: "
+        << overall_density
+        << "%\n";
 
-    ss << "Detected Text Lines: "
-       << detected_text_lines
-       << "\n";
+    output
+        << "Detected Text Lines: "
+        << merged_regions.size()
+        << "\n";
 
     // =========================================================================
     // Spatial regions
@@ -679,9 +1012,11 @@ std::string extract_raster_layout_analysis(
         !merged_regions.empty()
     ) {
 
-        ss << "Spatial Bounding Regions:\n";
+        output
+            << "Spatial Bounding Regions:\n";
 
-        size_t line_number = 0;
+        std::size_t line_number =
+            0;
 
         for (
             const LineRegion& region :
@@ -690,33 +1025,34 @@ std::string extract_raster_layout_analysis(
 
             ++line_number;
 
-            const size_t region_width =
+            const std::size_t region_width =
                 region.max_x -
                 region.min_x +
                 1;
 
-            const size_t region_height =
+            const std::size_t region_height =
                 region.y1 -
                 region.y0;
 
-            ss << "  - Text Line "
-               << line_number
-               << " [Y:"
-               << region.y0
-               << "-"
-               << region.y1
-               << ", X:"
-               << region.min_x
-               << "-"
-               << region.max_x
-               << "]: "
-               << "Density "
-               << region.density
-               << "%, Width "
-               << region_width
-               << "px, Height "
-               << region_height
-               << "px\n";
+            output
+                << "  - Text Line "
+                << line_number
+                << " [Y:"
+                << region.y0
+                << "-"
+                << region.y1
+                << ", X:"
+                << region.min_x
+                << "-"
+                << region.max_x
+                << "]: "
+                << "Density "
+                << region.density
+                << "%, Width "
+                << region_width
+                << "px, Height "
+                << region_height
+                << "px\n";
         }
     }
 
@@ -724,54 +1060,145 @@ std::string extract_raster_layout_analysis(
     // Payload contract
     // =========================================================================
 
-    ss << "Payload Status: VALID_PREPROCESSED_BUFFER\n";
+    output
+        << "Payload Status: "
+        << "VALID_PREPROCESSED_BUFFER\n";
 
-    return ss.str();
+    return output.str();
 }
 
-} // anonymous namespace
+} // namespace
+
+// =============================================================================
+// C ABI
+// =============================================================================
 
 extern "C" {
 
-FinOcrEngineContext* fin_engine_create(void) {
+// =============================================================================
+// ENGINE CREATE
+// =============================================================================
+
+FinOcrEngineContext*
+fin_engine_create(void)
+{
     try {
-        auto* ctx = new (std::nothrow) FinOcrEngineContext();
-        if (ctx) {
-            ctx->max_buffer_limit = 1024 * 1024 * 64; // 64MB working buffer limit
-            ctx->notification_event_fd = -1;
+
+        auto* context =
+            new (std::nothrow)
+            FinOcrEngineContext{};
+
+        if (
+            context == nullptr
+        ) {
+            return nullptr;
         }
-        return ctx;
+
+        context->max_buffer_limit =
+            64ULL *
+            1024ULL *
+            1024ULL;
+
+        context->notification_event_fd =
+            -1;
+
+        return context;
+
     } catch (...) {
+
         return nullptr;
     }
 }
 
-void fin_engine_destroy(FinOcrEngineContext* engine) {
-    if (engine) {
-        delete engine;
+// =============================================================================
+// ENGINE DESTROY
+// =============================================================================
+
+void
+fin_engine_destroy(
+    FinOcrEngineContext* engine
+)
+{
+    if (
+        engine == nullptr
+    ) {
+        return;
     }
+
+    /*
+     * Ownership of notification_event_fd remains with the Rust host.
+     *
+     * Therefore this function intentionally does NOT close it.
+     */
+
+    delete engine;
 }
 
-void fin_engine_set_notification_fd(FinOcrEngineContext* engine, int event_fd) {
-    if (engine) {
-        engine->notification_event_fd = event_fd;
+// =============================================================================
+// EVENTFD CONFIGURATION
+// =============================================================================
+
+void
+fin_engine_set_notification_fd(
+    FinOcrEngineContext* engine,
+    int event_fd
+)
+{
+    if (
+        engine == nullptr
+    ) {
+        return;
     }
+
+    engine->notification_event_fd =
+        event_fd;
 }
 
-int fin_engine_notify_completion(FinOcrEngineContext* engine) {
-    if (!engine || engine->notification_event_fd < 0) {
+// =============================================================================
+// EVENTFD COMPLETION NOTIFICATION
+// =============================================================================
+
+int
+fin_engine_notify_completion(
+    FinOcrEngineContext* engine
+)
+{
+    if (
+        engine == nullptr ||
+        engine->notification_event_fd < 0
+    ) {
         return -1;
     }
 
-    uint64_t signal_val = 1;
-    ssize_t bytes_written = write(engine->notification_event_fd, &signal_val, sizeof(signal_val));
-    if (bytes_written == sizeof(signal_val)) {
-        return 0; // Trigger sent successfully
+    const std::uint64_t signal_value =
+        1;
+
+    const ssize_t written =
+        write(
+            engine->notification_event_fd,
+            &signal_value,
+            sizeof(signal_value)
+        );
+
+    if (
+        written ==
+        static_cast<ssize_t>(
+            sizeof(signal_value)
+        )
+    ) {
+
+        return 0;
     }
-    return -2; // Write error
+
+    return -2;
 }
 
-FinProcessedBuffer* fin_process_document_bytes(
+// =============================================================================
+// HIGH-LEVEL DOCUMENT PROCESSING
+// =============================================================================
+
+FinProcessedBuffer*
+fin_process_document_bytes(
     FinOcrEngineContext* engine,
     const uint8_t* input_bytes,
     size_t input_len,
@@ -779,75 +1206,128 @@ FinProcessedBuffer* fin_process_document_bytes(
     size_t target_width,
     size_t target_height,
     size_t target_channels
-) {
-    if (!engine || !input_bytes || input_len == 0) return nullptr;
+)
+{
+    if (
+        engine == nullptr ||
+        input_bytes == nullptr ||
+        input_len == 0
+    ) {
+
+        return nullptr;
+    }
+
+    if (
+        input_len >
+        engine->max_buffer_limit
+    ) {
+
+        std::cerr
+            << "[FinOcr Engine]: input exceeds configured buffer limit."
+            << std::endl;
+
+        return nullptr;
+    }
 
     try {
-        FinProcessedBuffer* res = execute_vision_pipeline(
-            input_bytes,
-            input_len,
-            input_type,
-            target_width,
-            target_height,
-            target_channels
-        );
 
-        // Send 1-byte interrupt signal to wake up Rust thread blocked on read/epoll
-        if (res != nullptr) {
-            fin_engine_notify_completion(engine);
+        FinProcessedBuffer* result =
+            fin_ocr::VisionPipeline::execute(
+                input_bytes,
+                input_len,
+                input_type,
+                target_width,
+                target_height,
+                target_channels
+            );
+
+        if (
+            result != nullptr
+        ) {
+
+            /*
+             * Notify the Rust host only after the pipeline has produced the
+             * processed buffer successfully.
+             */
+            (void)fin_engine_notify_completion(
+                engine
+            );
         }
 
-        return res;
-    } catch (const std::exception& e) {
-        std::cerr << "[FinOcr Engine Exception]: " << e.what() << std::endl;
+        return result;
+
+    } catch (
+        const std::exception& error
+    ) {
+
+        std::cerr
+            << "[FinOcr Engine Exception]: "
+            << error.what()
+            << std::endl;
+
         return nullptr;
+
     } catch (...) {
-        std::cerr << "[FinOcr Engine Exception]: Unknown error occurred." << std::endl;
+
+        std::cerr
+            << "[FinOcr Engine Exception]: "
+            << "Unknown error occurred."
+            << std::endl;
+
         return nullptr;
     }
 }
 
-// -----------------------------------------------------------------------------
-// Final text extraction API
+// =============================================================================
+// HIGH-LEVEL TEXT EXTRACTION
+// =============================================================================
 //
 // Priority:
 //
-//   1. Text already extracted by native/model-free OCR pipeline.
-//   2. Native PDF text stream for digital PDFs.
-//   3. Raster/layout analysis as final diagnostic fallback.
+//     1. Raster/layout metadata.
 //
-// This function is intentionally model-free.
-// No embedding model, OCR neural network, or LLM is required here.
-// -----------------------------------------------------------------------------
+//     2. Native PDF text stream, when the input is a digital PDF.
+//
+//     3. OCR text already attached to FinProcessedBuffer.
+//
+// The actual OCR work is NOT performed here anymore.
+//
+// That work has already happened inside:
+//
+//     VisionPipeline
+//         |
+//         +--> DocumentOcr
+//         |      +--> DocumentTesseract
+//         |      +--> MatrixMatcher fallback
+//         |
+//         +--> ChartLabelRecognizer
+//                +--> LineRecognizer
+//                       +--> TesseractRecognizer
+//                       +--> GlyphMatcher
+//
+// =============================================================================
 
-char* fin_engine_recognize_text(
+char*
+fin_engine_recognize_text(
     FinOcrEngineContext* engine,
     const FinProcessedBuffer* buffer,
     const uint8_t* input_bytes,
     size_t input_len,
     FinInputType input_type
-) {
-    if (!engine || !buffer) {
+)
+{
+    if (
+        engine == nullptr ||
+        buffer == nullptr
+    ) {
         return nullptr;
     }
 
     try {
 
-        // ---------------------------------------------------------------------
-        // ALWAYS begin with the structured buffer payload.
-        //
-        // This guarantees that PDF/image/chart callers receive:
-        //
-        //   [FIN_ENGINE_OCR_OUTPUT]
-        //   Dimensions:
-        //   Channels:
-        //   Binarized:
-        //   Input Type:
-        //   ...
-        //   Payload Status: VALID_PREPROCESSED_BUFFER
-        //
-        // before any literal OCR text.
-        // ---------------------------------------------------------------------
+        // =========================================================================
+        // STRUCTURED BUFFER ANALYSIS
+        // =========================================================================
 
         std::string final_payload =
             extract_raster_layout_analysis(
@@ -855,99 +1335,112 @@ char* fin_engine_recognize_text(
                 input_type
             );
 
-        // ---------------------------------------------------------------------
-        // Digital PDF text stream.
-        //
-        // Preserve actual PDF text when available.
-        // ---------------------------------------------------------------------
+        // =========================================================================
+        // DIGITAL PDF NATIVE TEXT
+        // =========================================================================
 
-        if (input_type == FIN_INPUT_PDF_PAGE &&
+        if (
+            input_type ==
+                FIN_INPUT_PDF_PAGE &&
             input_bytes != nullptr &&
-            input_len > 0) {
+            input_len > 0
+        ) {
 
-            const std::string pdf_text =
-                extract_pdf_native_text(
-                    input_bytes,
-                    input_len
-                );
+            /*
+             * Respect the engine's configured upper bound here as well.
+             */
+            if (
+                input_len <=
+                engine->max_buffer_limit
+            ) {
 
-            if (!pdf_text.empty()) {
+                const std::string pdf_text =
+                    extract_pdf_native_text(
+                        input_bytes,
+                        input_len
+                    );
 
-                final_payload +=
-                    "\n[EXTRACTED_PDF_TEXT_STREAM]\n";
+                if (
+                    !pdf_text.empty()
+                ) {
 
-                final_payload +=
-                    pdf_text;
+                    final_payload +=
+                        "\n"
+                        "[EXTRACTED_PDF_TEXT_STREAM]\n";
+
+                    final_payload +=
+                        pdf_text;
+                }
             }
         }
 
-        // ---------------------------------------------------------------------
-        // Model-free literal OCR.
-        //
-        // For:
-        //
-        //   - charts
-        //   - scanned PDFs
-        //   - receipts
-        //   - ordinary images
-        //
-        // MatrixMatcher output is preserved verbatim.
-        // ---------------------------------------------------------------------
+        // =========================================================================
+        // MODEL-FREE OCR RESULT FROM VISION PIPELINE
+        // =========================================================================
 
-        if (buffer->extracted_text &&
-            std::strlen(buffer->extracted_text) > 0) {
+        if (
+            buffer->extracted_text !=
+                nullptr &&
+            buffer->extracted_text[0] !=
+                '\0'
+        ) {
 
-            // Financial charts already have their own structured header in
-            // extracted_text. Preserve that path without wrapping it twice.
-
-            if (input_type == FIN_INPUT_FIN_CHART) {
+            if (
+                input_type ==
+                FIN_INPUT_FIN_CHART
+            ) {
 
                 final_payload +=
-                    "\n[EXTRACTED_CHART_LABELS]\n";
-
-                final_payload +=
-                    buffer->extracted_text;
+                    "\n"
+                    "[EXTRACTED_CHART_LABELS]\n";
 
             } else {
 
                 final_payload +=
-                    "\n[EXTRACTED_MODEL_FREE_OCR]\n";
-
-                final_payload +=
-                    buffer->extracted_text;
+                    "\n"
+                    "[EXTRACTED_MODEL_FREE_OCR]\n";
             }
+
+            final_payload +=
+                buffer->extracted_text;
         }
 
-        // ---------------------------------------------------------------------
-        // Valid structured payload should never be empty for a valid buffer.
-        // ---------------------------------------------------------------------
+        // =========================================================================
+        // VALIDATE FINAL PAYLOAD
+        // =========================================================================
 
-        if (final_payload.empty()) {
+        if (
+            final_payload.empty()
+        ) {
+
             return nullptr;
         }
 
-        // ---------------------------------------------------------------------
-        // Allocate C-ABI string.
-        // ---------------------------------------------------------------------
+        // =========================================================================
+        // C ABI ALLOCATION
+        // =========================================================================
 
-        char* out_text =
+        char* output =
             static_cast<char*>(
                 std::malloc(
                     final_payload.size() + 1
                 )
             );
 
-        if (!out_text) {
+        if (
+            output == nullptr
+        ) {
+
             return nullptr;
         }
 
         std::memcpy(
-            out_text,
+            output,
             final_payload.c_str(),
             final_payload.size() + 1
         );
 
-        return out_text;
+        return output;
 
     } catch (...) {
 
@@ -955,40 +1448,111 @@ char* fin_engine_recognize_text(
     }
 }
 
-void fin_free_string(char* str) {
-    if (str) {
-        std::free(str);
+// =============================================================================
+// FREE C-ABI STRING
+// =============================================================================
+
+void
+fin_free_string(
+    char* str
+)
+{
+    if (
+        str != nullptr
+    ) {
+
+        std::free(
+            str
+        );
     }
 }
 
-void fin_free_processed_buffer(FinProcessedBuffer* buffer) {
-    if (buffer) {
-        if (buffer->data) {
-            fin::ops::aligned_free(buffer->data);
-            buffer->data = nullptr;
-        }
+// =============================================================================
+// FREE PROCESSED BUFFER
+// =============================================================================
 
-        // Free the dynamically allocated OCR text buffer
-        if (buffer->extracted_text) {
-            std::free(buffer->extracted_text);
-            buffer->extracted_text = nullptr;
-        }
-
-        delete buffer;
+void
+fin_free_processed_buffer(
+    FinProcessedBuffer* buffer
+)
+{
+    if (
+        buffer == nullptr
+    ) {
+        return;
     }
+
+    if (
+        buffer->data != nullptr
+    ) {
+
+        fin::ops::aligned_free(
+            buffer->data
+        );
+
+        buffer->data =
+            nullptr;
+    }
+
+    if (
+        buffer->extracted_text != nullptr
+    ) {
+
+        std::free(
+            buffer->extracted_text
+        );
+
+        buffer->extracted_text =
+            nullptr;
+    }
+
+    delete buffer;
 }
 
-FinThermalMetrics fin_get_thermal_metrics(void) {
-    fin::ThermalMetrics metrics = fin::ThermalMonitor::instance().read_metrics();
-    FinThermalMetrics result;
-    result.max_temp_celsius = metrics.max_temp_celsius;
-    result.avg_temp_celsius = metrics.avg_temp_celsius;
-    result.status = static_cast<FinThermalStatus>(metrics.status);
+// =============================================================================
+// THERMAL METRICS
+// =============================================================================
+
+FinThermalMetrics
+fin_get_thermal_metrics(
+    void
+)
+{
+    const fin::ThermalMetrics metrics =
+        fin::ThermalMonitor::instance()
+            .read_metrics();
+
+    FinThermalMetrics result{};
+
+    result.max_temp_celsius =
+        metrics.max_temp_celsius;
+
+    result.avg_temp_celsius =
+        metrics.avg_temp_celsius;
+
+    result.status =
+        static_cast<FinThermalStatus>(
+            metrics.status
+        );
+
     return result;
 }
 
-void fin_set_thermal_thresholds(float warm_limit_c, float critical_limit_c) {
-    fin::ThermalMonitor::instance().set_thresholds(warm_limit_c, critical_limit_c);
+// =============================================================================
+// THERMAL THRESHOLDS
+// =============================================================================
+
+void
+fin_set_thermal_thresholds(
+    float warm_limit_c,
+    float critical_limit_c
+)
+{
+    fin::ThermalMonitor::instance()
+        .set_thresholds(
+            warm_limit_c,
+            critical_limit_c
+        );
 }
 
 } // extern "C"
