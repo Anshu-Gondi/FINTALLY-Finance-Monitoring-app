@@ -9,8 +9,8 @@ use std::{
 // Configuration
 // ============================================================================
 
-const CPP_ENGINE_DIR: &str = "cpp_engine";
-const CPP_HEADER: &str = "cpp_engine/include/ffi_bridge.h";
+const CPP_ENGINE_DIR: &str = "ocr_engine";
+const CPP_HEADER: &str = "ocr_engine/include/ffi_bridge.h";
 const CMAKE_NATIVE_TARGET: &str = "fin_ocr_native";
 
 // ============================================================================

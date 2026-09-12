@@ -10,7 +10,7 @@ namespace fin_ocr::config {
 // =============================================================================
 
 inline constexpr uint8_t DEFAULT_THRESHOLD = 100;
-inline constexpr uint8_t CHART_FOREGROUND_THRESHOLD = 35;
+inline constexpr uint8_t CHART_FOREGROUND_THRESHOLD = 20;
 
 // Public MatrixMatcher/document binary representation.
 //
@@ -55,12 +55,35 @@ inline constexpr float SPACE_GAP_FACTOR = 0.35f;
 // CHART RECOGNITION
 // =============================================================================
 
-inline constexpr double CHART_MIN_ROW_DENSITY = 0.00020;
-inline constexpr double CHART_MIN_BAND_DENSITY = 0.00015;
+inline constexpr double CHART_MIN_ROW_DENSITY = 0.00010;
+inline constexpr double CHART_MIN_BAND_DENSITY = 0.00005;
 
-inline constexpr int CHART_ROW_GAP = 3;
+inline constexpr int CHART_ROW_GAP = 4;
 inline constexpr int CHART_MAX_BAND_HEIGHT = 48;
 inline constexpr int CHART_VERTICAL_PADDING = 3;
+
+// =============================================================================
+// CHART REGION FILTERING
+// =============================================================================
+
+// Minimum horizontal extent for a candidate text region.
+inline constexpr int CHART_MIN_HORIZONTAL_EXTENT = 3;
+
+// A candidate occupying this much of the chart width is likely chart
+// geometry rather than a text label.
+inline constexpr double CHART_MAX_TEXT_WIDTH_RATIO = 0.90;
+
+// Dense full-width bands are typically axes, borders, or separators.
+inline constexpr double CHART_FULL_WIDTH_DENSE_THRESHOLD = 0.05;
+
+// Sparse full-width bands are typically grid lines / chart geometry.
+inline constexpr double CHART_FULL_WIDTH_SPARSE_THRESHOLD = 0.005;
+
+// Minimum absolute number of foreground pixels required for a row
+// to participate in chart text-band detection.
+//
+// This prevents tiny isolated noise from becoming a candidate row.
+inline constexpr int CHART_MIN_ROW_FOREGROUND_PIXELS = 2;
 
 // =============================================================================
 // GRAYSCALE OCR NORMALIZATION

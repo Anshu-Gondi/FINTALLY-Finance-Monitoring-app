@@ -1,0 +1,8 @@
+[FIN_ENGINE_OCR_OUTPUT]
+Dimensions: 1280x720
+Channels: 3
+Binarized: NO
+Input Type: FINANCIAL_CHART
+Active Text Region Density: 0.664388%
+Detected Text Lines: 0
+Payload Status: VALID_PREPROCESSED_BUFFER

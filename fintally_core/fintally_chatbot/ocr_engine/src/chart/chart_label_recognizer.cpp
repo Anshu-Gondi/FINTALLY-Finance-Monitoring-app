@@ -40,8 +40,14 @@ ChartLabelRecognizer::ChartLabelRecognizer(
 //     1. Build row-level foreground projection.
 //     2. Detect contiguous text bands.
 //     3. Merge only nearby bands.
-//     4. Recognize each band through the existing hybrid line recognizer.
-//     5. Deduplicate overlapping hypotheses.
+//     4. Determine horizontal candidate bounds.
+//     5. Reject tiny isolated regions.
+//     6. Reject chart-wide geometry.
+//     7. Convert chart channel 1 into a 1-channel OCR mask.
+//     8. Recognize each candidate through LineRecognizer.
+//     9. Reject obvious repeated-glyph garbage.
+//    10. Deduplicate overlapping hypotheses.
+//    11. Sort top-to-bottom / left-to-right.
 // =============================================================================
 
 std::string ChartLabelRecognizer::recognize(
@@ -55,6 +61,7 @@ std::string ChartLabelRecognizer::recognize(
         width <= 0 ||
         height <= 0
     ) {
+
         return
             "[CHART_TEXT_DATA]\n"
             "  - Invalid chart buffer.\n";
@@ -65,10 +72,12 @@ std::string ChartLabelRecognizer::recognize(
     // =========================================================================
 
     struct DetectedLine {
-        int y;
-        int height;
-        int min_x;
-        int max_x;
+
+        int y = 0;
+        int height = 0;
+
+        int min_x = 0;
+        int max_x = 0;
 
         std::string text;
 
@@ -149,12 +158,14 @@ std::string ChartLabelRecognizer::recognize(
                 static_cast<std::size_t>(x) * 3u +
                 1u;
 
-            const uint8_t value =
+            const uint8_t foreground_strength =
                 chart_buffer[index];
 
             if (
-                value < MIN_FOREGROUND
+                foreground_strength <
+                MIN_FOREGROUND
             ) {
+
                 continue;
             }
 
@@ -192,7 +203,7 @@ std::string ChartLabelRecognizer::recognize(
 
     const int minimum_row_pixels =
         std::max(
-            2,
+            config::CHART_MIN_ROW_FOREGROUND_PIXELS,
             static_cast<int>(
                 std::ceil(
                     static_cast<double>(width) *
@@ -202,8 +213,9 @@ std::string ChartLabelRecognizer::recognize(
         );
 
     struct TextBand {
-        int y_start;
-        int y_end;
+
+        int y_start = 0;
+        int y_end = 0;
     };
 
     std::vector<TextBand> raw_bands;
@@ -226,11 +238,15 @@ std::string ChartLabelRecognizer::recognize(
         const bool active =
             row_counts[
                 static_cast<std::size_t>(y)
-            ] >= minimum_row_pixels;
+            ] >=
+            minimum_row_pixels;
 
         if (active) {
 
-            if (band_start < 0) {
+            if (
+                band_start < 0
+            ) {
+
                 band_start = y;
             }
 
@@ -239,14 +255,19 @@ std::string ChartLabelRecognizer::recognize(
             continue;
         }
 
-        if (band_start >= 0) {
+        if (
+            band_start >= 0
+        ) {
 
             const int gap =
                 y -
                 last_active_row -
                 1;
 
-            if (gap > ROW_GAP) {
+            if (
+                gap >
+                ROW_GAP
+            ) {
 
                 raw_bands.push_back({
                     band_start,
@@ -259,7 +280,9 @@ std::string ChartLabelRecognizer::recognize(
         }
     }
 
-    if (band_start >= 0) {
+    if (
+        band_start >= 0
+    ) {
 
         raw_bands.push_back({
             band_start,
@@ -282,7 +305,9 @@ std::string ChartLabelRecognizer::recognize(
         raw_bands
     ) {
 
-        if (merged_bands.empty()) {
+        if (
+            merged_bands.empty()
+        ) {
 
             merged_bands.push_back(
                 band
@@ -298,12 +323,14 @@ std::string ChartLabelRecognizer::recognize(
             band.y_start -
             previous.y_end;
 
+        const int merged_height =
+            band.y_end -
+            previous.y_start;
+
         if (
             gap <= ROW_GAP &&
-            (
-                band.y_end -
-                previous.y_start
-            ) <= MAX_BAND_HEIGHT
+            merged_height <=
+                MAX_BAND_HEIGHT
         ) {
 
             previous.y_end =
@@ -321,7 +348,116 @@ std::string ChartLabelRecognizer::recognize(
     }
 
     // =========================================================================
-    // STEP 4: RECOGNIZE EACH DETECTED BAND
+    // STEP 4: FALLBACK BAND
+    // =========================================================================
+    //
+    // Some very sparse WebP chart labels can fail the normal row-band
+    // segmentation. Before declaring the chart empty, calculate a global
+    // foreground region.
+    //
+    // This fallback is intentionally bounded by MAX_BAND_HEIGHT.
+    // =============================================================================
+
+    if (
+        merged_bands.empty()
+    ) {
+
+        int global_min_x =
+            width;
+
+        int global_max_x =
+            -1;
+
+        int global_min_y =
+            height;
+
+        int global_max_y =
+            -1;
+
+        std::size_t global_active_pixels =
+            0;
+
+        for (
+            int y = 0;
+            y < height;
+            ++y
+        ) {
+
+            const std::size_t row_index =
+                static_cast<std::size_t>(y);
+
+            const int row_count =
+                row_counts[row_index];
+
+            if (
+                row_count <= 0
+            ) {
+                continue;
+            }
+
+            global_min_y =
+                std::min(
+                    global_min_y,
+                    y
+                );
+
+            global_max_y =
+                std::max(
+                    global_max_y,
+                    y
+                );
+
+            global_min_x =
+                std::min(
+                    global_min_x,
+                    row_min_x[row_index]
+                );
+
+            global_max_x =
+                std::max(
+                    global_max_x,
+                    row_max_x[row_index]
+                );
+
+            global_active_pixels +=
+                static_cast<std::size_t>(
+                    row_count
+                );
+        }
+
+        if (
+            global_min_x <= global_max_x &&
+            global_min_y <= global_max_y &&
+            global_active_pixels > 0
+        ) {
+
+            const int global_height =
+                global_max_y -
+                global_min_y +
+                1;
+
+            const int global_width =
+                global_max_x -
+                global_min_x +
+                1;
+
+            if (
+                global_height <=
+                    MAX_BAND_HEIGHT &&
+                global_width >=
+                    config::CHART_MIN_HORIZONTAL_EXTENT
+            ) {
+
+                merged_bands.push_back({
+                    global_min_y,
+                    global_max_y + 1
+                });
+            }
+        }
+    }
+
+    // =========================================================================
+    // STEP 5: RECOGNIZE EACH DETECTED BAND
     // =========================================================================
 
     for (
@@ -343,16 +479,20 @@ std::string ChartLabelRecognizer::recognize(
                     VERTICAL_PADDING
             );
 
-        if (y0 >= y1) {
+        if (
+            y0 >= y1
+        ) {
             continue;
         }
 
         const int band_height =
-            y1 - y0;
+            y1 -
+            y0;
 
         if (
             band_height <= 1 ||
-            band_height > MAX_BAND_HEIGHT
+            band_height >
+                MAX_BAND_HEIGHT
         ) {
             continue;
         }
@@ -361,10 +501,14 @@ std::string ChartLabelRecognizer::recognize(
         // DETERMINE BOUNDING X RANGE
         // ---------------------------------------------------------------------
 
-        int min_x = width;
-        int max_x = -1;
+        int min_x =
+            width;
 
-        std::size_t active_pixels = 0;
+        int max_x =
+            -1;
+
+        std::size_t active_pixels =
+            0;
 
         for (
             int y = y0;
@@ -372,29 +516,28 @@ std::string ChartLabelRecognizer::recognize(
             ++y
         ) {
 
-            const int row_count =
-                row_counts[
-                    static_cast<std::size_t>(y)
-                ];
+            const std::size_t row_index =
+                static_cast<std::size_t>(y);
 
-            if (row_count <= 0) {
+            const int row_count =
+                row_counts[row_index];
+
+            if (
+                row_count <= 0
+            ) {
                 continue;
             }
 
             min_x =
                 std::min(
                     min_x,
-                    row_min_x[
-                        static_cast<std::size_t>(y)
-                    ]
+                    row_min_x[row_index]
                 );
 
             max_x =
                 std::max(
                     max_x,
-                    row_max_x[
-                        static_cast<std::size_t>(y)
-                    ]
+                    row_max_x[row_index]
                 );
 
             active_pixels +=
@@ -403,6 +546,10 @@ std::string ChartLabelRecognizer::recognize(
                 );
         }
 
+        // ---------------------------------------------------------------------
+        // Validate candidate
+        // ---------------------------------------------------------------------
+
         if (
             max_x < min_x ||
             active_pixels == 0
@@ -410,9 +557,47 @@ std::string ChartLabelRecognizer::recognize(
             continue;
         }
 
+        // ---------------------------------------------------------------------
+        // Horizontal extent
+        // ---------------------------------------------------------------------
+
+        const int horizontal_extent =
+            max_x -
+            min_x +
+            1;
+
+        if (
+            horizontal_extent <
+            config::CHART_MIN_HORIZONTAL_EXTENT
+        ) {
+            continue;
+        }
+
+        // ---------------------------------------------------------------------
+        // Candidate width ratio
+        // ---------------------------------------------------------------------
+
+        const double width_ratio =
+            width > 0
+                ? static_cast<double>(
+                      horizontal_extent
+                  ) /
+                  static_cast<double>(
+                      width
+                  )
+                : 0.0;
+
+        // ---------------------------------------------------------------------
+        // Density
+        // ---------------------------------------------------------------------
+
         const std::size_t total_pixels =
-            static_cast<std::size_t>(width) *
-            static_cast<std::size_t>(band_height);
+            static_cast<std::size_t>(
+                width
+            ) *
+            static_cast<std::size_t>(
+                band_height
+            );
 
         const float density =
             total_pixels > 0
@@ -427,7 +612,7 @@ std::string ChartLabelRecognizer::recognize(
                 : 0.0f;
 
         // ---------------------------------------------------------------------
-        // REJECT VERY LOW-DENSITY REGIONS
+        // Reject extremely sparse regions.
         // ---------------------------------------------------------------------
 
         if (
@@ -440,19 +625,154 @@ std::string ChartLabelRecognizer::recognize(
         }
 
         // ---------------------------------------------------------------------
-        // HYBRID LINE RECOGNIZER
+        // CHART GEOMETRY REJECTION
         // ---------------------------------------------------------------------
+
+        if (
+            width_ratio >=
+            config::CHART_MAX_TEXT_WIDTH_RATIO
+        ) {
+
+            const bool dense_geometry =
+                band_height <= 16 &&
+                density >=
+                    static_cast<float>(
+                        config::CHART_FULL_WIDTH_DENSE_THRESHOLD
+                    );
+
+            const bool sparse_geometry =
+                density <
+                static_cast<float>(
+                    config::CHART_FULL_WIDTH_SPARSE_THRESHOLD
+                );
+
+            if (
+                dense_geometry ||
+                sparse_geometry
+            ) {
+
+                continue;
+            }
+        }
+
+        // =========================================================================
+        // BUILD 1-CHANNEL OCR REPRESENTATION
+        // =========================================================================
+        //
+        // ChartColorIsolator intentionally exposes three channels:
+        //
+        //     0 = saturation
+        //     1 = foreground strength
+        //     2 = chroma
+        //
+        // LineRecognizer must NOT interpret those channels as ordinary RGB.
+        //
+        // Extract channel 1 explicitly into a canonical 1-channel foreground
+        // mask:
+        //
+        //     foreground -> 255
+        //     background -> 0
+        //
+        // This creates a clean representation boundary:
+        //
+        //     chart representation
+        //            |
+        //            v
+        //     channel-1 extraction
+        //            |
+        //            v
+        //     binary OCR mask
+        //            |
+        //            v
+        //     LineRecognizer
+        //
+        // =========================================================================
+
+        const std::size_t line_pixels =
+            static_cast<std::size_t>(
+                width
+            ) *
+            static_cast<std::size_t>(
+                band_height
+            );
+
+        std::vector<uint8_t> line_buffer(
+            line_pixels,
+            uint8_t{0}
+        );
+
+        for (
+            int y = y0;
+            y < y1;
+            ++y
+        ) {
+
+            const std::size_t source_row =
+                static_cast<std::size_t>(y) *
+                static_cast<std::size_t>(width) *
+                3u;
+
+            const std::size_t destination_row =
+                static_cast<std::size_t>(
+                    y - y0
+                ) *
+                static_cast<std::size_t>(
+                    width
+                );
+
+            for (
+                int x = 0;
+                x < width;
+                ++x
+            ) {
+
+                const std::size_t source_index =
+                    source_row +
+                    static_cast<std::size_t>(x) *
+                        3u +
+                    1u;
+
+                const uint8_t foreground =
+                    chart_buffer[
+                        source_index
+                    ];
+
+                line_buffer[
+                    destination_row +
+                    static_cast<std::size_t>(x)
+                ] =
+                    foreground >=
+                        MIN_FOREGROUND
+                        ? uint8_t{255}
+                        : uint8_t{0};
+            }
+        }
+
+        // =========================================================================
+        // HYBRID LINE RECOGNIZER
+        // =========================================================================
+        //
+        // The recognizer now receives:
+        //
+        //     1 channel
+        //     foreground = 255
+        //     background = 0
+        //
+        // instead of the custom 3-channel chart representation.
+        // =========================================================================
 
         std::string text =
             line_recognizer_.recognize(
-                chart_buffer,
+                line_buffer.data(),
                 width,
-                y0,
-                y1,
-                3
+                0,
+                band_height,
+                1
             );
 
-        if (text.empty()) {
+        if (
+            text.empty()
+        ) {
             continue;
         }
 
@@ -488,7 +808,9 @@ std::string ChartLabelRecognizer::recognize(
             text.pop_back();
         }
 
-        if (text.empty()) {
+        if (
+            text.empty()
+        ) {
             continue;
         }
 
@@ -510,17 +832,25 @@ std::string ChartLabelRecognizer::recognize(
             text
         ) {
 
-            if (c == ' ') {
+            if (
+                c == ' '
+            ) {
                 continue;
             }
 
-            if (glyphs == 0) {
+            if (
+                glyphs == 0
+            ) {
 
-                first = c;
+                first =
+                    c;
 
-            } else if (c != first) {
+            } else if (
+                c != first
+            ) {
 
-                repeated = false;
+                repeated =
+                    false;
 
                 break;
             }
@@ -532,6 +862,7 @@ std::string ChartLabelRecognizer::recognize(
             repeated &&
             glyphs >= 3
         ) {
+
             continue;
         }
 
@@ -547,16 +878,22 @@ std::string ChartLabelRecognizer::recognize(
             detected_lines
         ) {
 
+            const int existing_start =
+                existing.y;
+
+            const int existing_end =
+                existing.y +
+                existing.height;
+
             const int overlap_start =
                 std::max(
-                    existing.y,
+                    existing_start,
                     y0
                 );
 
             const int overlap_end =
                 std::min(
-                    existing.y +
-                        existing.height,
+                    existing_end,
                     y1
                 );
 
@@ -587,9 +924,15 @@ std::string ChartLabelRecognizer::recognize(
             }
         }
 
-        if (duplicate) {
+        if (
+            duplicate
+        ) {
             continue;
         }
+
+        // ---------------------------------------------------------------------
+        // STORE DETECTED LINE
+        // ---------------------------------------------------------------------
 
         detected_lines.push_back({
             y0,
@@ -603,7 +946,7 @@ std::string ChartLabelRecognizer::recognize(
     }
 
     // =========================================================================
-    // STEP 5: SORT TOP-TO-BOTTOM / LEFT-TO-RIGHT
+    // STEP 6: SORT
     // =========================================================================
 
     std::sort(
@@ -614,16 +957,21 @@ std::string ChartLabelRecognizer::recognize(
             const DetectedLine& b
         ) noexcept {
 
-            if (a.y != b.y) {
-                return a.y < b.y;
+            if (
+                a.y != b.y
+            ) {
+
+                return a.y <
+                       b.y;
             }
 
-            return a.min_x < b.min_x;
+            return a.min_x <
+                   b.min_x;
         }
     );
 
     // =========================================================================
-    // STEP 6: OUTPUT
+    // STEP 7: OUTPUT
     // =========================================================================
 
     std::string result;
@@ -636,7 +984,9 @@ std::string ChartLabelRecognizer::recognize(
     result +=
         "[CHART_TEXT_DATA]\n";
 
-    if (detected_lines.empty()) {
+    if (
+        detected_lines.empty()
+    ) {
 
         result +=
             "  - No structured glyphs matched on chart axes.\n";

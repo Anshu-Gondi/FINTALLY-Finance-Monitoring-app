@@ -1,0 +1,168 @@
+{
+  "tests": 24,
+  "name": "AllTests",
+  "testsuites": [
+    {
+      "name": "DatasetProcessingTest",
+      "tests": 5,
+      "testsuite": [
+        {
+          "name": "ProcessesPdfBalanceSheet",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
+          "line": 169
+        },
+        {
+          "name": "ProcessesWebpFinancialCharts",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
+          "line": 197
+        },
+        {
+          "name": "ProcessesReceiptImages",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
+          "line": 227
+        },
+        {
+          "name": "HandlesCorruptedInputBytesGracefully",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
+          "line": 255
+        },
+        {
+          "name": "HandlesNullBufferInRecognizeText",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
+          "line": 270
+        }
+      ]
+    },
+    {
+      "name": "TensorOpsTest",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "BinarizeSimdMatchesScalar",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 27
+        },
+        {
+          "name": "ContrastBoostSimdWorks",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "name": "ChartProcessingTest",
+      "tests": 1,
+      "testsuite": [
+        {
+          "name": "MultiColorHsvIsolationPreservesHueDifferences",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "name": "FfiBridgeTest",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "ReturnsNullOnInvalidDimensions",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 74
+        },
+        {
+          "name": "VerifiesBinarizedMetadataFlag",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 89
+        }
+      ]
+    },
+    {
+      "name": "VisionPipelineTest",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "ThrowsOnInvalidDimensions",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 114
+        },
+        {
+          "name": "DirectPipelineExecutionHandlesRawFallback",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 125
+        }
+      ]
+    },
+    {
+      "name": "ThermalMonitorTest",
+      "tests": 2,
+      "testsuite": [
+        {
+          "name": "ReadsValidMetrics",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 142
+        },
+        {
+          "name": "FallbackOnThermalCritical",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
+          "line": 148
+        }
+      ]
+    },
+    {
+      "name": "TensorOps",
+      "tests": 10,
+      "testsuite": [
+        {
+          "name": "NullAndEmptyAreSafe",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 44
+        },
+        {
+          "name": "AlignmentHelper",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 56
+        },
+        {
+          "name": "BinarizationBoundaryValues",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 67
+        },
+        {
+          "name": "ContrastBoundaryValues",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 81
+        },
+        {
+          "name": "BinarizationMatchesScalarReference",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 94
+        },
+        {
+          "name": "ContrastMatchesScalarReference",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 119
+        },
+        {
+          "name": "BinarizationWorksWithUnalignedPointer",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 144
+        },
+        {
+          "name": "ContrastWorksWithUnalignedPointer",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 164
+        },
+        {
+          "name": "BinarizationWorksWithLargeBuffer",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 184
+        },
+        {
+          "name": "ContrastWorksWithLargeBuffer",
+          "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_tensor_ops.cpp",
+          "line": 197
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+[FIN_ENGINE_OCR_OUTPUT]
+Dimensions: 1280x720
+Channels: 3
+Binarized: NO
+Input Type: RAW_IMAGE_OR_RECEIPT
+Active Text Region Density: 99.773%
+Detected Text Lines: 1
+Spatial Bounding Regions:
+  - Text Line 1 [Y:0-720, X:0-1279]: Density 99.773%, Width 1280px, Height 720px
+Payload Status: VALID_PREPROCESSED_BUFFER
+
+[EXTRACTED_MODEL_FREE_OCR]
+8 4 m 4 8 4 m m 5 8
