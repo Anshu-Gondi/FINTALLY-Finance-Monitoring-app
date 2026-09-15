@@ -1,16 +1,3 @@
-[FIN_ENGINE_OCR_OUTPUT]
-Dimensions: 1280x720
-Channels: 3
-Binarized: NO
-Input Type: FINANCIAL_CHART
-Active Text Region Density: 7.24447%
-Detected Text Lines: 2
-Spatial Bounding Regions:
-  - Text Line 1 [Y:48-624, X:79-1201]: Density 8.70402%, Width 1123px, Height 576px
-  - Text Line 2 [Y:648-672, X:279-1001]: Density 8.39518%, Width 723px, Height 24px
-Payload Status: VALID_PREPROCESSED_BUFFER
-
-[EXTRACTED_CHART_LABELS]
 [CHART_TEXT_DATA]
   - Line 1 [Y:562-576, X:250-276]: Jan [confidence=0.827894]
   - Line 2 [Y:560-575, X:318-348]: Feb [confidence=0.856674]

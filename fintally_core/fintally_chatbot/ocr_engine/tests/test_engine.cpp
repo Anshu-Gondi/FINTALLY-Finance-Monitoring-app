@@ -3,6 +3,8 @@
 #include "tensor_ops.hpp"
 #include "thermal_sensor.hpp"
 #include "fin_ocr/matrix_matcher.hpp"
+#include "fin_ocr/pipeline/vision_pipeline.hpp"
+
 
 #include <algorithm>
 #include <cstdint>
@@ -114,10 +116,16 @@ TEST(FfiBridgeTest, VerifiesBinarizedMetadataFlag) {
 TEST(VisionPipelineTest, ThrowsOnInvalidDimensions) {
     uint8_t dummy_input[100] = {0};
 
-    // Direct C++ pipeline execution raises std::invalid_argument
     EXPECT_THROW({
-        execute_vision_pipeline(
-            dummy_input, sizeof(dummy_input), FIN_INPUT_RAW_IMAGE, 0, 768, 3
+        static_cast<void>(
+            fin_ocr::VisionPipeline::execute(
+                dummy_input,
+                sizeof(dummy_input),
+                FIN_INPUT_RAW_IMAGE,
+                0,
+                768,
+                3
+            )
         );
     }, std::invalid_argument);
 }

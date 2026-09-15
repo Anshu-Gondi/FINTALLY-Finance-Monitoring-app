@@ -2,6 +2,10 @@
 
 #include "fin_ocr/chart/chart_color_isolator.hpp"
 #include "fin_ocr/chart/chart_label_recognizer.hpp"
+#include "fin_ocr/chart/chart_axis_detector.hpp"
+#include "fin_ocr/chart/chart_object_detector.hpp"
+#include "fin_ocr/chart/chart_associator.hpp"
+#include "fin_ocr/chart/chart_interpreter.hpp"
 
 #include "fin_ocr/core/ocr_config.hpp"
 #include "fin_ocr/core/ocr_types.hpp"
@@ -49,6 +53,12 @@
 namespace fin_ocr {
 
 namespace {
+
+inline constexpr char CHART_FALLBACK_TEXT[] =
+    "[CHART_TEXT_DATA]\n"
+    "  - Line 1 [Y:0-0, X:0-0]: "
+    "[NO_RECOGNIZED_CHART_LABELS] "
+    "[confidence=0.000000]\n";
 
 // =============================================================================
 // VALIDATION
@@ -98,13 +108,13 @@ void validate_request(
 
     if (
         target_width >
-        static_cast<std::size_t>(
-            std::numeric_limits<int>::max()
-        ) ||
+            static_cast<std::size_t>(
+                std::numeric_limits<int>::max()
+            ) ||
         target_height >
-        static_cast<std::size_t>(
-            std::numeric_limits<int>::max()
-        )
+            static_cast<std::size_t>(
+                std::numeric_limits<int>::max()
+            )
     ) {
 
         throw std::invalid_argument(
@@ -185,26 +195,14 @@ FinProcessedBuffer* allocate_result(
         return nullptr;
     }
 
-    result->data =
-        nullptr;
+    result->data = nullptr;
 
-    result->width =
-        width;
-
-    result->height =
-        height;
-
-    result->channels =
-        channels;
-
-    result->data_len =
-        data_len;
-
-    result->is_binarized =
-        0;
-
-    result->extracted_text =
-        nullptr;
+    result->width = width;
+    result->height = height;
+    result->channels = channels;
+    result->data_len = data_len;
+    result->is_binarized = 0;
+    result->extracted_text = nullptr;
 
     result->data =
         static_cast<uint8_t*>(
@@ -277,8 +275,7 @@ bool set_extracted_text(
         );
     }
 
-    result.extracted_text =
-        buffer;
+    result.extracted_text = buffer;
 
     return true;
 }
@@ -321,8 +318,7 @@ unsigned char* decode_rgb_image(
     int& height
 ) noexcept {
 
-    int source_channels =
-        0;
+    int source_channels = 0;
 
     if (
         input == nullptr ||
@@ -337,9 +333,7 @@ unsigned char* decode_rgb_image(
 
     return stbi_load_from_memory(
         input,
-        static_cast<int>(
-            input_len
-        ),
+        static_cast<int>(input_len),
         &width,
         &height,
         &source_channels,
@@ -360,11 +354,8 @@ bool process_normal_image(
     std::size_t& ocr_pixels
 ) noexcept {
 
-    int decoded_width =
-        0;
-
-    int decoded_height =
-        0;
+    int decoded_width = 0;
+    int decoded_height = 0;
 
     unsigned char* decoded =
         decode_rgb_image(
@@ -381,8 +372,7 @@ bool process_normal_image(
         return false;
     }
 
-    std::size_t num_pixels =
-        0;
+    std::size_t num_pixels = 0;
 
     if (
         !core::safe_mul(
@@ -392,29 +382,19 @@ bool process_normal_image(
         )
     ) {
 
-        stbi_image_free(
-            decoded
-        );
+        stbi_image_free(decoded);
 
         return false;
     }
 
-    bool success =
-        false;
-
-    // =========================================================================
-    // TARGET RGB
-    // =========================================================================
+    bool success = false;
 
     if (
         result.channels == 3
     ) {
 
-        int target_width =
-            0;
-
-        int target_height =
-            0;
+        int target_width = 0;
+        int target_height = 0;
 
         if (
             !size_to_int(
@@ -427,9 +407,7 @@ bool process_normal_image(
             )
         ) {
 
-            stbi_image_free(
-                decoded
-            );
+            stbi_image_free(decoded);
 
             return false;
         }
@@ -443,13 +421,6 @@ bool process_normal_image(
             target_height
         );
 
-        /*
-         * Charts retain the RGB representation because ChartColorIsolator
-         * consumes RGB directly.
-         *
-         * Ordinary images/documents additionally receive a grayscale OCR
-         * representation.
-         */
         if (
             input_type !=
             FIN_INPUT_FIN_CHART
@@ -507,19 +478,13 @@ bool process_normal_image(
             }
         }
 
-        success =
-            true;
-
-    // =========================================================================
-    // TARGET GRAYSCALE / BINARY
-    // =========================================================================
+        success = true;
 
     } else if (
         result.channels == 1
     ) {
 
-        std::size_t resized_rgb_bytes =
-            0;
+        std::size_t resized_rgb_bytes = 0;
 
         if (
             !core::safe_mul(
@@ -529,9 +494,7 @@ bool process_normal_image(
             )
         ) {
 
-            stbi_image_free(
-                decoded
-            );
+            stbi_image_free(decoded);
 
             return false;
         }
@@ -548,18 +511,13 @@ bool process_normal_image(
             resized_rgb == nullptr
         ) {
 
-            stbi_image_free(
-                decoded
-            );
+            stbi_image_free(decoded);
 
             return false;
         }
 
-        int target_width =
-            0;
-
-        int target_height =
-            0;
+        int target_width = 0;
+        int target_height = 0;
 
         if (
             !size_to_int(
@@ -572,13 +530,8 @@ bool process_normal_image(
             )
         ) {
 
-            fin::ops::aligned_free(
-                resized_rgb
-            );
-
-            stbi_image_free(
-                decoded
-            );
+            fin::ops::aligned_free(resized_rgb);
+            stbi_image_free(decoded);
 
             return false;
         }
@@ -597,21 +550,14 @@ bool process_normal_image(
             FIN_INPUT_FIN_CHART
         ) {
 
-            /*
-             * Chart grayscale output does not participate in the structured
-             * chart OCR path. Preserve the existing binary representation.
-             */
             image::rgb_to_ocr_mask(
                 resized_rgb,
                 result.data,
                 num_pixels
             );
 
-            result.is_binarized =
-                1;
-
-            success =
-                true;
+            result.is_binarized = 1;
+            success = true;
 
         } else {
 
@@ -668,14 +614,9 @@ bool process_normal_image(
                     num_pixels
                 );
 
-                result.is_binarized =
-                    1;
-
-                ocr_pixels =
-                    num_pixels;
-
-                success =
-                    true;
+                result.is_binarized = 1;
+                ocr_pixels = num_pixels;
+                success = true;
             }
         }
 
@@ -684,22 +625,13 @@ bool process_normal_image(
         );
     }
 
-    stbi_image_free(
-        decoded
-    );
+    stbi_image_free(decoded);
 
     return success;
 }
 
 // =============================================================================
 // PDF PROCESSING
-//
-// PDF-specific responsibilities now belong to:
-//
-//     PdfPage
-//     PdfRasterizer
-//
-// VisionPipeline only coordinates them.
 // =============================================================================
 
 bool process_pdf(
@@ -720,11 +652,8 @@ bool process_pdf(
         return false;
     }
 
-    int public_width =
-        0;
-
-    int public_height =
-        0;
+    int public_width = 0;
+    int public_height = 0;
 
     if (
         !size_to_int(
@@ -740,10 +669,6 @@ bool process_pdf(
         return false;
     }
 
-    // =========================================================================
-    // PAGE DIMENSIONS
-    // =========================================================================
-
     PdfPageDimensions dimensions{};
 
     if (
@@ -756,10 +681,6 @@ bool process_pdf(
 
         return false;
     }
-
-    // =========================================================================
-    // OCR RASTER SIZE
-    // =========================================================================
 
     if (
         !PdfRasterizer::compute_ocr_size(
@@ -777,12 +698,8 @@ bool process_pdf(
 
     if (
         !core::safe_mul(
-            static_cast<std::size_t>(
-                ocr_width
-            ),
-            static_cast<std::size_t>(
-                ocr_height
-            ),
+            static_cast<std::size_t>(ocr_width),
+            static_cast<std::size_t>(ocr_height),
             ocr_pixels
         )
     ) {
@@ -790,12 +707,7 @@ bool process_pdf(
         return false;
     }
 
-    // =========================================================================
-    // OCR BGRA BUFFER
-    // =========================================================================
-
-    std::size_t ocr_bgra_bytes =
-        0;
+    std::size_t ocr_bgra_bytes = 0;
 
     if (
         !core::safe_mul(
@@ -837,16 +749,10 @@ bool process_pdf(
         !rendered
     ) {
 
-        fin::ops::aligned_free(
-            ocr_bgra
-        );
+        fin::ops::aligned_free(ocr_bgra);
 
         return false;
     }
-
-    // =========================================================================
-    // HIGH-RESOLUTION OCR GRAYSCALE
-    // =========================================================================
 
     ocr_grayscale =
         static_cast<uint8_t*>(
@@ -860,9 +766,7 @@ bool process_pdf(
         ocr_grayscale == nullptr
     ) {
 
-        fin::ops::aligned_free(
-            ocr_bgra
-        );
+        fin::ops::aligned_free(ocr_bgra);
 
         return false;
     }
@@ -872,10 +776,6 @@ bool process_pdf(
         ocr_grayscale,
         ocr_pixels
     );
-
-    // =========================================================================
-    // GRAYSCALE CONTRAST NORMALIZATION
-    // =========================================================================
 
     uint8_t* normalized =
         static_cast<uint8_t*>(
@@ -906,12 +806,7 @@ bool process_pdf(
         );
     }
 
-    // =========================================================================
-    // PUBLIC OUTPUT
-    // =========================================================================
-
-    std::size_t public_pixels =
-        0;
+    std::size_t public_pixels = 0;
 
     if (
         !core::safe_mul(
@@ -921,9 +816,7 @@ bool process_pdf(
         )
     ) {
 
-        fin::ops::aligned_free(
-            ocr_bgra
-        );
+        fin::ops::aligned_free(ocr_bgra);
 
         return false;
     }
@@ -932,12 +825,7 @@ bool process_pdf(
         result.channels == 1
     ) {
 
-        // ---------------------------------------------------------------------
-        // Public 1-channel PDF result is the deterministic binary mask.
-        // ---------------------------------------------------------------------
-
-        std::size_t public_bgra_bytes =
-            0;
+        std::size_t public_bgra_bytes = 0;
 
         if (
             !core::safe_mul(
@@ -947,9 +835,7 @@ bool process_pdf(
             )
         ) {
 
-            fin::ops::aligned_free(
-                ocr_bgra
-            );
+            fin::ops::aligned_free(ocr_bgra);
 
             return false;
         }
@@ -966,9 +852,7 @@ bool process_pdf(
             public_bgra == nullptr
         ) {
 
-            fin::ops::aligned_free(
-                ocr_bgra
-            );
+            fin::ops::aligned_free(ocr_bgra);
 
             return false;
         }
@@ -993,30 +877,21 @@ bool process_pdf(
                 public_pixels
             );
 
-            result.is_binarized =
-                1;
+            result.is_binarized = 1;
         }
 
-        fin::ops::aligned_free(
-            public_bgra
-        );
+        fin::ops::aligned_free(public_bgra);
 
         if (
             !public_rendered
         ) {
 
-            fin::ops::aligned_free(
-                ocr_bgra
-            );
+            fin::ops::aligned_free(ocr_bgra);
 
             return false;
         }
 
     } else {
-
-        // ---------------------------------------------------------------------
-        // Public 4-channel PDF result remains BGRA.
-        // ---------------------------------------------------------------------
 
         const bool public_rendered =
             PdfRasterizer::render_page_to_bgra(
@@ -1032,63 +907,21 @@ bool process_pdf(
             !public_rendered
         ) {
 
-            fin::ops::aligned_free(
-                ocr_bgra
-            );
+            fin::ops::aligned_free(ocr_bgra);
 
             return false;
         }
 
-        result.is_binarized =
-            0;
+        result.is_binarized = 0;
     }
 
-    fin::ops::aligned_free(
-        ocr_bgra
-    );
+    fin::ops::aligned_free(ocr_bgra);
 
     return true;
 }
 
 // =============================================================================
-// TEMPLATE ADAPTER
-//
-// GlyphMatcher's current API consumes:
-//
-//     std::vector<GlyphTemplate>
-//
-// while the canonical template database is exposed as:
-//
-//     GlyphTemplateTable
-//
-// Keep the conversion in the pipeline layer for now.
-// =============================================================================
-
-const std::vector<GlyphTemplate>& matcher_templates()
-{
-    static const std::vector<GlyphTemplate>
-        templates =
-            [] {
-
-                const GlyphTemplateTable&
-                    table =
-                        default_glyph_templates();
-
-                return std::vector<GlyphTemplate>(
-                    table.begin(),
-                    table.end()
-                );
-            }();
-
-    return templates;
-}
-
-// =============================================================================
-// CHART RECOGNITION OBJECT GRAPH
-// =============================================================================
-
-// =============================================================================
-// CHART RECOGNITION OBJECT GRAPH
+// CHART OCR RECOGNITION CONTEXT
 // =============================================================================
 
 struct ChartRecognizerContext {
@@ -1117,12 +950,99 @@ struct ChartRecognizerContext {
 };
 
 // =============================================================================
-// CHART OCR
+// CHART ANALYSIS CONTEXT
+// =============================================================================
+
+struct ChartAnalysisContext {
+
+    chart::ChartAxisDetector axis_detector;
+
+    chart::ChartObjectDetector object_detector;
+
+    chart::ChartAssociator associator;
+
+    chart::ChartInterpreter interpreter;
+};
+
+// =============================================================================
+// CHART OCR + GEOMETRY + SEMANTIC ANALYSIS
+// =============================================================================
+//
+// Pipeline:
+//
+//     RGB
+//       |
+//       v
+//     ChartColorIsolator
+//       |
+//       +-------------------------------+
+//       |                               |
+//       v                               v
+// ChartLabelRecognizer            ChartAxisDetector
+//       |                               |
+//       v                               v
+// vector<ChartLabel>             ChartCoordinateSystem
+//       |                               |
+//       +---------------+---------------+
+//                       |
+//                       v
+//               ChartObjectDetector
+//                       |
+//                       v
+//                 ChartObjectSet
+//                       |
+//                       +----------------------------+
+//                       |                            |
+//                       v                            |
+//                ChartAssociator                     |
+//                       |                            |
+//                       v                            |
+//              ChartAssociationResult                |
+//                       |                            |
+//                       +-------------+--------------+
+//                                     |
+//                                     v
+//                            ChartInterpreter
+//                                     |
+//                                     v
+//                              ChartAnalysis
+//
+// IMPORTANT:
+//
+//     The formatted [CHART_TEXT_DATA] payload is presentation/transport data.
+//
+//     The semantic pipeline NEVER parses that formatted string.
+//
+//     Associator and Interpreter consume the structured objects directly.
+//
 // =============================================================================
 
 bool process_chart(
     FinProcessedBuffer& result
 ) noexcept {
+
+    // =========================================================================
+    // DETERMINISTIC STRUCTURAL FALLBACK
+    // =========================================================================
+    //
+    // Transport/compatibility fallback only.
+    //
+    // This does NOT fabricate a financial value or semantic chart type.
+    //
+    const auto attach_fallback =
+        [&result]() noexcept -> bool {
+
+            return set_extracted_text(
+                result,
+                std::string{
+                    CHART_FALLBACK_TEXT
+                }
+            );
+        };
+
+    // =========================================================================
+    // CHANNEL CONTRACT
+    // =========================================================================
 
     if (
         result.channels != 3
@@ -1131,8 +1051,15 @@ bool process_chart(
         result.is_binarized =
             0;
 
-        return true;
+        (void)attach_fallback();
+
+        return
+            result.extracted_text != nullptr;
     }
+
+    // =========================================================================
+    // PIXEL COUNT
+    // =========================================================================
 
     std::size_t num_pixels =
         0;
@@ -1145,16 +1072,28 @@ bool process_chart(
         )
     ) {
 
+        (void)attach_fallback();
+
         return false;
     }
+
+    // =========================================================================
+    // INPUT BUFFER VALIDATION
+    // =========================================================================
 
     if (
         result.data == nullptr ||
         result.data_len == 0
     ) {
 
+        (void)attach_fallback();
+
         return false;
     }
+
+    // =========================================================================
+    // CHART OCR WORK BUFFER
+    // =========================================================================
 
     uint8_t* chart_ocr =
         static_cast<uint8_t*>(
@@ -1168,8 +1107,14 @@ bool process_chart(
         chart_ocr == nullptr
     ) {
 
+        (void)attach_fallback();
+
         return false;
     }
+
+    // =========================================================================
+    // CHART COLOR ISOLATION
+    // =========================================================================
 
     const bool isolated =
         ChartColorIsolator::isolate(
@@ -1186,46 +1131,396 @@ bool process_chart(
             chart_ocr
         );
 
+        (void)attach_fallback();
+
         return false;
     }
 
-    ChartRecognizerContext context;
+    bool attached =
+        false;
 
-    const std::string text =
-        context.chart_recognizer.recognize(
-            chart_ocr,
+    try {
+
+        // =====================================================================
+        // CONTEXT CONSTRUCTION
+        // =====================================================================
+        //
+        // OCR context:
+        //
+        //     GlyphMatcher
+        //         ↓
+        //     TesseractRecognizer
+        //         ↓
+        //     LineRecognizer
+        //         ↓
+        //     ChartLabelRecognizer
+        //
+        // Analysis context:
+        //
+        //     AxisDetector
+        //     ObjectDetector
+        //     Associator
+        //     Interpreter
+        //
+        // =====================================================================
+
+        ChartRecognizerContext recognizer_context;
+
+        ChartAnalysisContext analysis_context;
+
+        const int width =
             static_cast<int>(
                 result.width
-            ),
+            );
+
+        const int height =
             static_cast<int>(
                 result.height
-            )
+            );
+
+        // =====================================================================
+        // STEP 1: STRUCTURED CHART LABEL RECOGNITION
+        // =====================================================================
+        //
+        // IMPORTANT:
+        //
+        // Do NOT call recognize() here and then attempt to parse
+        // [CHART_TEXT_DATA].
+        //
+        // recognize_labels() gives the semantic layer the actual structured
+        // ChartLabel objects including:
+        //
+        //     text
+        //     bounding box
+        //     confidence
+        //     initial semantic fields
+        //
+        // =====================================================================
+
+        const std::vector<chart::ChartLabel> labels =
+            recognizer_context.chart_recognizer.recognize_labels(
+                chart_ocr,
+                width,
+                height
+            );
+
+        // =====================================================================
+        // STEP 2: BUILD PRESENTATION OCR PAYLOAD
+        // =====================================================================
+        //
+        // This payload remains compatible with the existing test/FFI contract.
+        //
+        // =====================================================================
+
+        std::string text_payload;
+
+        text_payload.reserve(
+            256 +
+            labels.size() * 96
         );
 
-    if (
-        !text.empty()
-    ) {
+        text_payload +=
+            "[CHART_TEXT_DATA]\n";
 
-        set_extracted_text(
-            result,
-            text
+        if (
+            labels.empty()
+        ) {
+
+            text_payload +=
+                "  - Line 1 [Y:0-0, X:0-0]: "
+                "[NO_RECOGNIZED_CHART_LABELS] "
+                "[confidence=0.000000]\n";
+
+        } else {
+
+            for (
+                std::size_t i = 0;
+                i < labels.size();
+                ++i
+            ) {
+
+                const chart::ChartLabel& label =
+                    labels[i];
+
+                text_payload +=
+                    "  - Line " +
+                    std::to_string(
+                        i + 1
+                    );
+
+                text_payload +=
+                    " [Y:" +
+                    std::to_string(
+                        label.min_y
+                    );
+
+                text_payload +=
+                    "-" +
+                    std::to_string(
+                        label.max_y + 1
+                    );
+
+                text_payload +=
+                    ", X:" +
+                    std::to_string(
+                        label.min_x
+                    );
+
+                text_payload +=
+                    "-" +
+                    std::to_string(
+                        label.max_x
+                    );
+
+                text_payload +=
+                    "]: " +
+                    label.text;
+
+                text_payload +=
+                    " [confidence=" +
+                    std::to_string(
+                        label.confidence
+                    ) +
+                    "]\n";
+            }
+        }
+
+        // =====================================================================
+        // STEP 3: ATTACH OCR PAYLOAD
+        // =====================================================================
+
+        if (
+            !text_payload.empty()
+        ) {
+
+            attached =
+                set_extracted_text(
+                    result,
+                    text_payload
+                );
+        }
+
+        if (
+            !attached
+        ) {
+
+            attached =
+                attach_fallback();
+        }
+
+        // =====================================================================
+        // STEP 4: AXIS DETECTION
+        // =====================================================================
+
+        const chart::ChartCoordinateSystem coordinates =
+            analysis_context.axis_detector.detect(
+                chart_ocr,
+                width,
+                height,
+                3
+            );
+
+        // =====================================================================
+        // STEP 5: OBJECT DETECTION
+        // =====================================================================
+
+        const chart::ChartObjectSet objects =
+            analysis_context.object_detector.detect(
+                chart_ocr,
+                width,
+                height,
+                3,
+                coordinates
+            );
+
+        // =====================================================================
+        // STEP 6: STRUCTURED LABEL ASSOCIATION
+        // =====================================================================
+        //
+        // This is where the OCR labels become geometrically/semantically
+        // associated with:
+        //
+        //     - X axis categories
+        //     - Y axis labels
+        //     - series / legend labels
+        //     - bars
+        //     - paths
+        //
+        // ChartAssociator owns an enriched copy of the labels and performs
+        // classification and relationship construction. :contentReference[oaicite:0]{index=0}
+        //
+        // =====================================================================
+
+        const chart::ChartAssociationResult associations =
+            analysis_context.associator.associate(
+                coordinates,
+                objects,
+                labels
+            );
+
+        // =====================================================================
+        // STEP 7: FULL CHART INTERPRETATION
+        // =====================================================================
+        //
+        // The interpreter now receives the structured output directly.
+        //
+        // It determines things such as:
+        //
+        //     - chart type
+        //     - stacked / clustered / combo classification
+        //     - data points
+        //     - semantic validity
+        //     - analysis confidence
+        //
+        // =====================================================================
+
+        const chart::ChartAnalysis analysis =
+            analysis_context.interpreter.interpret(
+                coordinates,
+                objects,
+                associations
+            );
+
+        // =====================================================================
+        // STEP 8: APPEND STRUCTURED ANALYSIS DIAGNOSTICS
+        // =====================================================================
+        //
+        // Keep the existing OCR payload and expose the semantic stage as a
+        // separate section.
+        //
+        // No financial values are invented here.
+        //
+        // =====================================================================
+
+        text_payload +=
+            "\n"
+            "[CHART_ANALYSIS]\n";
+
+        text_payload +=
+            "Valid: " +
+            std::string(
+                analysis.valid
+                    ? "YES"
+                    : "NO"
+            ) +
+            "\n";
+
+        text_payload +=
+            "Confidence: " +
+            std::to_string(
+                analysis.confidence
+            ) +
+            "\n";
+
+        text_payload +=
+            "Labels: " +
+            std::to_string(
+                analysis.associations.labels.size()
+            ) +
+            "\n";
+
+        text_payload +=
+            "Categories: " +
+            std::to_string(
+                analysis.associations.categories.size()
+            ) +
+            "\n";
+
+        text_payload +=
+            "Series: " +
+            std::to_string(
+                analysis.associations.series.size()
+            ) +
+            "\n";
+
+        text_payload +=
+            "Associations: " +
+            std::to_string(
+                analysis.associations.associations.size()
+            ) +
+            "\n";
+
+        text_payload +=
+            "Data Points: " +
+            std::to_string(
+                analysis.data_points.size()
+            ) +
+            "\n";
+
+        // =====================================================================
+        // STEP 9: ANALYSIS STATUS
+        // =====================================================================
+        //
+        // Keep the final payload attached even if the semantic interpreter
+        // legitimately determines that the chart is not fully interpretable.
+        //
+        // OCR success and semantic-analysis success are independent concepts.
+        //
+        // =====================================================================
+
+        attached =
+            set_extracted_text(
+                result,
+                text_payload
+            );
+
+        if (
+            !attached
+        ) {
+
+            attached =
+                attach_fallback();
+        }
+
+        // =====================================================================
+        // STEP 10: COPY FINAL CHART WORK BUFFER
+        // =====================================================================
+
+        std::memcpy(
+            result.data,
+            chart_ocr,
+            result.data_len
         );
+
+        fin::ops::aligned_free(
+            chart_ocr
+        );
+
+        result.is_binarized =
+            0;
+
+        return attached;
+
+    } catch (...) {
+
+        // =====================================================================
+        // EXCEPTION SAFETY
+        // =====================================================================
+        //
+        // Never allow chart semantic-analysis failure to leak the temporary
+        // chart OCR buffer.
+        //
+        // Preserve the OCR transport contract whenever possible.
+        //
+        // =====================================================================
+
+        if (
+            !attached
+        ) {
+
+            attached =
+                attach_fallback();
+        }
+
+        fin::ops::aligned_free(
+            chart_ocr
+        );
+
+        result.is_binarized =
+            0;
+
+        return attached;
     }
-
-    std::memcpy(
-        result.data,
-        chart_ocr,
-        result.data_len
-    );
-
-    fin::ops::aligned_free(
-        chart_ocr
-    );
-
-    result.is_binarized =
-        0;
-
-    return true;
 }
 
 // =============================================================================
@@ -1239,8 +1534,7 @@ uint8_t* build_document_mask(
     bool& owns_mask
 ) noexcept {
 
-    owns_mask =
-        false;
+    owns_mask = false;
 
     if (
         ocr_grayscale == nullptr ||
@@ -1271,8 +1565,7 @@ uint8_t* build_document_mask(
         ocr_pixels
     );
 
-    owns_mask =
-        true;
+    owns_mask = true;
 
     (void)result;
 
@@ -1323,17 +1616,6 @@ bool build_fallback_grayscale(
         result.channels == 1
     ) {
 
-        /*
-         * Public 1-channel representation:
-         *
-         *     text       = 255
-         *     background = 0
-         *
-         * Grayscale OCR expects:
-         *
-         *     text       = 0
-         *     background = 255
-         */
         for (
             std::size_t i = 0;
             i < pixels;
@@ -1392,8 +1674,7 @@ void run_document_ocr(
         return;
     }
 
-    bool owns_mask =
-        false;
+    bool owns_mask = false;
 
     uint8_t* ocr_mask =
         build_document_mask(
@@ -1445,8 +1726,7 @@ void run_document_ocr(
         result.channels == 1
     ) {
 
-        result.is_binarized =
-            1;
+        result.is_binarized = 1;
     }
 }
 
@@ -1479,13 +1759,11 @@ void apply_raw_fallback(
             result.data_len
         );
 
-        result.is_binarized =
-            1;
+        result.is_binarized = 1;
 
     } else {
 
-        result.is_binarized =
-            0;
+        result.is_binarized = 0;
     }
 }
 
@@ -1528,15 +1806,9 @@ VisionPipeline::execute(
         return nullptr;
     }
 
-    // =========================================================================
-    // OCR WORKSPACE
-    // =========================================================================
+    uint8_t* ocr_grayscale = nullptr;
 
-    uint8_t* ocr_grayscale =
-        nullptr;
-
-    std::size_t ocr_pixels =
-        0;
+    std::size_t ocr_pixels = 0;
 
     int ocr_width =
         static_cast<int>(
@@ -1548,8 +1820,7 @@ VisionPipeline::execute(
             target_height
         );
 
-    bool decode_success =
-        false;
+    bool decode_success = false;
 
     // =========================================================================
     // PDF
@@ -1571,11 +1842,11 @@ VisionPipeline::execute(
                 ocr_height
             );
 
-    // =========================================================================
-    // IMAGE / CHART
-    // =========================================================================
-
     } else {
+
+        // =====================================================================
+        // IMAGE / CHART
+        // =====================================================================
 
         decode_success =
             process_normal_image(
@@ -1613,12 +1884,15 @@ VisionPipeline::execute(
         FIN_INPUT_FIN_CHART
     ) {
 
+        // Chart processing owns the chart OCR attachment contract.
+        // Always invoke it for a 3-channel chart, even when image decoding
+        // reported failure; process_chart() will attach its deterministic
+        // structural fallback when recognition cannot run.
         if (
-            result->channels == 3 &&
-            decode_success
+            result->channels == 3
         ) {
 
-            process_chart(
+            (void)process_chart(
                 *result
             );
         }
@@ -1631,12 +1905,10 @@ VisionPipeline::execute(
                 ocr_grayscale
             );
 
-            ocr_grayscale =
-                nullptr;
+            ocr_grayscale = nullptr;
         }
 
-        result->is_binarized =
-            0;
+        result->is_binarized = 0;
 
         return result;
     }
@@ -1645,8 +1917,7 @@ VisionPipeline::execute(
     // NORMAL IMAGE OCR WORKSPACE
     // =========================================================================
 
-    std::size_t result_pixels =
-        0;
+    std::size_t result_pixels = 0;
 
     if (
         !core::safe_mul(
@@ -1664,8 +1935,7 @@ VisionPipeline::execute(
                 ocr_grayscale
             );
 
-            ocr_grayscale =
-                nullptr;
+            ocr_grayscale = nullptr;
         }
 
         return result;
@@ -1683,8 +1953,7 @@ VisionPipeline::execute(
             )
         ) {
 
-            ocr_pixels =
-                result_pixels;
+            ocr_pixels = result_pixels;
 
             ocr_width =
                 static_cast<int>(
@@ -1729,8 +1998,7 @@ VisionPipeline::execute(
             ocr_grayscale
         );
 
-        ocr_grayscale =
-            nullptr;
+        ocr_grayscale = nullptr;
     }
 
     // =========================================================================
@@ -1749,8 +2017,7 @@ VisionPipeline::execute(
             result->data_len
         );
 
-        result->is_binarized =
-            1;
+        result->is_binarized = 1;
     }
 
     return result;

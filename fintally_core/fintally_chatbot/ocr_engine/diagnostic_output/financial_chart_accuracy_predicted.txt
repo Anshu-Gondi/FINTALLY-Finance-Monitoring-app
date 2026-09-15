@@ -1,1 +1,0 @@
-[fin_engine_ocr_output] dimensions: 1280x720 channels: 3 binarized: no input type: financial_chart active text region density: 0.623047% detected text lines: 0 payload status: valid_preprocessed_buffer

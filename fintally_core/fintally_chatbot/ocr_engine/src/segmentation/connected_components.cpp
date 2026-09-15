@@ -3,11 +3,362 @@
 #include "fin_ocr/core/pixel_access.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <vector>
 
 namespace fin_ocr {
+
+namespace {
+
+// =============================================================================
+// COMPONENT LIMITS
+// =============================================================================
+
+constexpr int MIN_COMPONENT_HEIGHT = 2;
+
+constexpr int MAX_TEXT_COMPONENT_WIDTH = 96;
+
+constexpr int MAX_TEXT_COMPONENT_HEIGHT = 32;
+
+constexpr double MAX_COMPONENT_WIDTH_RATIO = 0.18;
+
+constexpr double MAX_COMPONENT_HEIGHT_RATIO = 0.90;
+
+constexpr double MAX_HORIZONTAL_ASPECT = 14.0;
+
+constexpr double MAX_VERTICAL_ASPECT = 10.0;
+
+constexpr double MIN_COMPONENT_DENSITY = 0.015;
+
+constexpr double MAX_COMPONENT_DENSITY = 0.90;
+
+// Components wider than this are treated as possible chart structures and
+// require stronger evidence before entering glyph reconstruction.
+constexpr int WIDE_COMPONENT_WIDTH = 48;
+
+constexpr int WIDE_COMPONENT_MAX_HEIGHT = 8;
+
+constexpr double WIDE_COMPONENT_MAX_DENSITY = 0.65;
+
+// =============================================================================
+// GEOMETRY HELPERS
+// =============================================================================
+
+[[nodiscard]]
+bool is_horizontal_rule(
+    int width,
+    int height
+) noexcept {
+
+    if (
+        width < 12 ||
+        height <= 0
+    ) {
+        return false;
+    }
+
+    return
+        width >= height * 6 &&
+        height <= 3;
+}
+
+[[nodiscard]]
+bool is_vertical_rule(
+    int width,
+    int height
+) noexcept {
+
+    if (
+        height < 12 ||
+        width <= 0
+    ) {
+        return false;
+    }
+
+    return
+        height >= width * 6 &&
+        width <= 3;
+}
+
+[[nodiscard]]
+bool is_extreme_horizontal_geometry(
+    int width,
+    int height
+) noexcept {
+
+    if (
+        width <= 0 ||
+        height <= 0
+    ) {
+        return false;
+    }
+
+    const double aspect =
+        static_cast<double>(width) /
+        static_cast<double>(height);
+
+    return
+        aspect > MAX_HORIZONTAL_ASPECT &&
+        width >= 24;
+}
+
+[[nodiscard]]
+bool is_extreme_vertical_geometry(
+    int width,
+    int height
+) noexcept {
+
+    if (
+        width <= 0 ||
+        height <= 0
+    ) {
+        return false;
+    }
+
+    const double aspect =
+        static_cast<double>(height) /
+        static_cast<double>(width);
+
+    return
+        aspect > MAX_VERTICAL_ASPECT &&
+        height >= 24;
+}
+
+[[nodiscard]]
+bool is_large_chart_blob(
+    int component_width,
+    int component_height,
+    int roi_width,
+    int roi_height
+) noexcept {
+
+    if (
+        component_width <= 0 ||
+        component_height <= 0 ||
+        roi_width <= 0 ||
+        roi_height <= 0
+    ) {
+        return true;
+    }
+
+    const double width_ratio =
+        static_cast<double>(component_width) /
+        static_cast<double>(roi_width);
+
+    const double height_ratio =
+        static_cast<double>(component_height) /
+        static_cast<double>(roi_height);
+
+    if (
+        width_ratio >=
+            MAX_COMPONENT_WIDTH_RATIO &&
+        component_width >
+            MAX_TEXT_COMPONENT_WIDTH
+    ) {
+        return true;
+    }
+
+    return
+        height_ratio >
+        MAX_COMPONENT_HEIGHT_RATIO;
+}
+
+[[nodiscard]]
+bool acceptable_component_geometry(
+    const BoundingBox& box,
+    int roi_width,
+    int roi_height
+) noexcept {
+
+    const int width =
+        box.width();
+
+    const int height =
+        box.height();
+
+    const int area =
+        box.area();
+
+    if (
+        width <= 0 ||
+        height <= 0 ||
+        area <= 0
+    ) {
+        return false;
+    }
+
+    if (
+        height <
+        MIN_COMPONENT_HEIGHT
+    ) {
+        return false;
+    }
+
+    if (
+        width >
+        MAX_TEXT_COMPONENT_WIDTH
+    ) {
+        return false;
+    }
+
+    if (
+        height >
+        MAX_TEXT_COMPONENT_HEIGHT
+    ) {
+        return false;
+    }
+
+    if (
+        is_horizontal_rule(
+            width,
+            height
+        )
+    ) {
+        return false;
+    }
+
+    if (
+        is_vertical_rule(
+            width,
+            height
+        )
+    ) {
+        return false;
+    }
+
+    if (
+        is_extreme_horizontal_geometry(
+            width,
+            height
+        )
+    ) {
+        return false;
+    }
+
+    if (
+        is_extreme_vertical_geometry(
+            width,
+            height
+        )
+    ) {
+        return false;
+    }
+
+    if (
+        is_large_chart_blob(
+            width,
+            height,
+            roi_width,
+            roi_height
+        )
+    ) {
+        return false;
+    }
+
+    const double width_ratio =
+        static_cast<double>(width) /
+        static_cast<double>(
+            std::max(
+                1,
+                roi_width
+            )
+        );
+
+    const double height_ratio =
+        static_cast<double>(height) /
+        static_cast<double>(
+            std::max(
+                1,
+                roi_height
+            )
+        );
+
+    if (
+        width_ratio >
+        MAX_COMPONENT_WIDTH_RATIO
+    ) {
+        return false;
+    }
+
+    if (
+        height_ratio >
+        MAX_COMPONENT_HEIGHT_RATIO
+    ) {
+        return false;
+    }
+
+    return true;
+}
+
+// =============================================================================
+// COMPONENT OCCUPANCY
+// =============================================================================
+//
+// ConnectedComponents::extract() already gives us only a bounding box.
+// We do not have a per-component pixel count after BFS unless we track it.
+//
+// This helper therefore calculates a conservative geometric proxy.
+// =============================================================================
+
+[[nodiscard]]
+double component_density_proxy(
+    const BoundingBox& box
+) noexcept {
+
+    const int width =
+        box.width();
+
+    const int height =
+        box.height();
+
+    if (
+        width <= 0 ||
+        height <= 0
+    ) {
+        return 0.0;
+    }
+
+    /*
+     * A bounding-box-only density proxy cannot recover exact occupancy.
+     * For component filtering we therefore use a deliberately conservative
+     * estimate based on the geometry itself.
+     */
+    const double aspect =
+        static_cast<double>(
+            std::max(
+                width,
+                height
+            )
+        ) /
+        static_cast<double>(
+            std::max(
+                1,
+                std::min(
+                    width,
+                    height
+                )
+            )
+        );
+
+    if (
+        aspect <= 1.5
+    ) {
+        return 0.50;
+    }
+
+    if (
+        aspect <= 4.0
+    ) {
+        return 0.25;
+    }
+
+    return 0.10;
+}
+
+} // namespace
 
 // =============================================================================
 // EXTRACT CONNECTED COMPONENTS + MERGE FRAGMENTS
@@ -31,7 +382,8 @@ ConnectedComponents::extract(
     if (
         image == nullptr ||
         width <= 0 ||
-        min_y >= max_y ||
+        min_y < 0 ||
+        max_y <= min_y ||
         channels <= 0
     ) {
         return boxes;
@@ -41,14 +393,29 @@ ConnectedComponents::extract(
         max_y -
         min_y;
 
+    if (
+        roi_height <= 1
+    ) {
+        return boxes;
+    }
+
     // =========================================================================
     // VISITED STATE
     // =========================================================================
 
-    std::vector<uint8_t> visited(
+    const std::size_t visited_size =
         static_cast<std::size_t>(width) *
-        static_cast<std::size_t>(roi_height),
-        0
+        static_cast<std::size_t>(roi_height);
+
+    if (
+        visited_size == 0
+    ) {
+        return boxes;
+    }
+
+    std::vector<uint8_t> visited(
+        visited_size,
+        uint8_t{0}
     );
 
     // =========================================================================
@@ -57,7 +424,9 @@ ConnectedComponents::extract(
 
     std::vector<int> queue;
 
-    queue.reserve(256);
+    queue.reserve(
+        256
+    );
 
     // =========================================================================
     // VISITED INDEX
@@ -112,15 +481,18 @@ ConnectedComponents::extract(
             visited[start_index] =
                 1;
 
+            const uint8_t pixel =
+                ocr_pixel(
+                    image,
+                    width,
+                    channels,
+                    x,
+                    y
+                );
+
             if (
                 !is_foreground_for_channels(
-                    ocr_pixel(
-                        image,
-                        width,
-                        channels,
-                        x,
-                        y
-                    ),
+                    pixel,
                     channels
                 )
             ) {
@@ -374,108 +746,67 @@ ConnectedComponents::extract(
                 }
             }
 
-            // =================================================================
-            // COMPONENT DIMENSIONS
-            // =================================================================
+            // =========================================================================
+            // COMPONENT GEOMETRY
+            // =========================================================================
 
-            const int component_w =
+            const int component_width =
                 box.width();
 
-            const int component_h =
+            const int component_height =
                 box.height();
 
             const int component_area =
                 box.area();
 
             if (
-                component_w < 1 ||
-                component_h < 2 ||
+                !acceptable_component_geometry(
+                    box,
+                    width,
+                    roi_height
+                )
+            ) {
+                continue;
+            }
+
+            if (
                 component_area < 2
             ) {
                 continue;
             }
 
-            // =================================================================
-            // HORIZONTAL RULE
-            // =================================================================
-
-            const bool horizontal_rule =
-                component_w >= 20 &&
-                component_h <= 3 &&
-                component_w >=
-                    component_h * 8;
-
-            if (
-                horizontal_rule
-            ) {
-                continue;
-            }
-
-            // =================================================================
-            // VERTICAL RULE
-            // =================================================================
-
-            const bool vertical_rule =
-                component_h >= 20 &&
-                component_w <= 3 &&
-                component_h >=
-                    component_w * 8;
+            // =========================================================================
+            // WIDE COMPONENT PROTECTION
+            // =========================================================================
+            //
+            // Small text components may be wide, but a wide/short connected
+            // component is usually plot geometry. Do not send these directly
+            // into MatrixMatcher.
+            // =========================================================================
 
             if (
-                vertical_rule
+                component_width >=
+                    WIDE_COMPONENT_WIDTH &&
+                component_height <=
+                    WIDE_COMPONENT_MAX_HEIGHT
             ) {
-                continue;
+
+                const double density_proxy =
+                    component_density_proxy(
+                        box
+                    );
+
+                if (
+                    density_proxy >=
+                    WIDE_COMPONENT_MAX_DENSITY
+                ) {
+                    continue;
+                }
             }
 
-            // =================================================================
-            // HUGE IMAGE BLOB
-            // =================================================================
-
-            const bool image_width_blob =
-                component_w >=
-                std::max(
-                    128,
-                    width * 3 / 4
-                );
-
-            const bool image_height_blob =
-                component_h >=
-                std::max(
-                    128,
-                    roi_height * 3 / 4
-                );
-
-            const bool huge_blob =
-                image_width_blob &&
-                image_height_blob;
-
-            if (
-                huge_blob
-            ) {
-                continue;
-            }
-
-            // =================================================================
-            // THICK HORIZONTAL STRUCTURE
-            // =================================================================
-
-            const bool thick_horizontal_structure =
-                component_w >=
-                    std::max(
-                        64,
-                        width / 3
-                    ) &&
-
-                component_h <= 6 &&
-
-                component_w >=
-                    component_h * 12;
-
-            if (
-                thick_horizontal_structure
-            ) {
-                continue;
-            }
+            // =========================================================================
+            // FINAL COMPONENT
+            // =========================================================================
 
             boxes.push_back(
                 box
@@ -505,20 +836,46 @@ ConnectedComponents::extract(
                 a.min_x !=
                 b.min_x
             ) {
-
                 return
                     a.min_x <
                     b.min_x;
             }
 
+            if (
+                a.min_y !=
+                b.min_y
+            ) {
+                return
+                    a.min_y <
+                    b.min_y;
+            }
+
+            if (
+                a.max_x !=
+                b.max_x
+            ) {
+                return
+                    a.max_x <
+                    b.max_x;
+            }
+
             return
-                a.min_y <
-                b.min_y;
+                a.max_y <
+                b.max_y;
         }
     );
 
     // =========================================================================
     // STAGE 3: MERGE FRAGMENTS
+    // =========================================================================
+    //
+    // Important rule:
+    //
+    //     only merge fragments which can plausibly belong to one glyph.
+    //
+    // Never allow a chain of weak merges to turn multiple chart structures
+    // into one massive OCR component.
+    //
     // =========================================================================
 
     std::vector<BoundingBox> merged;
@@ -536,8 +893,8 @@ ConnectedComponents::extract(
             false;
 
         const std::size_t search_begin =
-            merged.size() > 4
-                ? merged.size() - 4
+            merged.size() > 6
+                ? merged.size() - 6
                 : 0;
 
         for (
@@ -561,6 +918,15 @@ ConnectedComponents::extract(
 
             const int ch =
                 current.height();
+
+            if (
+                pw <= 0 ||
+                ph <= 0 ||
+                cw <= 0 ||
+                ch <= 0
+            ) {
+                continue;
+            }
 
             const int horizontal_overlap =
                 std::max(
@@ -593,30 +959,62 @@ ConnectedComponents::extract(
             const int horizontal_gap =
                 current.min_x >
                     previous.max_x
-
                     ? current.min_x -
                       previous.max_x -
                       1
-
-                    : previous.min_x -
-                      current.max_x -
-                      1;
+                    : previous.min_x >
+                        current.max_x
+                        ? previous.min_x -
+                          current.max_x -
+                          1
+                        : 0;
 
             const int vertical_gap =
                 current.min_y >
                     previous.max_y
-
                     ? current.min_y -
                       previous.max_y -
                       1
+                    : previous.min_y >
+                        current.max_y
+                        ? previous.min_y -
+                          current.max_y -
+                          1
+                        : 0;
 
-                    : previous.min_y -
-                      current.max_y -
-                      1;
+            // =========================================================================
+            // GLYPH HEIGHT COMPATIBILITY
+            // =========================================================================
 
-            // =================================================================
+            const int smaller_height =
+                std::min(
+                    ph,
+                    ch
+                );
+
+            const int larger_height =
+                std::max(
+                    ph,
+                    ch
+                );
+
+            const double height_ratio =
+                larger_height > 0
+                    ? static_cast<double>(
+                          smaller_height
+                      ) /
+                      static_cast<double>(
+                          larger_height
+                      )
+                    : 0.0;
+
+            const bool compatible_height =
+                height_ratio >=
+                0.45;
+
+            // =========================================================================
             // DOT + STEM
-            // =================================================================
+            // =========================================================================
 
             const bool previous_is_dot =
                 pw <= 5 &&
@@ -628,13 +1026,11 @@ ConnectedComponents::extract(
 
             const bool previous_is_stem =
                 ph >= 6 &&
-                ph >=
-                    pw * 2;
+                ph >= pw * 2;
 
             const bool current_is_stem =
                 ch >= 6 &&
-                ch >=
-                    cw * 2;
+                ch >= cw * 2;
 
             const bool dot_stem_pair =
                 (
@@ -666,56 +1062,93 @@ ConnectedComponents::extract(
                         std::min(
                             dot_width,
                             stem_width
-                        ) / 2
+                        ) /
+                        2
                     );
 
-                const bool good_x_alignment =
+                const bool aligned =
                     horizontal_overlap >=
                     required_x_overlap;
 
-                const bool good_vertical_gap =
-                    vertical_gap <=
-                    6;
-
                 if (
-                    good_x_alignment &&
-                    good_vertical_gap
+                    aligned &&
+                    vertical_gap <= 6
                 ) {
 
-                    previous.min_x =
+                    const int new_min_x =
                         std::min(
                             previous.min_x,
                             current.min_x
                         );
 
-                    previous.min_y =
+                    const int new_min_y =
                         std::min(
                             previous.min_y,
                             current.min_y
                         );
 
-                    previous.max_x =
+                    const int new_max_x =
                         std::max(
                             previous.max_x,
                             current.max_x
                         );
 
-                    previous.max_y =
+                    const int new_max_y =
                         std::max(
                             previous.max_y,
                             current.max_y
                         );
 
-                    merged_current =
-                        true;
+                    const int merged_width =
+                        new_max_x -
+                        new_min_x +
+                        1;
 
-                    break;
+                    const int merged_height =
+                        new_max_y -
+                        new_min_y +
+                        1;
+
+                    if (
+                        merged_width <=
+                            MAX_TEXT_COMPONENT_WIDTH &&
+                        merged_height <=
+                            MAX_TEXT_COMPONENT_HEIGHT
+                    ) {
+
+                        previous.min_x =
+                            new_min_x;
+
+                        previous.min_y =
+                            new_min_y;
+
+                        previous.max_x =
+                            new_max_x;
+
+                        previous.max_y =
+                            new_max_y;
+
+                        merged_current =
+                            true;
+
+                        break;
+                    }
                 }
             }
 
-            // =================================================================
-            // GENERAL VERTICAL FRAGMENT
-            // =================================================================
+            // =========================================================================
+            // VERTICAL FRAGMENT MERGE
+            // =========================================================================
+            //
+            // Useful for:
+            //
+            //     i-dot
+            //     split glyphs
+            //     anti-aliased vertical pieces
+            //
+            // Do not merge tall structures into text unless height compatibility
+            // is strong and the x overlap is meaningful.
+            // =========================================================================
 
             const int min_width =
                 std::min(
@@ -738,9 +1171,9 @@ ConnectedComponents::extract(
 
             const int allowed_vertical_gap =
                 std::max(
-                    2,
+                    1,
                     std::min(
-                        5,
+                        4,
                         height_reference / 4
                     )
                 );
@@ -748,56 +1181,91 @@ ConnectedComponents::extract(
             const bool vertical_fragment =
                 strong_x_overlap &&
                 vertical_gap <=
-                    allowed_vertical_gap;
+                    allowed_vertical_gap &&
+                compatible_height;
 
             if (
                 vertical_fragment
             ) {
 
-                const bool both_normal_sized =
-                    ph >= 6 &&
-                    ch >= 6 &&
-                    pw >= 3 &&
-                    cw >= 3;
+                const bool normal_piece =
+                    pw <= 24 &&
+                    cw <= 24 &&
+                    ph <= 20 &&
+                    ch <= 20;
 
                 if (
-                    !both_normal_sized
+                    normal_piece
                 ) {
 
-                    previous.min_x =
+                    const int new_min_x =
                         std::min(
                             previous.min_x,
                             current.min_x
                         );
 
-                    previous.min_y =
+                    const int new_min_y =
                         std::min(
                             previous.min_y,
                             current.min_y
                         );
 
-                    previous.max_x =
+                    const int new_max_x =
                         std::max(
                             previous.max_x,
                             current.max_x
                         );
 
-                    previous.max_y =
+                    const int new_max_y =
                         std::max(
                             previous.max_y,
                             current.max_y
                         );
 
-                    merged_current =
-                        true;
+                    const int merged_width =
+                        new_max_x -
+                        new_min_x +
+                        1;
 
-                    break;
+                    const int merged_height =
+                        new_max_y -
+                        new_min_y +
+                        1;
+
+                    if (
+                        merged_width <=
+                            MAX_TEXT_COMPONENT_WIDTH &&
+                        merged_height <=
+                            MAX_TEXT_COMPONENT_HEIGHT
+                    ) {
+
+                        previous.min_x =
+                            new_min_x;
+
+                        previous.min_y =
+                            new_min_y;
+
+                        previous.max_x =
+                            new_max_x;
+
+                        previous.max_y =
+                            new_max_y;
+
+                        merged_current =
+                            true;
+
+                        break;
+                    }
                 }
             }
 
-            // =================================================================
-            // HORIZONTAL FRAGMENT
-            // =================================================================
+            // =========================================================================
+            // HORIZONTAL FRAGMENT MERGE
+            // =========================================================================
+            //
+            // Merge small adjacent pieces from one glyph, but never merge
+            // long chart structures.
+            // =========================================================================
 
             const int min_height =
                 std::min(
@@ -830,48 +1298,81 @@ ConnectedComponents::extract(
             const bool horizontal_fragment =
                 strong_y_overlap &&
                 horizontal_gap <=
-                    allowed_horizontal_gap;
+                    allowed_horizontal_gap &&
+                compatible_height;
 
             if (
                 horizontal_fragment
             ) {
 
-                const bool tiny_fragment =
-                    pw <= 5 ||
-                    cw <= 5;
+                const bool small_fragments =
+                    pw <= 20 &&
+                    cw <= 20 &&
+                    ph <= 20 &&
+                    ch <= 20;
 
                 if (
-                    tiny_fragment
+                    small_fragments
                 ) {
 
-                    previous.min_x =
+                    const int new_min_x =
                         std::min(
                             previous.min_x,
                             current.min_x
                         );
 
-                    previous.min_y =
+                    const int new_min_y =
                         std::min(
                             previous.min_y,
                             current.min_y
                         );
 
-                    previous.max_x =
+                    const int new_max_x =
                         std::max(
                             previous.max_x,
                             current.max_x
                         );
 
-                    previous.max_y =
+                    const int new_max_y =
                         std::max(
                             previous.max_y,
                             current.max_y
                         );
 
-                    merged_current =
-                        true;
+                    const int merged_width =
+                        new_max_x -
+                        new_min_x +
+                        1;
 
-                    break;
+                    const int merged_height =
+                        new_max_y -
+                        new_min_y +
+                        1;
+
+                    if (
+                        merged_width <=
+                            MAX_TEXT_COMPONENT_WIDTH &&
+                        merged_height <=
+                            MAX_TEXT_COMPONENT_HEIGHT
+                    ) {
+
+                        previous.min_x =
+                            new_min_x;
+
+                        previous.min_y =
+                            new_min_y;
+
+                        previous.max_x =
+                            new_max_x;
+
+                        previous.max_y =
+                            new_max_y;
+
+                        merged_current =
+                            true;
+
+                        break;
+                    }
                 }
             }
         }
@@ -887,12 +1388,65 @@ ConnectedComponents::extract(
     }
 
     // =========================================================================
-    // STAGE 4: FINAL ORDER
+    // STAGE 4: FINAL FILTER AFTER MERGING
+    // =========================================================================
+
+    std::vector<BoundingBox> final_boxes;
+
+    final_boxes.reserve(
+        merged.size()
+    );
+
+    for (
+        const BoundingBox& box :
+        merged
+    ) {
+
+        const int box_width =
+            box.width();
+
+        const int box_height =
+            box.height();
+
+        if (
+            !acceptable_component_geometry(
+                box,
+                width,
+                roi_height
+            )
+        ) {
+            continue;
+        }
+
+        if (
+            box_width >=
+                WIDE_COMPONENT_WIDTH &&
+            box_height <=
+                WIDE_COMPONENT_MAX_HEIGHT
+        ) {
+
+            if (
+                component_density_proxy(
+                    box
+                ) >=
+                WIDE_COMPONENT_MAX_DENSITY
+            ) {
+                continue;
+            }
+        }
+
+        final_boxes.push_back(
+            box
+        );
+    }
+
+    // =========================================================================
+    // STAGE 5: FINAL ORDER
     // =========================================================================
 
     std::sort(
-        merged.begin(),
-        merged.end(),
+        final_boxes.begin(),
+        final_boxes.end(),
         [](
             const BoundingBox& a,
             const BoundingBox& b
@@ -902,19 +1456,36 @@ ConnectedComponents::extract(
                 a.min_x !=
                 b.min_x
             ) {
-
                 return
                     a.min_x <
                     b.min_x;
             }
 
+            if (
+                a.min_y !=
+                b.min_y
+            ) {
+                return
+                    a.min_y <
+                    b.min_y;
+            }
+
+            if (
+                a.max_x !=
+                b.max_x
+            ) {
+                return
+                    a.max_x <
+                    b.max_x;
+            }
+
             return
-                a.min_y <
-                b.min_y;
+                a.max_y <
+                b.max_y;
         }
     );
 
-    return merged;
+    return final_boxes;
 }
 
 } // namespace fin_ocr

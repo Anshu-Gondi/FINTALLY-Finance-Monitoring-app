@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 
@@ -12,19 +13,21 @@ namespace fin_ocr {
 // =============================================================================
 // RGB -> CUSTOM CHART OCR CHANNELS
 //
-// NOT HSV.
-//
 // output channel 0 = saturation
 // output channel 1 = OCR foreground strength
-// output channel 2 = chroma
+// output channel 2 = chroma / RGB delta
 //
-// The input is standard RGB:
+// IMPORTANT:
 //
-//     rgb[3*i + 0] = R
-//     rgb[3*i + 1] = G
-//     rgb[3*i + 2] = B
+//     ChartLabelRecognizer::chart_foreground() reads:
 //
-// The output preserves the original chart OCR contract.
+//         output[index + 1]
+//
+//     Therefore channel 1 is the canonical OCR text-likelihood channel.
+//
+// The isolator must NOT perform aggressive semantic classification here.
+// Its job is to preserve plausible text signal while suppressing obviously
+// colored chart graphics.
 //
 // =============================================================================
 
@@ -39,6 +42,7 @@ bool ChartColorIsolator::isolate(
         output == nullptr ||
         num_pixels == 0
     ) {
+
         return false;
     }
 
@@ -46,27 +50,45 @@ bool ChartColorIsolator::isolate(
     // LOCAL CONFIGURATION
     // =========================================================================
     //
-    // These values are algorithm-specific rather than global OCR thresholds.
-    // Keeping them local prevents unrelated modules from depending on them.
+    // These thresholds are intentionally conservative.
+    //
+    // The previous implementation used one fixed background median and then
+    // required both:
+    //
+    //     contrast >= 20
+    //     saturation <= 45
+    //
+    // That is too aggressive for real financial chart screenshots because
+    // anti-aliased text can be:
+    //
+    //     - gray
+    //     - slightly colored
+    //     - only moderately darker than its local background
+    //
+    // We therefore compute:
+    //
+    //     1. global background estimate
+    //     2. absolute contrast
+    //     3. chroma/saturation
+    //     4. a neutral-text contribution
+    //     5. a colored-but-dark text contribution
+    //
+    // and combine them into a stable foreground strength.
     //
     // =========================================================================
 
-    constexpr uint8_t MAX_TEXT_SATURATION =
-        45;
+    constexpr std::size_t HISTOGRAM_SAMPLE_STRIDE = 16;
 
-    constexpr uint8_t MIN_TEXT_CONTRAST =
-        20;
+    constexpr uint8_t MAX_TEXT_SATURATION = 96;
 
-    constexpr std::size_t HISTOGRAM_SAMPLE_STRIDE =
-        16;
+    constexpr uint8_t SOFT_CONTRAST_THRESHOLD = 8;
+
+    constexpr uint8_t STRONG_CONTRAST_THRESHOLD = 18;
+
+    constexpr uint8_t MAX_BACKGROUND_CHROMA_FOR_NEUTRAL = 48;
 
     // =========================================================================
-    // STEP 1: ESTIMATE BACKGROUND GRAYSCALE
-    // =========================================================================
-    //
-    // We use a sampled grayscale histogram rather than scanning every pixel
-    // solely for background estimation.
-    //
+    // STEP 1: SAMPLE GRAYSCALE HISTOGRAM
     // =========================================================================
 
     std::array<
@@ -88,7 +110,7 @@ bool ChartColorIsolator::isolate(
     ) {
 
         const std::size_t index =
-            i * 3;
+            i * 3u;
 
         const uint8_t gray =
             image::luminance_rgb(
@@ -109,15 +131,20 @@ bool ChartColorIsolator::isolate(
     if (
         sampled_pixels == 0
     ) {
+
         return false;
     }
 
     // =========================================================================
-    // MEDIAN BACKGROUND ESTIMATE
+    // STEP 2: ROBUST BACKGROUND ESTIMATE
+    // =========================================================================
+    //
+    // Use the histogram median, but clamp extreme pathological estimates.
+    //
     // =========================================================================
 
     const std::size_t median_position =
-        sampled_pixels / 2;
+        sampled_pixels / 2u;
 
     std::size_t cumulative =
         0;
@@ -152,25 +179,11 @@ bool ChartColorIsolator::isolate(
         }
     }
 
-    const bool dark_background =
-        background_gray < 128;
+    const bool light_background =
+        background_gray >= 128;
 
     // =========================================================================
-    // STEP 2: ISOLATE CHART TEXT SIGNAL
-    // =========================================================================
-    //
-    // Output format:
-    //
-    //     channel 0 -> saturation
-    //     channel 1 -> foreground strength
-    //     channel 2 -> chroma/delta
-    //
-    // This intentionally remains compatible with:
-    //
-    //     ocr_pixel(... channels == 3 ...)
-    //
-    // which reads output channel 1 as the OCR foreground channel.
-    //
+    // STEP 3: BUILD OUTPUT CHANNELS
     // =========================================================================
 
     for (
@@ -180,7 +193,7 @@ bool ChartColorIsolator::isolate(
     ) {
 
         const std::size_t index =
-            i * 3;
+            i * 3u;
 
         const uint8_t r =
             rgb[index + 0];
@@ -192,7 +205,7 @@ bool ChartColorIsolator::isolate(
             rgb[index + 2];
 
         // ---------------------------------------------------------------------
-        // RGB extrema.
+        // RGB extrema / chroma
         // ---------------------------------------------------------------------
 
         const uint8_t cmax =
@@ -211,14 +224,12 @@ bool ChartColorIsolator::isolate(
 
         const uint8_t delta =
             static_cast<uint8_t>(
-                cmax - cmin
+                cmax -
+                cmin
             );
 
         // ---------------------------------------------------------------------
-        // Approximate HSV-style saturation.
-        //
-        // This is not converting the whole image to HSV. We only calculate
-        // the saturation component required by the existing chart isolator.
+        // Approximate saturation.
         // ---------------------------------------------------------------------
 
         const uint8_t saturation =
@@ -227,17 +238,13 @@ bool ChartColorIsolator::isolate(
                 : static_cast<uint8_t>(
                       (
                           255u *
-                          static_cast<unsigned>(
-                              delta
-                          )
+                          static_cast<unsigned>(delta)
                       ) /
-                      static_cast<unsigned>(
-                          cmax
-                      )
+                      static_cast<unsigned>(cmax)
                   );
 
         // ---------------------------------------------------------------------
-        // Grayscale.
+        // Luminance
         // ---------------------------------------------------------------------
 
         const uint8_t gray =
@@ -247,104 +254,221 @@ bool ChartColorIsolator::isolate(
                 b
             );
 
-        // ---------------------------------------------------------------------
-        // Text is expected to be relatively neutral.
+        // =========================================================================
+        // CONTRAST
+        // =========================================================================
         //
-        // This suppresses strongly colored chart lines and fills.
-        // ---------------------------------------------------------------------
+        // Positive contrast means "pixel differs from chart background in the
+        // expected direction".
+        //
+        // =========================================================================
 
-        const bool sufficiently_neutral =
+        const int signed_contrast =
+            light_background
+                ? (
+                      static_cast<int>(
+                          background_gray
+                      ) -
+                      static_cast<int>(
+                          gray
+                      )
+                  )
+                : (
+                      static_cast<int>(
+                          gray
+                      ) -
+                      static_cast<int>(
+                          background_gray
+                      )
+                  );
+
+        const int contrast =
+            std::max(
+                0,
+                signed_contrast
+            );
+
+        // =========================================================================
+        // TEXT-LIKELIHOOD COMPONENTS
+        // =========================================================================
+        //
+        // We deliberately separate:
+        //
+        //     neutral text
+        //     moderately colored text
+        //
+        // because screenshots may contain anti-aliased text whose RGB channels
+        // are not perfectly equal.
+        //
+        // =========================================================================
+
+        const bool neutral_enough =
+            saturation <=
+            MAX_BACKGROUND_CHROMA_FOR_NEUTRAL;
+
+        const bool moderately_neutral =
             saturation <=
             MAX_TEXT_SATURATION;
 
-        bool foreground =
-            false;
+        // =========================================================================
+        // PRIMARY FOREGROUND STRENGTH
+        // =========================================================================
 
-        uint8_t foreground_strength =
+        int foreground_strength =
             0;
 
-        // =====================================================================
-        // LIGHT BACKGROUND
-        // =====================================================================
+        // ---------------------------------------------------------------------
+        // Strong neutral text.
+        // ---------------------------------------------------------------------
 
         if (
-            !dark_background
+            contrast >=
+                static_cast<int>(
+                    STRONG_CONTRAST_THRESHOLD
+                ) &&
+            neutral_enough
         ) {
 
-            const int contrast =
-                static_cast<int>(
-                    background_gray
-                ) -
-                static_cast<int>(
-                    gray
+            foreground_strength =
+                std::min(
+                    255,
+                    contrast * 6
                 );
+        }
+
+        // ---------------------------------------------------------------------
+        // Moderate neutral text.
+        //
+        // Important for anti-aliased small fonts.
+        // ---------------------------------------------------------------------
+
+        else if (
+            contrast >=
+                static_cast<int>(
+                    SOFT_CONTRAST_THRESHOLD
+                ) &&
+            neutral_enough
+        ) {
+
+            foreground_strength =
+                std::min(
+                    255,
+                    contrast * 4
+                );
+        }
+
+        // ---------------------------------------------------------------------
+        // Moderately colored but dark text.
+        //
+        // Keep this weaker than neutral text so obvious colored chart lines
+        // are still suppressed later by label geometry/OCR admission.
+        // ---------------------------------------------------------------------
+
+        else if (
+            contrast >=
+                static_cast<int>(
+                    STRONG_CONTRAST_THRESHOLD
+                ) &&
+            moderately_neutral
+        ) {
+
+            foreground_strength =
+                std::min(
+                    255,
+                    contrast * 3
+                );
+        }
+
+        // =========================================================================
+        // MICRO-CONTRAST RECOVERY
+        // =========================================================================
+        //
+        // Extremely small anti-aliased characters may only differ from the
+        // background by 8-12 grayscale levels.
+        //
+        // Preserve a low-strength signal instead of deleting it entirely.
+        //
+        // This is still safe because ChartLabelRecognizer has independent
+        // geometry/text/confidence rejection.
+        //
+        // =========================================================================
+
+        if (
+            foreground_strength == 0 &&
+            contrast >=
+                static_cast<int>(
+                    SOFT_CONTRAST_THRESHOLD
+                ) &&
+            moderately_neutral
+        ) {
+
+            foreground_strength =
+                std::min(
+                    96,
+                    contrast * 2
+                );
+        }
+
+        // =========================================================================
+        // VERY DARK / VERY LIGHT PIXEL RECOVERY
+        // =========================================================================
+        //
+        // Dark text on a light chart and light text on a dark chart should
+        // survive even when saturation is not perfectly neutral.
+        //
+        // =========================================================================
+
+        if (
+            foreground_strength == 0
+        ) {
 
             if (
-                contrast >=
-                    static_cast<int>(
-                        MIN_TEXT_CONTRAST
-                    ) &&
-                sufficiently_neutral
+                light_background
             ) {
 
-                foreground =
-                    true;
+                if (
+                    gray <= 96 &&
+                    contrast >= 6
+                ) {
 
-                foreground_strength =
-                    static_cast<uint8_t>(
+                    foreground_strength =
                         std::min(
                             255,
-                            contrast
-                        )
-                    );
-            }
+                            contrast * 2
+                        );
+                }
 
-        // =====================================================================
-        // DARK BACKGROUND
-        // =====================================================================
+            } else {
 
-        } else {
+                if (
+                    gray >= 160 &&
+                    contrast >= 6
+                ) {
 
-            const int contrast =
-                static_cast<int>(
-                    gray
-                ) -
-                static_cast<int>(
-                    background_gray
-                );
-
-            if (
-                contrast >=
-                    static_cast<int>(
-                        MIN_TEXT_CONTRAST
-                    ) &&
-                sufficiently_neutral
-            ) {
-
-                foreground =
-                    true;
-
-                foreground_strength =
-                    static_cast<uint8_t>(
+                    foreground_strength =
                         std::min(
                             255,
-                            contrast
-                        )
-                    );
+                            contrast * 2
+                        );
+                }
             }
         }
 
         // =========================================================================
-        // WRITE CUSTOM CHART OCR CHANNELS
+        // WRITE CUSTOM CHANNELS
         // =========================================================================
 
         output[index + 0] =
             saturation;
 
         output[index + 1] =
-            foreground
-                ? foreground_strength
-                : uint8_t{0};
+            static_cast<uint8_t>(
+                std::clamp(
+                    foreground_strength,
+                    0,
+                    255
+                )
+            );
 
         output[index + 2] =
             delta;

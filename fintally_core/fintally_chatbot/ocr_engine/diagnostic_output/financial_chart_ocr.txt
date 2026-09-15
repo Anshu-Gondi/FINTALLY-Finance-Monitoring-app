@@ -3,6 +3,19 @@ Dimensions: 1280x720
 Channels: 3
 Binarized: NO
 Input Type: FINANCIAL_CHART
-Active Text Region Density: 0.623047%
+Active Text Region Density: 0.245877%
 Detected Text Lines: 0
 Payload Status: VALID_PREPROCESSED_BUFFER
+
+[EXTRACTED_CHART_LABELS]
+[CHART_TEXT_DATA]
+  - Line 1 [Y:0-0, X:0-0]: [NO_RECOGNIZED_CHART_LABELS] [confidence=0.000000]
+
+[CHART_ANALYSIS]
+Valid: YES
+Confidence: 0.823062
+Labels: 0
+Categories: 0
+Series: 0
+Associations: 0
+Data Points: 1

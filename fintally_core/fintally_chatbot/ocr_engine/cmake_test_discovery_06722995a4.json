@@ -9,27 +9,27 @@
         {
           "name": "ProcessesPdfBalanceSheet",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
-          "line": 169
+          "line": 545
         },
         {
           "name": "ProcessesWebpFinancialCharts",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
-          "line": 197
+          "line": 638
         },
         {
           "name": "ProcessesReceiptImages",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
-          "line": 227
+          "line": 737
         },
         {
           "name": "HandlesCorruptedInputBytesGracefully",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
-          "line": 255
+          "line": 819
         },
         {
           "name": "HandlesNullBufferInRecognizeText",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_dataset.cpp",
-          "line": 270
+          "line": 874
         }
       ]
     },
@@ -40,12 +40,12 @@
         {
           "name": "BinarizeSimdMatchesScalar",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 27
+          "line": 29
         },
         {
           "name": "ContrastBoostSimdWorks",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 40
+          "line": 42
         }
       ]
     },
@@ -56,7 +56,7 @@
         {
           "name": "MultiColorHsvIsolationPreservesHueDifferences",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 46
+          "line": 48
         }
       ]
     },
@@ -67,12 +67,12 @@
         {
           "name": "ReturnsNullOnInvalidDimensions",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 74
+          "line": 76
         },
         {
           "name": "VerifiesBinarizedMetadataFlag",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 89
+          "line": 91
         }
       ]
     },
@@ -83,12 +83,12 @@
         {
           "name": "ThrowsOnInvalidDimensions",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 114
+          "line": 116
         },
         {
           "name": "DirectPipelineExecutionHandlesRawFallback",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 125
+          "line": 133
         }
       ]
     },
@@ -99,12 +99,12 @@
         {
           "name": "ReadsValidMetrics",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 142
+          "line": 150
         },
         {
           "name": "FallbackOnThermalCritical",
           "file": "\/home\/anshu_gondi\/projects\/FINTALLY-Finance-Monitoring-app\/fintally_core\/fintally_chatbot\/ocr_engine\/tests\/test_engine.cpp",
-          "line": 148
+          "line": 156
         }
       ]
     },

@@ -22,12 +22,704 @@ namespace {
 // THREAD-LOCAL TESSERACT ENGINE
 // =============================================================================
 //
-// The actual TessBaseAPI remains hidden inside TesseractEngine.
-//
 // One engine is reused per worker thread.
+//
+// TessBaseAPI remains fully encapsulated inside TesseractEngine.
 // =============================================================================
 
 thread_local TesseractEngine g_tesseract;
+
+// =============================================================================
+// ASCII HELPERS
+// =============================================================================
+
+[[nodiscard]]
+bool is_ascii_alpha(
+    unsigned char c
+) noexcept {
+
+    return
+        (
+            c >= 'A' &&
+            c <= 'Z'
+        ) ||
+        (
+            c >= 'a' &&
+            c <= 'z'
+        );
+}
+
+[[nodiscard]]
+bool is_ascii_digit(
+    unsigned char c
+) noexcept {
+
+    return
+        c >= '0' &&
+        c <= '9';
+}
+
+[[nodiscard]]
+bool is_ascii_space(
+    unsigned char c
+) noexcept {
+
+    return
+        c == ' ' ||
+        c == '\t' ||
+        c == '\r' ||
+        c == '\n';
+}
+
+[[nodiscard]]
+bool is_ascii_punctuation(
+    unsigned char c
+) noexcept {
+
+    return
+        c == '.' ||
+        c == ',' ||
+        c == '-' ||
+        c == '+' ||
+        c == '$' ||
+        c == '%' ||
+        c == '/' ||
+        c == ':' ||
+        c == ';' ||
+        c == '(' ||
+        c == ')' ||
+        c == '=' ||
+        c == '|' ||
+        c == '_' ||
+        c == '*' ||
+        c == '\'' ||
+        c == '"' ||
+        c == '`' ||
+        c == '~';
+}
+
+// =============================================================================
+// TEXT METRICS
+// =============================================================================
+
+struct TextMetrics {
+
+    std::size_t glyphs = 0;
+
+    std::size_t alphabetic = 0;
+
+    std::size_t digits = 0;
+
+    std::size_t punctuation = 0;
+
+    std::size_t whitespace = 0;
+
+    std::size_t other = 0;
+};
+
+[[nodiscard]]
+TextMetrics analyze_text(
+    const std::string& text
+) noexcept {
+
+    TextMetrics metrics{};
+
+    for (
+        const unsigned char c :
+        text
+    ) {
+
+        if (
+            is_ascii_space(c)
+        ) {
+
+            ++metrics.whitespace;
+
+            continue;
+        }
+
+        ++metrics.glyphs;
+
+        if (
+            is_ascii_alpha(c)
+        ) {
+
+            ++metrics.alphabetic;
+
+        } else if (
+            is_ascii_digit(c)
+        ) {
+
+            ++metrics.digits;
+
+        } else if (
+            is_ascii_punctuation(c)
+        ) {
+
+            ++metrics.punctuation;
+
+        } else {
+
+            ++metrics.other;
+        }
+    }
+
+    return metrics;
+}
+
+// =============================================================================
+// REPEATED CHARACTER DETECTION
+// =============================================================================
+//
+// Detects OCR hallucinations such as:
+//
+//     555555555
+//     888888888
+//     aaaaaaaa
+//
+// =============================================================================
+
+[[nodiscard]]
+bool repeated_character_noise(
+    const TextMetrics& metrics,
+    const std::string& text
+) noexcept {
+
+    if (
+        metrics.glyphs < 5
+    ) {
+
+        return false;
+    }
+
+    char first =
+        '\0';
+
+    std::size_t count =
+        0;
+
+    for (
+        const unsigned char c :
+        text
+    ) {
+
+        if (
+            is_ascii_space(c)
+        ) {
+
+            continue;
+        }
+
+        if (
+            count == 0
+        ) {
+
+            first =
+                static_cast<char>(c);
+
+        } else if (
+            c !=
+            static_cast<unsigned char>(
+                first
+            )
+        ) {
+
+            return false;
+        }
+
+        ++count;
+    }
+
+    return true;
+}
+
+// =============================================================================
+// NUMERIC-DOMINANT GARBAGE
+// =============================================================================
+//
+// Important:
+//
+// Legitimate numeric OCR exists:
+//
+//     2024
+//     1024.5
+//     -12
+//
+// But a chart-geometry hallucination tends to produce:
+//
+//     long digit streams
+//     very high digit ratio
+//     almost no alphabetic characters
+//
+// =============================================================================
+
+[[nodiscard]]
+bool numeric_geometry_noise(
+    const TextMetrics& metrics,
+    const std::string& text
+) noexcept {
+
+    if (
+        metrics.glyphs < 7
+    ) {
+
+        return false;
+    }
+
+    const double digit_ratio =
+        static_cast<double>(
+            metrics.digits
+        ) /
+        static_cast<double>(
+            metrics.glyphs
+        );
+
+    const double normal_ratio =
+        static_cast<double>(
+            metrics.alphabetic +
+            metrics.digits
+        ) /
+        static_cast<double>(
+            metrics.glyphs
+        );
+
+    // Very long digit-dominated strings are almost always geometry.
+    if (
+        digit_ratio >= 0.80 &&
+        metrics.alphabetic == 0
+    ) {
+
+        return true;
+    }
+
+    // A long mostly numeric string containing one accidental OCR letter is
+    // still highly suspicious.
+    if (
+        digit_ratio >= 0.75 &&
+        metrics.alphabetic <= 1 &&
+        metrics.glyphs >= 10
+    ) {
+
+        return true;
+    }
+
+    // Numeric/punctuation streams with no alphabetic structure.
+    if (
+        normal_ratio >= 0.90 &&
+        metrics.alphabetic == 0 &&
+        metrics.glyphs >= 12
+    ) {
+
+        return true;
+    }
+
+    // Explicit repeated digit hallucination.
+    if (
+        metrics.digits >= 8 &&
+        metrics.alphabetic == 0
+    ) {
+
+        std::size_t distinct_digits =
+            0;
+
+        bool seen[10]{};
+
+        for (
+            const unsigned char c :
+            text
+        ) {
+
+            if (
+                is_ascii_digit(c)
+            ) {
+
+                const std::size_t d =
+                    static_cast<std::size_t>(
+                        c - '0'
+                    );
+
+                if (
+                    !seen[d]
+                ) {
+
+                    seen[d] =
+                        true;
+
+                    ++distinct_digits;
+                }
+            }
+        }
+
+        if (
+            distinct_digits <= 3
+        ) {
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// =============================================================================
+// ALPHABETIC FRAGMENT QUALITY
+// =============================================================================
+//
+// Rejects long OCR fragments that technically contain letters but are very
+// unlikely to represent a meaningful chart label.
+//
+// Examples of suspicious outputs from chart geometry:
+//
+//     Cpeay 2 ipa
+//     PE CE FS
+//     ++1f 51
+//
+// These cannot be rejected purely by Tesseract confidence.
+// =============================================================================
+
+[[nodiscard]]
+bool alphabetic_fragment_noise(
+    const TextMetrics& metrics,
+    const std::string& text
+) noexcept {
+
+    if (
+        metrics.glyphs < 4
+    ) {
+
+        return false;
+    }
+
+    const double alpha_ratio =
+        static_cast<double>(
+            metrics.alphabetic
+        ) /
+        static_cast<double>(
+            metrics.glyphs
+        );
+
+    // -------------------------------------------------------------------------
+    // Very long output containing almost no real alphabetic structure.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.glyphs >= 8 &&
+        metrics.alphabetic <= 1
+    ) {
+
+        return true;
+    }
+
+    // -------------------------------------------------------------------------
+    // Long mixed garbage with heavy punctuation.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.glyphs >= 6 &&
+        metrics.punctuation >= 2 &&
+        metrics.alphabetic <= 2
+    ) {
+
+        return true;
+    }
+
+    // -------------------------------------------------------------------------
+    // Long strings with only a tiny amount of alphabetic content.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.glyphs >= 10 &&
+        alpha_ratio < 0.20
+    ) {
+
+        return true;
+    }
+
+    // -------------------------------------------------------------------------
+    // Excessively space-separated fragments.
+    //
+    // Chart lines often make Tesseract hallucinate multiple tiny tokens.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.glyphs >= 7 &&
+        metrics.whitespace >= 3 &&
+        metrics.alphabetic <= 3
+    ) {
+
+        return true;
+    }
+
+    return false;
+}
+
+// =============================================================================
+// TESSERACT TEXT QUALITY GATE
+// =============================================================================
+//
+// This is deliberately independent of TessBaseAPI confidence.
+//
+// Tesseract confidence answers:
+//
+//     "How confident is the OCR engine in its interpretation?"
+//
+// It does NOT answer:
+//
+//     "Is this interpretation actually chart text?"
+//
+// =============================================================================
+
+[[nodiscard]]
+bool acceptable_tesseract_text(
+    const std::string& text,
+    float confidence,
+    bool numeric_mode
+) noexcept {
+
+    if (
+        text.empty()
+    ) {
+
+        return false;
+    }
+
+    if (
+        !std::isfinite(
+            static_cast<double>(
+                confidence
+            )
+        )
+    ) {
+
+        return false;
+    }
+
+    const TextMetrics metrics =
+        analyze_text(
+            text
+        );
+
+    if (
+        metrics.glyphs == 0
+    ) {
+
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // No useful character classes.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.alphabetic == 0 &&
+        metrics.digits == 0
+    ) {
+
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Repeated-character hallucination.
+    // -------------------------------------------------------------------------
+
+    if (
+        repeated_character_noise(
+            metrics,
+            text
+        )
+    ) {
+
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Numeric geometry hallucination.
+    //
+    // This rule intentionally applies even when numeric_mode == true.
+    // numeric_mode means "this region may contain numbers"; it does not mean
+    // that every long digit stream is valid.
+    // -------------------------------------------------------------------------
+
+    if (
+        numeric_geometry_noise(
+            metrics,
+            text
+        )
+    ) {
+
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Alphabetic fragment hallucination.
+    // -------------------------------------------------------------------------
+
+    if (
+        alphabetic_fragment_noise(
+            metrics,
+            text
+        )
+    ) {
+
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Punctuation-dominated output.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.punctuation > 0 &&
+        metrics.punctuation >=
+            metrics.alphabetic +
+            metrics.digits
+    ) {
+
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Other/unclassified characters.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.other > 0
+    ) {
+
+        const std::size_t normal =
+            metrics.alphabetic +
+            metrics.digits;
+
+        if (
+            normal == 0 ||
+            metrics.other > normal
+        ) {
+
+            return false;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Single glyph.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.glyphs == 1
+    ) {
+
+        if (
+            !is_ascii_alpha(
+                static_cast<unsigned char>(
+                    text.front()
+                )
+            )
+        ) {
+
+            return false;
+        }
+
+        if (
+            confidence < 70.0f
+        ) {
+
+            return false;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Two glyphs.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.glyphs == 2
+    ) {
+
+        if (
+            metrics.alphabetic == 0
+        ) {
+
+            return false;
+        }
+
+        if (
+            confidence < 45.0f
+        ) {
+
+            return false;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Three glyphs.
+    // -------------------------------------------------------------------------
+
+    if (
+        metrics.glyphs == 3
+    ) {
+
+        if (
+            metrics.digits == 3
+        ) {
+
+            return false;
+        }
+
+        if (
+            metrics.punctuation >= 2
+        ) {
+
+            return false;
+        }
+
+        if (
+            metrics.alphabetic == 3
+        ) {
+
+            if (
+                confidence < 45.0f
+            ) {
+
+                return false;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Long numeric output.
+    //
+    // A genuinely numeric line is allowed only when it stays compact.
+    // This is especially important for chart geometry.
+    // -------------------------------------------------------------------------
+
+    if (
+        numeric_mode &&
+        metrics.alphabetic == 0 &&
+        metrics.digits > 0
+    ) {
+
+        if (
+            metrics.glyphs > 6
+        ) {
+
+            const double digit_ratio =
+                static_cast<double>(
+                    metrics.digits
+                ) /
+                static_cast<double>(
+                    metrics.glyphs
+                );
+
+            if (
+                digit_ratio >= 0.75
+            ) {
+
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
 
 // =============================================================================
 // TESSERACT CANDIDATE SCORING
@@ -41,10 +733,20 @@ double score_tesseract_candidate(
 ) {
 
     if (
-        text.empty()
+        !acceptable_tesseract_text(
+            text,
+            confidence,
+            numeric_mode
+        )
     ) {
+
         return -1.0;
     }
+
+    const TextMetrics metrics =
+        analyze_text(
+            text
+        );
 
     // =========================================================================
     // BASE CONFIDENCE
@@ -60,72 +762,134 @@ double score_tesseract_candidate(
     // =========================================================================
 
     if (
-        text.size() == 1
+        metrics.glyphs == 1
     ) {
-        score -= 8.0;
+
+        score -=
+            12.0;
+    } else if (
+        metrics.glyphs == 2
+    ) {
+
+        score -=
+            3.0;
     }
 
-    std::size_t alnum =
-        0;
-
-    std::size_t punctuation =
-        0;
-
     // =========================================================================
-    // CHARACTER CLASSIFICATION
+    // ALPHABETIC REWARD
     // =========================================================================
 
-    for (
-        unsigned char c :
-        text
+    if (
+        metrics.alphabetic >= 2
     ) {
 
+        score +=
+            4.0;
+    }
+
+    if (
+        metrics.alphabetic >= 3
+    ) {
+
+        score +=
+            2.0;
+    }
+
+    // =========================================================================
+    // PUNCTUATION PENALTY
+    // =========================================================================
+
+    if (
+        metrics.punctuation > 0
+    ) {
+
+        const double punctuation_ratio =
+            static_cast<double>(
+                metrics.punctuation
+            ) /
+            static_cast<double>(
+                std::max(
+                    std::size_t{1},
+                    metrics.glyphs
+                )
+            );
+
+        score -=
+            punctuation_ratio *
+            20.0;
+    }
+
+    // =========================================================================
+    // NUMERIC HYPOTHESIS
+    // =========================================================================
+    //
+    // The old scoring strongly rewarded numeric strings. That caused long
+    // digit-heavy chart geometry to win despite not being meaningful text.
+    //
+    // Numeric mode now gives only a small reward when the output is compact
+    // and genuinely numeric.
+    // =========================================================================
+
+    if (
+        numeric_mode
+    ) {
+
+        const double digit_ratio =
+            static_cast<double>(
+                metrics.digits
+            ) /
+            static_cast<double>(
+                std::max(
+                    std::size_t{1},
+                    metrics.glyphs
+                )
+            );
+
         if (
-            (c >= '0' && c <= '9') ||
-            (c >= 'A' && c <= 'Z') ||
-            (c >= 'a' && c <= 'z')
+            metrics.alphabetic == 0 &&
+            digit_ratio >= 0.60 &&
+            metrics.glyphs <= 6
         ) {
 
-            ++alnum;
+            score +=
+                2.0;
 
         } else if (
-            c == '.' ||
-            c == ',' ||
-            c == '-' ||
-            c == '+' ||
-            c == '$' ||
-            c == '%' ||
-            c == '/' ||
-            c == ':' ||
-            c == '(' ||
-            c == ')'
+            metrics.glyphs > 6 &&
+            digit_ratio >= 0.70
         ) {
 
-            ++punctuation;
+            score -=
+                15.0;
         }
     }
 
-    const std::size_t useful =
-        alnum +
-        punctuation;
+    // =========================================================================
+    // LONG TEXT PENALTY
+    // =========================================================================
+    //
+    // Chart-label OCR is generally compact. Extremely long output from a
+    // 20-30px high crop is suspicious.
+    // =========================================================================
 
     if (
-        useful == 0
+        metrics.glyphs >= 12
     ) {
-        return -1.0;
+
+        score -=
+            static_cast<double>(
+                metrics.glyphs -
+                11
+            ) *
+            2.5;
     }
 
-    // =========================================================================
-    // PUNCTUATION-ONLY GARBAGE
-    // =========================================================================
-
     if (
-        punctuation >
-            alnum * 3 &&
-        alnum == 0
+        metrics.glyphs >= 20
     ) {
 
-        score -= 20.0;
+        score -=
+            20.0;
     }
 
     // =========================================================================
@@ -135,54 +899,20 @@ double score_tesseract_candidate(
     if (
         source_psm == 7
     ) {
-        score += 2.0;
+
+        score +=
+            2.0;
     }
 
     // =========================================================================
-    // NUMERIC HYPOTHESIS REWARD / PENALTY
+    // FINAL SANITY
     // =========================================================================
 
     if (
-        numeric_mode
+        !std::isfinite(score)
     ) {
 
-        std::size_t numeric_like =
-            0;
-
-        for (
-            unsigned char c :
-            text
-        ) {
-
-            if (
-                (c >= '0' && c <= '9') ||
-                c == '.' ||
-                c == ',' ||
-                c == '-' ||
-                c == '+' ||
-                c == '$' ||
-                c == '%' ||
-                c == '/' ||
-                c == '(' ||
-                c == ')'
-            ) {
-
-                ++numeric_like;
-            }
-        }
-
-        if (
-            !text.empty() &&
-            numeric_like * 100 >=
-                text.size() * 70
-        ) {
-
-            score += 5.0;
-
-        } else {
-
-            score -= 5.0;
-        }
+        return -1.0;
     }
 
     return score;
@@ -192,9 +922,8 @@ double score_tesseract_candidate(
 // SINGLE TESSERACT PASS
 // =============================================================================
 //
-// TesseractEngine owns all direct TessBaseAPI interaction.
+// TesseractEngine owns direct TessBaseAPI interaction.
 //
-// This function is now only an adapter between the recognizer and the engine.
 // =============================================================================
 
 bool run_tesseract_pass(
@@ -218,18 +947,20 @@ bool run_tesseract_pass(
         width <= 0 ||
         height <= 0
     ) {
+
         return false;
     }
 
-    return g_tesseract.recognize(
-        gray,
-        width,
-        height,
-        psm,
-        numeric_mode,
-        output,
-        confidence
-    );
+    return
+        g_tesseract.recognize(
+            gray,
+            width,
+            height,
+            psm,
+            numeric_mode,
+            output,
+            confidence
+        );
 }
 
 } // namespace
@@ -244,10 +975,13 @@ bool run_tesseract_pass(
 //     6  = uniform text block
 //     13 = raw line
 //
-// Numeric lines additionally receive:
+// Numeric regions additionally receive:
 //
 //     PSM 7 + numeric whitelist
 //     PSM 13 + numeric whitelist
+//
+// Every OCR result passes through acceptable_tesseract_text() before it can
+// compete for selection.
 //
 // =============================================================================
 
@@ -273,6 +1007,7 @@ bool TesseractRecognizer::recognize_line(
         channels <= 0 ||
         !g_tesseract.initialized()
     ) {
+
         return false;
     }
 
@@ -305,6 +1040,7 @@ bool TesseractRecognizer::recognize_line(
             max_y
         )
     ) {
+
         return false;
     }
 
@@ -354,6 +1090,7 @@ bool TesseractRecognizer::recognize_line(
         crop_width <= 0 ||
         crop_height <= 0
     ) {
+
         return false;
     }
 
@@ -436,6 +1173,7 @@ bool TesseractRecognizer::recognize_line(
         scaled_width <= 0 ||
         scaled_height <= 0
     ) {
+
         return false;
     }
 
@@ -500,13 +1238,22 @@ bool TesseractRecognizer::recognize_line(
                     false
                 );
 
-            candidates.push_back({
-                std::move(text),
-                conf,
-                psm,
-                false,
-                score
-            });
+            // -----------------------------------------------------------------
+            // Do not even store invalid OCR hypotheses.
+            // -----------------------------------------------------------------
+
+            if (
+                score >= 0.0
+            ) {
+
+                candidates.push_back({
+                    std::move(text),
+                    conf,
+                    psm,
+                    false,
+                    score
+                });
+            }
         }
     }
 
@@ -554,24 +1301,30 @@ bool TesseractRecognizer::recognize_line(
                         true
                     );
 
-                candidates.push_back({
-                    std::move(text),
-                    conf,
-                    psm,
-                    true,
-                    score
-                });
+                if (
+                    score >= 0.0
+                ) {
+
+                    candidates.push_back({
+                        std::move(text),
+                        conf,
+                        psm,
+                        true,
+                        score
+                    });
+                }
             }
         }
     }
 
     // =========================================================================
-    // NO CANDIDATES
+    // NO VALID CANDIDATES
     // =========================================================================
 
     if (
         candidates.empty()
     ) {
+
         return false;
     }
 
@@ -599,6 +1352,26 @@ bool TesseractRecognizer::recognize_line(
             candidates.end() ||
         best_it->text.empty()
     ) {
+
+        return false;
+    }
+
+    // =========================================================================
+    // FINAL QUALITY CHECK
+    // =========================================================================
+    //
+    // Protect against future scoring changes accidentally publishing an
+    // invalid candidate.
+    // =========================================================================
+
+    if (
+        !acceptable_tesseract_text(
+            best_it->text,
+            best_it->confidence,
+            best_it->numeric_mode
+        )
+    ) {
+
         return false;
     }
 

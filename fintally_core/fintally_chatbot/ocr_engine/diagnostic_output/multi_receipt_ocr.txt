@@ -8,6 +8,3 @@ Detected Text Lines: 1
 Spatial Bounding Regions:
   - Text Line 1 [Y:0-1024, X:0-1023]: Density 99.9249%, Width 1024px, Height 1024px
 Payload Status: VALID_PREPROCESSED_BUFFER
-
-[EXTRACTED_MODEL_FREE_OCR]
-4 5 4 8
