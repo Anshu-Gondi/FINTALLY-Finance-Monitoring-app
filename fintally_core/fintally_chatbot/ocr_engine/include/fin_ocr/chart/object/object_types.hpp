@@ -1,12 +1,9 @@
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <vector>
 
-#include "fin_ocr/chart/coordinate/coordinate_system.hpp"
-
-namespace fin_ocr::chart {
+namespace fin_ocr::chart::object {
 
 // =============================================================================
 // CHART OBJECT KIND
@@ -245,11 +242,17 @@ struct ChartObject {
 struct ChartObjectSet {
 
     std::vector<BarSegment> bars;
+
     std::vector<ChartPath> paths;
+
     std::vector<RadialSlice> slices;
+
     std::vector<ScatterPoint> points;
+
     std::vector<WaterfallStep> waterfall_steps;
+
     std::vector<FunnelStage> funnel_stages;
+
     std::vector<TreemapNode> treemap_nodes;
 
     std::vector<ChartObject> generic_objects;
@@ -259,92 +262,4 @@ struct ChartObjectSet {
     float confidence = 0.0f;
 };
 
-// =============================================================================
-// OBJECT DETECTOR
-// =============================================================================
-
-class ChartObjectDetector {
-public:
-
-    [[nodiscard]]
-    ChartObjectSet detect(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        const ChartCoordinateSystem& coordinates
-    ) const;
-
-private:
-
-    void detect_bars_and_columns(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        const ChartCoordinateSystem& coordinates,
-        ChartObjectSet& result
-    ) const;
-
-    void detect_line_paths(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        const ChartCoordinateSystem& coordinates,
-        ChartObjectSet& result
-    ) const;
-
-    void detect_area_regions(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        const ChartCoordinateSystem& coordinates,
-        ChartObjectSet& result
-    ) const;
-
-    void detect_radial_slices(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        ChartObjectSet& result
-    ) const;
-
-    void detect_scatter_points(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        const ChartCoordinateSystem& coordinates,
-        ChartObjectSet& result
-    ) const;
-
-    void detect_waterfall_steps(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        const ChartCoordinateSystem& coordinates,
-        ChartObjectSet& result
-    ) const;
-
-    void detect_funnel_stages(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        ChartObjectSet& result
-    ) const;
-
-    void detect_treemap_regions(
-        const std::uint8_t* chart_buffer,
-        int width,
-        int height,
-        int channels,
-        ChartObjectSet& result
-    ) const;
-};
-
-} // namespace fin_ocr::chart
+} // namespace fin_ocr::chart::object

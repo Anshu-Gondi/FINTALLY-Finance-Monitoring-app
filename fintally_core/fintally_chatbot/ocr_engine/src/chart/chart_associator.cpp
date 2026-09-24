@@ -1,5 +1,6 @@
 #include "fin_ocr/chart/chart_associator.hpp"
 
+#include "fin_ocr/chart/object/object_types.hpp"
 #include "fin_ocr/core/ocr_config.hpp"
 
 #include <algorithm>
@@ -10,6 +11,31 @@
 #include <vector>
 
 namespace fin_ocr::chart {
+
+// =============================================================================
+// OBJECT MODEL COMPATIBILITY IMPORTS
+// =============================================================================
+//
+// Chart object data now lives under:
+//
+//     fin_ocr::chart::object
+//
+// The associator is not being modularized yet. These imports allow the existing
+// implementation to consume the new object model without changing its public
+// association logic. They can be removed later when the associator itself is
+// split into dedicated modules.
+//
+
+using object::BarSegment;
+using object::ChartObjectSet;
+using object::ChartPath;
+using object::ChartPathPoint;
+using object::ChartRect;
+using object::FunnelStage;
+using object::RadialSlice;
+using object::ScatterPoint;
+using object::TreemapNode;
+using object::WaterfallStep;
 
 namespace {
 

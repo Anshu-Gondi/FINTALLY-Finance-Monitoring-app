@@ -1,21 +1,31 @@
 [CHART_TEXT_DATA]
-  - Line 1 [Y:562-576, X:250-276]: Jan [confidence=0.827894]
-  - Line 2 [Y:560-575, X:318-348]: Feb [confidence=0.856674]
-  - Line 3 [Y:560-575, X:387-418]: Mar [confidence=0.859624]
-  - Line 4 [Y:562-578, X:457-484]: Apr [confidence=0.835274]
-  - Line 5 [Y:560-576, X:595-621]: Jun [confidence=0.857922]
-  - Line 6 [Y:560-576, X:666-687]: Jul [confidence=0.845018]
-  - Line 7 [Y:562-578, X:730-761]: Aug [confidence=0.850506]
-  - Line 8 [Y:560-578, X:800-830]: Sep [confidence=0.851932]
-  - Line 9 [Y:560-576, X:872-898]: Oct [confidence=0.858922]
-  - Line 10 [Y:562-575, X:938-968]: Nov [confidence=0.839146]
-  - Line 11 [Y:560-575, X:1007-1037]: Dec [confidence=0.858424]
+  - Line 1 [Y:287-305, X:118-128]: $0.04k [confidence=0.500000]
+  - Line 2 [Y:207-224, X:156-209]: $5.78 [confidence=0.910146]
+  - Line 3 [Y:96-112, X:158-209]: $55 [confidence=0.865425]
+  - Line 4 [Y:544-557, X:191-209]: $1 [confidence=0.750880]
+  - Line 5 [Y:562-576, X:250-276]: Jan [confidence=0.827467]
+  - Line 6 [Y:560-575, X:318-348]: Feb [confidence=0.856250]
+  - Line 7 [Y:560-575, X:387-418]: Mar [confidence=0.858324]
+  - Line 8 [Y:562-578, X:457-484]: Apr [confidence=0.834535]
+  - Line 9 [Y:552-578, X:523-555]: May [confidence=0.784626]
+  - Line 10 [Y:560-576, X:595-621]: Jun [confidence=0.857935]
+  - Line 11 [Y:560-576, X:666-687]: Jul [confidence=0.843939]
+  - Line 12 [Y:562-578, X:730-761]: Aug [confidence=0.850927]
+  - Line 13 [Y:560-578, X:800-830]: Sep [confidence=0.851508]
+  - Line 14 [Y:560-576, X:872-898]: Oct [confidence=0.858495]
+  - Line 15 [Y:562-575, X:938-968]: Nov [confidence=0.839568]
+  - Line 16 [Y:560-575, X:1007-1037]: Dec [confidence=0.858846]
+  - Line 17 [Y:542-555, X:1071-1096]: 4% [confidence=0.780327]
+  - Line 18 [Y:432-447, X:1073-1111]: 5.5% [confidence=0.868946]
+  - Line 19 [Y:209-224, X:1077-1118]: 8.5% [confidence=0.907951]
+  - Line 20 [Y:321-335, X:1077-1120]: 7.0% [confidence=0.840596]
+  - Line 21 [Y:98-112, X:1097-1120]: 10.0% [confidence=0.796769]
 
 [CHART_ANALYSIS]
 Valid: YES
-Confidence: 0.487311
-Labels: 11
+Confidence: 0.487909
+Labels: 21
 Categories: 0
 Series: 0
-Associations: 28
+Associations: 52
 Data Points: 1123
