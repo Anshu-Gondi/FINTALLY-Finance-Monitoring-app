@@ -1,10 +1,10 @@
 target_sources(fin_ocr_native
     PRIVATE
         chart_color_isolator.cpp
-        chart_label_recognizer.cpp
-        chart_object_detector.cpp
-        chart_associator.cpp
-        chart_interpreter.cpp
 )
 add_subdirectory(axis)
 add_subdirectory(coordinate)
+add_subdirectory(object)
+add_subdirectory(association)
+add_subdirectory(interpreter)
+add_subdirectory(label)

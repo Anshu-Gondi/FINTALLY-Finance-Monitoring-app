@@ -1,11 +1,18 @@
 #include "fin_ocr/pipeline/vision_pipeline.hpp"
 
 #include "fin_ocr/chart/chart_color_isolator.hpp"
-#include "fin_ocr/chart/chart_label_recognizer.hpp"
-#include "fin_ocr/chart/chart_axis_detector.hpp"
-#include "fin_ocr/chart/chart_object_detector.hpp"
-#include "fin_ocr/chart/chart_associator.hpp"
-#include "fin_ocr/chart/chart_interpreter.hpp"
+
+// =============================================================================
+// MODULAR CHART PIPELINE
+// =============================================================================
+
+#include "fin_ocr/chart/axis/axis_detector.hpp"
+#include "fin_ocr/chart/object/object_detector.hpp"
+#include "fin_ocr/chart/association/association_engine.hpp"
+#include "fin_ocr/chart/interpreter/interpreter_engine.hpp"
+
+#include "fin_ocr/chart/label/label_recognizer.hpp"
+#include "fin_ocr/chart/label/label_output.hpp"
 
 #include "fin_ocr/core/ocr_config.hpp"
 #include "fin_ocr/core/ocr_types.hpp"
@@ -54,12 +61,6 @@ namespace fin_ocr {
 
 namespace {
 
-inline constexpr char CHART_FALLBACK_TEXT[] =
-    "[CHART_TEXT_DATA]\n"
-    "  - Line 1 [Y:0-0, X:0-0]: "
-    "[NO_RECOGNIZED_CHART_LABELS] "
-    "[confidence=0.000000]\n";
-
 // =============================================================================
 // VALIDATION
 // =============================================================================
@@ -73,14 +74,18 @@ void validate_request(
     std::size_t target_channels
 ) {
 
-    if (input_bytes == nullptr) {
+    if (
+        input_bytes == nullptr
+    ) {
 
         throw std::invalid_argument(
             "[FIN_ERROR] Input buffer is null."
         );
     }
 
-    if (input_len == 0) {
+    if (
+        input_len == 0
+    ) {
 
         throw std::invalid_argument(
             "[FIN_ERROR] Input buffer is empty."
@@ -122,7 +127,9 @@ void validate_request(
         );
     }
 
-    switch (input_type) {
+    switch (
+        input_type
+    ) {
 
         case FIN_INPUT_RAW_IMAGE:
         case FIN_INPUT_PDF_PAGE:
@@ -185,7 +192,9 @@ FinProcessedBuffer* allocate_result(
     }
 
     auto* result =
-        new (std::nothrow)
+        new (
+            std::nothrow
+        )
         FinProcessedBuffer{};
 
     if (
@@ -275,7 +284,8 @@ bool set_extracted_text(
         );
     }
 
-    result.extracted_text = buffer;
+    result.extracted_text =
+        buffer;
 
     return true;
 }
@@ -333,7 +343,9 @@ unsigned char* decode_rgb_image(
 
     return stbi_load_from_memory(
         input,
-        static_cast<int>(input_len),
+        static_cast<int>(
+            input_len
+        ),
         &width,
         &height,
         &source_channels,
@@ -382,7 +394,9 @@ bool process_normal_image(
         )
     ) {
 
-        stbi_image_free(decoded);
+        stbi_image_free(
+            decoded
+        );
 
         return false;
     }
@@ -407,7 +421,9 @@ bool process_normal_image(
             )
         ) {
 
-            stbi_image_free(decoded);
+            stbi_image_free(
+                decoded
+            );
 
             return false;
         }
@@ -478,7 +494,8 @@ bool process_normal_image(
             }
         }
 
-        success = true;
+        success =
+            true;
 
     } else if (
         result.channels == 1
@@ -494,7 +511,9 @@ bool process_normal_image(
             )
         ) {
 
-            stbi_image_free(decoded);
+            stbi_image_free(
+                decoded
+            );
 
             return false;
         }
@@ -511,7 +530,9 @@ bool process_normal_image(
             resized_rgb == nullptr
         ) {
 
-            stbi_image_free(decoded);
+            stbi_image_free(
+                decoded
+            );
 
             return false;
         }
@@ -530,8 +551,13 @@ bool process_normal_image(
             )
         ) {
 
-            fin::ops::aligned_free(resized_rgb);
-            stbi_image_free(decoded);
+            fin::ops::aligned_free(
+                resized_rgb
+            );
+
+            stbi_image_free(
+                decoded
+            );
 
             return false;
         }
@@ -556,8 +582,11 @@ bool process_normal_image(
                 num_pixels
             );
 
-            result.is_binarized = 1;
-            success = true;
+            result.is_binarized =
+                1;
+
+            success =
+                true;
 
         } else {
 
@@ -614,9 +643,14 @@ bool process_normal_image(
                     num_pixels
                 );
 
-                result.is_binarized = 1;
-                ocr_pixels = num_pixels;
-                success = true;
+                result.is_binarized =
+                    1;
+
+                ocr_pixels =
+                    num_pixels;
+
+                success =
+                    true;
             }
         }
 
@@ -625,7 +659,9 @@ bool process_normal_image(
         );
     }
 
-    stbi_image_free(decoded);
+    stbi_image_free(
+        decoded
+    );
 
     return success;
 }
@@ -698,8 +734,12 @@ bool process_pdf(
 
     if (
         !core::safe_mul(
-            static_cast<std::size_t>(ocr_width),
-            static_cast<std::size_t>(ocr_height),
+            static_cast<std::size_t>(
+                ocr_width
+            ),
+            static_cast<std::size_t>(
+                ocr_height
+            ),
             ocr_pixels
         )
     ) {
@@ -749,7 +789,9 @@ bool process_pdf(
         !rendered
     ) {
 
-        fin::ops::aligned_free(ocr_bgra);
+        fin::ops::aligned_free(
+            ocr_bgra
+        );
 
         return false;
     }
@@ -766,7 +808,9 @@ bool process_pdf(
         ocr_grayscale == nullptr
     ) {
 
-        fin::ops::aligned_free(ocr_bgra);
+        fin::ops::aligned_free(
+            ocr_bgra
+        );
 
         return false;
     }
@@ -816,7 +860,9 @@ bool process_pdf(
         )
     ) {
 
-        fin::ops::aligned_free(ocr_bgra);
+        fin::ops::aligned_free(
+            ocr_bgra
+        );
 
         return false;
     }
@@ -835,7 +881,9 @@ bool process_pdf(
             )
         ) {
 
-            fin::ops::aligned_free(ocr_bgra);
+            fin::ops::aligned_free(
+                ocr_bgra
+            );
 
             return false;
         }
@@ -852,7 +900,9 @@ bool process_pdf(
             public_bgra == nullptr
         ) {
 
-            fin::ops::aligned_free(ocr_bgra);
+            fin::ops::aligned_free(
+                ocr_bgra
+            );
 
             return false;
         }
@@ -877,16 +927,21 @@ bool process_pdf(
                 public_pixels
             );
 
-            result.is_binarized = 1;
+            result.is_binarized =
+                1;
         }
 
-        fin::ops::aligned_free(public_bgra);
+        fin::ops::aligned_free(
+            public_bgra
+        );
 
         if (
             !public_rendered
         ) {
 
-            fin::ops::aligned_free(ocr_bgra);
+            fin::ops::aligned_free(
+                ocr_bgra
+            );
 
             return false;
         }
@@ -907,15 +962,20 @@ bool process_pdf(
             !public_rendered
         ) {
 
-            fin::ops::aligned_free(ocr_bgra);
+            fin::ops::aligned_free(
+                ocr_bgra
+            );
 
             return false;
         }
 
-        result.is_binarized = 0;
+        result.is_binarized =
+            0;
     }
 
-    fin::ops::aligned_free(ocr_bgra);
+    fin::ops::aligned_free(
+        ocr_bgra
+    );
 
     return true;
 }
@@ -932,7 +992,7 @@ struct ChartRecognizerContext {
 
     LineRecognizer line_recognizer;
 
-    ChartLabelRecognizer chart_recognizer;
+    chart::label::ChartLabelRecognizer chart_recognizer;
 
     ChartRecognizerContext()
         : glyph_matcher(
@@ -952,16 +1012,20 @@ struct ChartRecognizerContext {
 // =============================================================================
 // CHART ANALYSIS CONTEXT
 // =============================================================================
+//
+// The pipeline owns the subsystem-level engines only.
+//
+// =============================================================================
 
 struct ChartAnalysisContext {
 
     chart::ChartAxisDetector axis_detector;
 
-    chart::ChartObjectDetector object_detector;
+    chart::object::ChartObjectDetector object_detector;
 
-    chart::ChartAssociator associator;
+    chart::association::AssociationEngine association_engine;
 
-    chart::ChartInterpreter interpreter;
+    chart::interpreter::InterpreterEngine interpreter_engine;
 };
 
 // =============================================================================
@@ -978,42 +1042,38 @@ struct ChartAnalysisContext {
 //       +-------------------------------+
 //       |                               |
 //       v                               v
-// ChartLabelRecognizer            ChartAxisDetector
+// ChartLabelRecognizer              AxisDetector
 //       |                               |
 //       v                               v
-// vector<ChartLabel>             ChartCoordinateSystem
+// ChartLabel[]                   ChartCoordinateSystem
 //       |                               |
 //       +---------------+---------------+
 //                       |
 //                       v
-//               ChartObjectDetector
+//                 ObjectDetector
 //                       |
 //                       v
 //                 ChartObjectSet
 //                       |
-//                       +----------------------------+
-//                       |                            |
-//                       v                            |
-//                ChartAssociator                     |
-//                       |                            |
-//                       v                            |
-//              ChartAssociationResult                |
-//                       |                            |
-//                       +-------------+--------------+
-//                                     |
-//                                     v
-//                            ChartInterpreter
-//                                     |
-//                                     v
-//                              ChartAnalysis
+//                       v
+//               AssociationEngine
+//                       |
+//                       v
+//             ChartAssociationResult
+//                       |
+//                       v
+//              InterpreterEngine
+//                       |
+//                       v
+//                 ChartAnalysis
 //
 // IMPORTANT:
 //
-//     The formatted [CHART_TEXT_DATA] payload is presentation/transport data.
+//     [CHART_TEXT_DATA] is presentation/transport data.
 //
 //     The semantic pipeline NEVER parses that formatted string.
 //
-//     Associator and Interpreter consume the structured objects directly.
+//     Structured ChartLabel records flow directly into AssociationEngine.
 //
 // =============================================================================
 
@@ -1022,21 +1082,20 @@ bool process_chart(
 ) noexcept {
 
     // =========================================================================
-    // DETERMINISTIC STRUCTURAL FALLBACK
+    // DETERMINISTIC TRANSPORT FALLBACK
     // =========================================================================
     //
-    // Transport/compatibility fallback only.
+    // Output formatting is owned by label_output.
     //
-    // This does NOT fabricate a financial value or semantic chart type.
-    //
+    // =========================================================================
+
     const auto attach_fallback =
         [&result]() noexcept -> bool {
 
             return set_extracted_text(
                 result,
-                std::string{
-                    CHART_FALLBACK_TEXT
-                }
+                chart::label::output::
+                    format_invalid_chart_buffer()
             );
         };
 
@@ -1144,25 +1203,6 @@ bool process_chart(
         // =====================================================================
         // CONTEXT CONSTRUCTION
         // =====================================================================
-        //
-        // OCR context:
-        //
-        //     GlyphMatcher
-        //         ↓
-        //     TesseractRecognizer
-        //         ↓
-        //     LineRecognizer
-        //         ↓
-        //     ChartLabelRecognizer
-        //
-        // Analysis context:
-        //
-        //     AxisDetector
-        //     ObjectDetector
-        //     Associator
-        //     Interpreter
-        //
-        // =====================================================================
 
         ChartRecognizerContext recognizer_context;
 
@@ -1182,22 +1222,13 @@ bool process_chart(
         // STEP 1: STRUCTURED CHART LABEL RECOGNITION
         // =====================================================================
         //
-        // IMPORTANT:
-        //
-        // Do NOT call recognize() here and then attempt to parse
-        // [CHART_TEXT_DATA].
-        //
-        // recognize_labels() gives the semantic layer the actual structured
-        // ChartLabel objects including:
-        //
-        //     text
-        //     bounding box
-        //     confidence
-        //     initial semantic fields
+        // The new label recognizer returns structured ChartLabel objects.
         //
         // =====================================================================
 
-        const std::vector<chart::ChartLabel> labels =
+        const std::vector<
+            chart::association::ChartLabel
+        > labels =
             recognizer_context.chart_recognizer.recognize_labels(
                 chart_ocr,
                 width,
@@ -1208,82 +1239,16 @@ bool process_chart(
         // STEP 2: BUILD PRESENTATION OCR PAYLOAD
         // =====================================================================
         //
-        // This payload remains compatible with the existing test/FFI contract.
+        // Serialization is delegated to label_output.
+        //
+        // The semantic pipeline never parses this representation.
         //
         // =====================================================================
 
-        std::string text_payload;
-
-        text_payload.reserve(
-            256 +
-            labels.size() * 96
-        );
-
-        text_payload +=
-            "[CHART_TEXT_DATA]\n";
-
-        if (
-            labels.empty()
-        ) {
-
-            text_payload +=
-                "  - Line 1 [Y:0-0, X:0-0]: "
-                "[NO_RECOGNIZED_CHART_LABELS] "
-                "[confidence=0.000000]\n";
-
-        } else {
-
-            for (
-                std::size_t i = 0;
-                i < labels.size();
-                ++i
-            ) {
-
-                const chart::ChartLabel& label =
-                    labels[i];
-
-                text_payload +=
-                    "  - Line " +
-                    std::to_string(
-                        i + 1
-                    );
-
-                text_payload +=
-                    " [Y:" +
-                    std::to_string(
-                        label.min_y
-                    );
-
-                text_payload +=
-                    "-" +
-                    std::to_string(
-                        label.max_y + 1
-                    );
-
-                text_payload +=
-                    ", X:" +
-                    std::to_string(
-                        label.min_x
-                    );
-
-                text_payload +=
-                    "-" +
-                    std::to_string(
-                        label.max_x
-                    );
-
-                text_payload +=
-                    "]: " +
-                    label.text;
-
-                text_payload +=
-                    " [confidence=" +
-                    std::to_string(
-                        label.confidence
-                    ) +
-                    "]\n";
-            }
-        }
+        std::string text_payload =
+            chart::label::output::format_labels(
+                labels
+            );
 
         // =====================================================================
         // STEP 3: ATTACH OCR PAYLOAD
@@ -1324,7 +1289,7 @@ bool process_chart(
         // STEP 5: OBJECT DETECTION
         // =====================================================================
 
-        const chart::ChartObjectSet objects =
+        const chart::object::ChartObjectSet objects =
             analysis_context.object_detector.detect(
                 chart_ocr,
                 width,
@@ -1334,25 +1299,17 @@ bool process_chart(
             );
 
         // =====================================================================
-        // STEP 6: STRUCTURED LABEL ASSOCIATION
+        // STEP 6: STRUCTURED ASSOCIATION
         // =====================================================================
         //
-        // This is where the OCR labels become geometrically/semantically
-        // associated with:
+        // ChartLabel[] is passed directly into AssociationEngine.
         //
-        //     - X axis categories
-        //     - Y axis labels
-        //     - series / legend labels
-        //     - bars
-        //     - paths
-        //
-        // ChartAssociator owns an enriched copy of the labels and performs
-        // classification and relationship construction. :contentReference[oaicite:0]{index=0}
+        // No formatted text is involved.
         //
         // =====================================================================
 
-        const chart::ChartAssociationResult associations =
-            analysis_context.associator.associate(
+        const chart::association::ChartAssociationResult associations =
+            analysis_context.association_engine.associate(
                 coordinates,
                 objects,
                 labels
@@ -1361,35 +1318,16 @@ bool process_chart(
         // =====================================================================
         // STEP 7: FULL CHART INTERPRETATION
         // =====================================================================
-        //
-        // The interpreter now receives the structured output directly.
-        //
-        // It determines things such as:
-        //
-        //     - chart type
-        //     - stacked / clustered / combo classification
-        //     - data points
-        //     - semantic validity
-        //     - analysis confidence
-        //
-        // =====================================================================
 
-        const chart::ChartAnalysis analysis =
-            analysis_context.interpreter.interpret(
+        const chart::interpreter::ChartAnalysis analysis =
+            analysis_context.interpreter_engine.interpret(
                 coordinates,
                 objects,
                 associations
             );
 
         // =====================================================================
-        // STEP 8: APPEND STRUCTURED ANALYSIS DIAGNOSTICS
-        // =====================================================================
-        //
-        // Keep the existing OCR payload and expose the semantic stage as a
-        // separate section.
-        //
-        // No financial values are invented here.
-        //
+        // STEP 8: APPEND ANALYSIS DIAGNOSTICS
         // =====================================================================
 
         text_payload +=
@@ -1448,14 +1386,7 @@ bool process_chart(
             "\n";
 
         // =====================================================================
-        // STEP 9: ANALYSIS STATUS
-        // =====================================================================
-        //
-        // Keep the final payload attached even if the semantic interpreter
-        // legitimately determines that the chart is not fully interpretable.
-        //
-        // OCR success and semantic-analysis success are independent concepts.
-        //
+        // STEP 9: FINAL TEXT ATTACHMENT
         // =====================================================================
 
         attached =
@@ -1496,13 +1427,6 @@ bool process_chart(
         // =====================================================================
         // EXCEPTION SAFETY
         // =====================================================================
-        //
-        // Never allow chart semantic-analysis failure to leak the temporary
-        // chart OCR buffer.
-        //
-        // Preserve the OCR transport contract whenever possible.
-        //
-        // =====================================================================
 
         if (
             !attached
@@ -1534,7 +1458,8 @@ uint8_t* build_document_mask(
     bool& owns_mask
 ) noexcept {
 
-    owns_mask = false;
+    owns_mask =
+        false;
 
     if (
         ocr_grayscale == nullptr ||
@@ -1565,7 +1490,8 @@ uint8_t* build_document_mask(
         ocr_pixels
     );
 
-    owns_mask = true;
+    owns_mask =
+        true;
 
     (void)result;
 
@@ -1674,7 +1600,8 @@ void run_document_ocr(
         return;
     }
 
-    bool owns_mask = false;
+    bool owns_mask =
+        false;
 
     uint8_t* ocr_mask =
         build_document_mask(
@@ -1726,7 +1653,8 @@ void run_document_ocr(
         result.channels == 1
     ) {
 
-        result.is_binarized = 1;
+        result.is_binarized =
+            1;
     }
 }
 
@@ -1759,11 +1687,13 @@ void apply_raw_fallback(
             result.data_len
         );
 
-        result.is_binarized = 1;
+        result.is_binarized =
+            1;
 
     } else {
 
-        result.is_binarized = 0;
+        result.is_binarized =
+            0;
     }
 }
 
@@ -1806,9 +1736,11 @@ VisionPipeline::execute(
         return nullptr;
     }
 
-    uint8_t* ocr_grayscale = nullptr;
+    uint8_t* ocr_grayscale =
+        nullptr;
 
-    std::size_t ocr_pixels = 0;
+    std::size_t ocr_pixels =
+        0;
 
     int ocr_width =
         static_cast<int>(
@@ -1820,7 +1752,8 @@ VisionPipeline::execute(
             target_height
         );
 
-    bool decode_success = false;
+    bool decode_success =
+        false;
 
     // =========================================================================
     // PDF
@@ -1884,10 +1817,6 @@ VisionPipeline::execute(
         FIN_INPUT_FIN_CHART
     ) {
 
-        // Chart processing owns the chart OCR attachment contract.
-        // Always invoke it for a 3-channel chart, even when image decoding
-        // reported failure; process_chart() will attach its deterministic
-        // structural fallback when recognition cannot run.
         if (
             result->channels == 3
         ) {
@@ -1905,10 +1834,12 @@ VisionPipeline::execute(
                 ocr_grayscale
             );
 
-            ocr_grayscale = nullptr;
+            ocr_grayscale =
+                nullptr;
         }
 
-        result->is_binarized = 0;
+        result->is_binarized =
+            0;
 
         return result;
     }
@@ -1917,7 +1848,8 @@ VisionPipeline::execute(
     // NORMAL IMAGE OCR WORKSPACE
     // =========================================================================
 
-    std::size_t result_pixels = 0;
+    std::size_t result_pixels =
+        0;
 
     if (
         !core::safe_mul(
@@ -1935,7 +1867,8 @@ VisionPipeline::execute(
                 ocr_grayscale
             );
 
-            ocr_grayscale = nullptr;
+            ocr_grayscale =
+                nullptr;
         }
 
         return result;
@@ -1953,7 +1886,8 @@ VisionPipeline::execute(
             )
         ) {
 
-            ocr_pixels = result_pixels;
+            ocr_pixels =
+                result_pixels;
 
             ocr_width =
                 static_cast<int>(
@@ -1998,7 +1932,8 @@ VisionPipeline::execute(
             ocr_grayscale
         );
 
-        ocr_grayscale = nullptr;
+        ocr_grayscale =
+            nullptr;
     }
 
     // =========================================================================
@@ -2017,7 +1952,8 @@ VisionPipeline::execute(
             result->data_len
         );
 
-        result->is_binarized = 1;
+        result->is_binarized =
+            1;
     }
 
     return result;

@@ -1,6 +1,6 @@
 #include "fin_ocr/matrix_matcher.hpp"
 
-#include "fin_ocr/chart/chart_label_recognizer.hpp"
+#include "fin_ocr/chart/label/label_recognizer.hpp"
 #include "fin_ocr/line/line_recognizer.hpp"
 #include "fin_ocr/matrix/glyph_matcher.hpp"
 #include "fin_ocr/matrix/glyph_templates.hpp"
@@ -24,7 +24,7 @@ namespace fin_ocr {
 //     GlyphMatcher
 //     TesseractRecognizer
 //     LineRecognizer
-//     ChartLabelRecognizer
+//     chart::label::ChartLabelRecognizer
 //
 // The canonical glyph database is:
 //
@@ -51,7 +51,7 @@ struct MatrixMatcher::Impl {
 
     LineRecognizer line_recognizer;
 
-    ChartLabelRecognizer chart_label_recognizer;
+    chart::label::ChartLabelRecognizer chart_label_recognizer;
 
     // =========================================================================
     // CONSTRUCTOR
@@ -79,7 +79,7 @@ struct MatrixMatcher::Impl {
     // =========================================================================
     //
     // The template database is immutable canonical storage, so the copied
-    // facade can safely refer to the same GlyphTemplateTable.
+    // facade can safely refer to the canonical GlyphTemplateTable.
     //
     // Every subsystem is reconstructed so its internal references point to
     // this Impl's members.
@@ -200,11 +200,12 @@ char MatrixMatcher::match_glyph(
         return '?';
     }
 
-    return impl_->glyph_matcher.match(
-        cropped_patch,
-        patch_w,
-        patch_h
-    );
+    return
+        impl_->glyph_matcher.match(
+            cropped_patch,
+            patch_w,
+            patch_h
+        );
 }
 
 // =============================================================================
@@ -225,13 +226,14 @@ std::string MatrixMatcher::recognize_line(
         return {};
     }
 
-    return impl_->line_recognizer.recognize(
-        image,
-        img_width,
-        line_y_start,
-        line_y_end,
-        channels
-    );
+    return
+        impl_->line_recognizer.recognize(
+            image,
+            img_width,
+            line_y_start,
+            line_y_end,
+            channels
+        );
 }
 
 // =============================================================================
@@ -239,7 +241,7 @@ std::string MatrixMatcher::recognize_line(
 // =============================================================================
 
 std::string MatrixMatcher::recognize_chart_labels(
-    const uint8_t* hsv_buffer,
+    const uint8_t* chart_buffer,
     int width,
     int height
 ) const
@@ -250,11 +252,12 @@ std::string MatrixMatcher::recognize_chart_labels(
         return {};
     }
 
-    return impl_->chart_label_recognizer.recognize(
-        hsv_buffer,
-        width,
-        height
-    );
+    return
+        impl_->chart_label_recognizer.recognize(
+            chart_buffer,
+            width,
+            height
+        );
 }
 
 } // namespace fin_ocr
