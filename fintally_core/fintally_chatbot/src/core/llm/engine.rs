@@ -1,7 +1,7 @@
 use crate::core::utils::errors::AppError;
+use async_trait::async_trait;
 use futures_core::Stream;
 use std::pin::Pin;
-use async_trait::async_trait;
 use tokio_util::sync::CancellationToken;
 
 /// Stream of natively generated LLM tokens (used for SSE streaming payloads)
@@ -22,7 +22,7 @@ pub trait LlmEngine: Send + Sync {
     async fn stream_generate(
         &self,
         prompt: &str,
-        max_tokens: usize
+        max_tokens: usize,
     ) -> Result<CancelableStream, AppError>;
 
     /// High-performance raw vector semantic transformations
@@ -50,7 +50,7 @@ mod tests {
         async fn stream_generate(
             &self,
             _prompt: &str,
-            _max_tokens: usize
+            _max_tokens: usize,
         ) -> Result<CancelableStream, AppError> {
             let (tx, rx) = mpsc::channel(8);
             let cancel = CancellationToken::new();
@@ -111,7 +111,10 @@ mod tests {
         }
 
         // Stream must safely break out and terminate execution context
-        assert!(count <= 9, "Stream context did not terminate on cancellation check.");
+        assert!(
+            count <= 9,
+            "Stream context did not terminate on cancellation check."
+        );
     }
 
     #[tokio::test]

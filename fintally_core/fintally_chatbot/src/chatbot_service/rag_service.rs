@@ -25,11 +25,7 @@ fn sanitize_text_for_embedding(raw_text: &str) -> String {
     raw_text
         .nfkc()
         .filter(|c| {
-            c.is_alphanumeric()
-                || c.is_ascii_punctuation()
-                || *c == ' '
-                || *c == '\n'
-                || *c == '\t'
+            c.is_alphanumeric() || c.is_ascii_punctuation() || *c == ' ' || *c == '\n' || *c == '\t'
         })
         .collect::<String>()
         .split_whitespace()
@@ -40,8 +36,9 @@ fn sanitize_text_for_embedding(raw_text: &str) -> String {
 /// Helper function to extract text directly from PDF binary bytes using lopdf.
 /// Pure Rust parsing that bypasses color-space graphics panics.
 fn extract_text_with_lopdf(pdf_bytes: &[u8]) -> Result<String, AppError> {
-    let doc = Document::load_mem(pdf_bytes)
-        .map_err(|e| AppError::InferenceError(format!("Failed parsing PDF binary structure: {e}")))?;
+    let doc = Document::load_mem(pdf_bytes).map_err(|e| {
+        AppError::InferenceError(format!("Failed parsing PDF binary structure: {e}"))
+    })?;
 
     let mut full_text = String::new();
     let page_numbers: Vec<u32> = doc.get_pages().keys().cloned().collect();
@@ -171,9 +168,7 @@ impl RagService {
 
                 let mut engine_guard = self.engine.write().await;
                 engine_guard.ingest_file(file_path).map_err(|e| {
-                    AppError::InferenceError(format!(
-                        "Native core embedding extraction error: {e}"
-                    ))
+                    AppError::InferenceError(format!("Native core embedding extraction error: {e}"))
                 })?;
             }
             "pdf" => {
@@ -224,9 +219,7 @@ impl RagService {
                 tokio::fs::write(&txt_counterpart, &cleaned_text)
                     .await
                     .map_err(|e| {
-                        AppError::InferenceError(format!(
-                            "Failed caching extracted PDF text: {e}"
-                        ))
+                        AppError::InferenceError(format!("Failed caching extracted PDF text: {e}"))
                     })?;
 
                 let mut engine_guard = self.engine.write().await;
@@ -256,7 +249,10 @@ impl RagService {
         match engine_guard.query(query_text, Some(limit), Some(0.75), None) {
             Ok(query_response) => {
                 let context = query_response.context_block.into_string();
-                println!("[RAG-SERVICE] Retrieved context length: {} chars", context.len());
+                println!(
+                    "[RAG-SERVICE] Retrieved context length: {} chars",
+                    context.len()
+                );
                 context
             }
             Err(e) => {
@@ -516,10 +512,8 @@ impl RagService {
             && fs::metadata(&hnsw_path)
                 .map(|m| m.len() > 0)
                 .unwrap_or(false);
-        let db_exists = db_path.exists()
-            && fs::metadata(&db_path)
-                .map(|m| m.len() > 0)
-                .unwrap_or(false);
+        let db_exists =
+            db_path.exists() && fs::metadata(&db_path).map(|m| m.len() > 0).unwrap_or(false);
 
         hnsw_exists && db_exists
     }

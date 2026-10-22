@@ -1,8 +1,8 @@
-use std::fs::File;
-use std::io::{ BufWriter, BufReader };
-use std::path::Path;
-use crate::core::rag::errors::RagError;
 use crate::core::rag::embedding::types::DocumentChunk;
+use crate::core::rag::errors::RagError;
+use std::fs::File;
+use std::io::{BufReader, BufWriter};
+use std::path::Path;
 
 pub struct StorePersistence;
 
@@ -11,7 +11,7 @@ impl StorePersistence {
     /// Optimized to stream data directly, ensuring zero intermediate heap spikes.
     pub fn save_chunks_to_disk<P: AsRef<Path>>(
         path: P,
-        chunks: &[DocumentChunk]
+        chunks: &[DocumentChunk],
     ) -> Result<(), RagError> {
         let file = File::create(path).map_err(RagError::IoError)?;
         let writer = BufWriter::new(file);
@@ -19,8 +19,7 @@ impl StorePersistence {
         // CELERON TUNING: Stream directly into the BufWriter.
         // serde_json writes data in chunks matching the internal buffer size (typically 8KB),
         // completely bypassing the need to allocate a massive intermediate Vec<u8> for the whole file.
-        serde_json
-            ::to_writer(writer, chunks)
+        serde_json::to_writer(writer, chunks)
             .map_err(|e| RagError::SerializationError(e.to_string()))?;
 
         Ok(()) // BufWriter automatically flushes its remaining internal buffer when dropped
@@ -33,8 +32,7 @@ impl StorePersistence {
 
         // Stream tokens straight out of the file buffer directly into the target Vec.
         // This eliminates the massive intermediate allocation spike caused by read_to_end().
-        let chunks: Vec<DocumentChunk> = serde_json
-            ::from_reader(reader)
+        let chunks: Vec<DocumentChunk> = serde_json::from_reader(reader)
             .map_err(|e| RagError::SerializationError(e.to_string()))?;
 
         Ok(chunks)
@@ -44,8 +42,8 @@ impl StorePersistence {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use std::env;
+    use std::fs;
 
     // Helper function to generate a unique, clean path in the system's temporary directory
     fn get_temp_file_path(filename: &str) -> std::path::PathBuf {
@@ -57,9 +55,11 @@ mod tests {
 
     // Small unique identifier helper to safely run tests in parallel without dependency weight
     fn thread_rng_id() -> u32 {
-        std::collections::hash_map::RandomState::new().build_hasher().finish() as u32
+        std::collections::hash_map::RandomState::new()
+            .build_hasher()
+            .finish() as u32
     }
-    use std::hash::{ BuildHasher, Hasher };
+    use std::hash::{BuildHasher, Hasher};
 
     // ==========================================
     // 1. STREAMING ROUNDTRIP TESTING
@@ -85,7 +85,7 @@ mod tests {
                 sequence_index: 1,
                 text: "Amortization table margins computed via baseline macro equations.".into(),
                 metadata: Box::from([]),
-            }
+            },
         ];
 
         // 1. Serialize out to disk via streamed BufWriter
@@ -97,7 +97,10 @@ mod tests {
         );
 
         // Confirm the file actually exists on the disk layout
-        assert!(test_path.exists(), "Target file layout missing from the file system tier");
+        assert!(
+            test_path.exists(),
+            "Target file layout missing from the file system tier"
+        );
 
         // 2. Deserialize back into memory layout using zero-copy stream processing
         let load_result = StorePersistence::load_chunks_from_disk(&test_path);
@@ -136,7 +139,10 @@ mod tests {
             RagError::IoError(err) => {
                 assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
             }
-            other => panic!("Expected a structural RagError::IoError mapping, caught: {:?}", other),
+            other => panic!(
+                "Expected a structural RagError::IoError mapping, caught: {:?}",
+                other
+            ),
         }
     }
 
@@ -160,16 +166,15 @@ mod tests {
             RagError::SerializationError(msg) => {
                 // Ensure the underlying Serde parser messages are captured inside our domain enum
                 assert!(
-                    msg.contains("EOF") ||
-                        msg.contains("expected") ||
-                        msg.contains("control character")
+                    msg.contains("EOF")
+                        || msg.contains("expected")
+                        || msg.contains("control character")
                 );
             }
-            other =>
-                panic!(
-                    "Expected clean custom SerializationError variant conversion, caught: {:?}",
-                    other
-                ),
+            other => panic!(
+                "Expected clean custom SerializationError variant conversion, caught: {:?}",
+                other
+            ),
         }
 
         // Safe workspace cleanup step

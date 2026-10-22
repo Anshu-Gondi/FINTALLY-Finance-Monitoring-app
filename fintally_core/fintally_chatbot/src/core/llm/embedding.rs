@@ -48,11 +48,7 @@ mod tests {
 
     #[async_trait]
     impl LlmEngine for MockEngine {
-        async fn generate(
-            &self,
-            _prompt: &str,
-            _max_tokens: usize,
-        ) -> Result<String, AppError> {
+        async fn generate(&self, _prompt: &str, _max_tokens: usize) -> Result<String, AppError> {
             unreachable!("generate should not be called in embedding tests")
         }
 

@@ -1,21 +1,21 @@
-use std::sync::Arc;
-use std::time::Duration;
-use sqlx::PgPool;
-use serde::{Deserialize, Serialize};
+use async_stream::try_stream;
 use futures_util::Stream;
 use futures_util::StreamExt;
-use async_stream::try_stream;
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::sync::Arc;
+use std::time::Duration;
 
-use crate::core::utils::errors::AppError;
-use crate::chatbot_service::rag_service::RagService;
-use crate::chatbot_service::vision_service::{VisionChatbotService, VisionAttachment};
-use crate::chatbot_service::user_context::{get_user_context, format_context_for_prompt};
 use crate::chatbot_service::creator_bio::CREATOR_BIO;
-use crate::core::llm::native_engine::NativeLlamaEngine;
+use crate::chatbot_service::rag_service::RagService;
+use crate::chatbot_service::user_context::{format_context_for_prompt, get_user_context};
+use crate::chatbot_service::vision_service::{VisionAttachment, VisionChatbotService};
 use crate::core::llm::engine::LlmEngine;
+use crate::core::llm::native_engine::NativeLlamaEngine;
+use crate::core::utils::errors::AppError;
 
-use crate::core::llm::prompt::Prompt;
 use crate::core::llm::planner::Planner;
+use crate::core::llm::prompt::Prompt;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ChatMessage {
@@ -269,8 +269,14 @@ impl ChatbotOrchestrator {
         s
     }
 
-    fn build_system_prompt(&self, user_context: &str, rag_context: &str, vision_context: &str) -> String {
-        let mut system = String::from(r#"You are FinTally, a warm, intelligent, and highly supportive AI personal finance assistant for Indian users.
+    fn build_system_prompt(
+        &self,
+        user_context: &str,
+        rag_context: &str,
+        vision_context: &str,
+    ) -> String {
+        let mut system = String::from(
+            r#"You are FinTally, a warm, intelligent, and highly supportive AI personal finance assistant for Indian users.
 
 TONE & PERSONALITY GUIDELINES:
 1. HUMAN-LIKE & EMPATHETIC: Speak naturally, like a knowledgeable financial advisor or friend. Avoid sounding robotic, dry, or overly formal.
@@ -316,7 +322,8 @@ AVAILABLE TOOLS & REQUIRED ARGUMENTS:
 - `assess_loan`: `request` (object), `policy` ("salaried" or "self_employed")
 - `emergency_fund`: `monthly_expense` (number)
 - `calculate_tax`: `amount` (number), `profile` ("salaried" or "self_employed")
-"#);
+"#,
+        );
 
         system.push_str("\n\n");
         system.push_str(CREATOR_BIO);
@@ -368,7 +375,12 @@ AVAILABLE TOOLS & REQUIRED ARGUMENTS:
         history_str
     }
 
-    fn build_chat_template(&self, user_message: &str, chat_history: &[ChatMessage], system_prompt: &str) -> String {
+    fn build_chat_template(
+        &self,
+        user_message: &str,
+        chat_history: &[ChatMessage],
+        system_prompt: &str,
+    ) -> String {
         let formatted_history = self.format_chat_history(chat_history, 1800);
 
         format!(
@@ -429,12 +441,20 @@ AVAILABLE TOOLS & REQUIRED ARGUMENTS:
                         return s.to_string();
                     }
                 } else if let Some(arr) = conv.as_array() {
-                    let joined = arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join("\n");
+                    let joined = arr
+                        .iter()
+                        .filter_map(|v| v.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n");
                     if !joined.trim().is_empty() {
                         return joined;
                     }
                 } else if let Some(obj) = conv.get("content").and_then(|c| c.as_array()) {
-                    let joined = obj.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join("\n");
+                    let joined = obj
+                        .iter()
+                        .filter_map(|v| v.as_str())
+                        .collect::<Vec<_>>()
+                        .join("\n");
                     if !joined.trim().is_empty() {
                         return joined;
                     }

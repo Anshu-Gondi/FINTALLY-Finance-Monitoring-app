@@ -1,0 +1,114 @@
+# ==============================================================================
+# Rust / Cargo
+# ==============================================================================
+# Cargo build output (including the shared workspace target directory).
+**/target/
+
+# Rust compiler backup files.
+**/*.rs.bk
+
+# Keep Cargo.lock tracked for this application/workspace so builds are reproducible.
+# Do not add Cargo.lock to this ignore file.
+
+# ==============================================================================
+# CMake / C / C++ build artifacts
+# ==============================================================================
+# Build directories; trailing slash means directories only, not build.rs files.
+**/build/
+**/build-*/
+**/cmake-build-*/
+
+# Generated CMake files, including accidental in-source build output.
+**/CMakeFiles/
+**/CMakeCache.txt
+**/cmake_install.cmake
+**/CTestTestfile.cmake
+**/compile_commands.json
+**/Testing/
+**/build.ninja
+**/.ninja_deps
+**/.ninja_log
+
+# Compiled native objects, libraries, executables, and debug symbols.
+**/*.o
+**/*.obj
+**/*.a
+**/*.lib
+**/*.so
+**/*.so.*
+**/*.dylib
+**/*.dll
+**/*.exe
+**/*.pdb
+**/*.ilk
+
+# ==============================================================================
+# FinTally Voice offline-builder datasets
+# ==============================================================================
+# Downloaded raw corpora and prepared/converted datasets. These can be very large.
+**/offline_builder/data_raw/
+**/offline_builder/data/
+
+# Local benchmark outputs: timings and hardware-counter logs are reproducible.
+**/benchmark-results/
+
+# If offline_builder/output is only local/generated output in your workflow, you
+# may uncomment the next line. It is left tracked by default because exported
+# codebooks/manifests/reports may be intentional project artifacts.
+# **/offline_builder/output/
+
+# ==============================================================================
+# Coverage, profilers, and test-run artifacts
+# ==============================================================================
+**/.nextest/
+**/tarpaulin-report.html
+**/cobertura.xml
+**/coverage/
+**/llvm-cov/
+**/grcov-report/
+**/*.profraw
+**/*.profdata
+**/*.gcda
+**/*.gcno
+**/*.lcov
+
+# Logs and crash dumps generated locally.
+*.log
+core.[0-9]*
+
+# ==============================================================================
+# Environment secrets and local configuration
+# ==============================================================================
+.env
+.env.*
+!.env.example
+!.env.template
+
+# ==============================================================================
+# Python helper-script artifacts (the repository has Python utility scripts)
+# ==============================================================================
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+
+# ==============================================================================
+# Operating-system and editor artifacts
+# ==============================================================================
+.DS_Store
+**/.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ==============================================================================
+# Temporary files
+# ==============================================================================
+*.tmp
+*.temp
+*.orig
+*.rej

@@ -1,15 +1,15 @@
+use memmap2::Mmap;
 use std::fs::File;
 use std::path::Path;
 use std::sync::Arc;
-use memmap2::Mmap;
 
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::bert::{BertModel, Config};
 use tokenizers::{Tokenizer, TruncationDirection, TruncationParams, TruncationStrategy};
 
-use crate::core::rag::errors::RagError;
 use super::types::ChunkEmbedding;
+use crate::core::rag::errors::RagError;
 
 /// Maximum sequence length supported by standard BGE / BERT position embeddings
 const MAX_BERT_SEQ_LEN: usize = 512;
@@ -18,8 +18,9 @@ const MAX_BERT_SEQ_LEN: usize = 512;
 fn select_device() -> Result<Device, RagError> {
     if candle_core::utils::cuda_is_available() {
         println!("🚀 CUDA GPU detected! Initializing RAG Embedder on GPU 0...");
-        Device::new_cuda(0)
-            .map_err(|e| RagError::EmbeddingError(format!("Failed to initialize CUDA device 0: {e}")))
+        Device::new_cuda(0).map_err(|e| {
+            RagError::EmbeddingError(format!("Failed to initialize CUDA device 0: {e}"))
+        })
     } else {
         println!("⚠️ CUDA not available/detected. Running RAG Embedder on CPU.");
         Ok(Device::Cpu)
@@ -48,13 +49,17 @@ impl NativeEmbedder {
         // 2. Load configuration metadata
         let config_str = std::fs::read_to_string(&config_path)
             .map_err(|e| RagError::EmbeddingError(format!("Failed reading config.json: {e}")))?;
-        let config: Config = serde_json::from_str(&config_str)
-            .map_err(|e| RagError::EmbeddingError(format!("Malformed embedding configuration structural mapping: {e}")))?;
+        let config: Config = serde_json::from_str(&config_str).map_err(|e| {
+            RagError::EmbeddingError(format!(
+                "Malformed embedding configuration structural mapping: {e}"
+            ))
+        })?;
         let hidden_size = config.hidden_size;
 
         // 3. Load Tokenizer definition & configure truncation guard
-        let mut tokenizer = Tokenizer::from_file(&tokenizer_path)
-            .map_err(|e| RagError::EmbeddingError(format!("Failed pulling tokenizer.json engine asset: {e}")))?;
+        let mut tokenizer = Tokenizer::from_file(&tokenizer_path).map_err(|e| {
+            RagError::EmbeddingError(format!("Failed pulling tokenizer.json engine asset: {e}"))
+        })?;
 
         let truncation_params = TruncationParams {
             max_length: MAX_BERT_SEQ_LEN,
@@ -65,20 +70,37 @@ impl NativeEmbedder {
         let _ = tokenizer.with_truncation(Some(truncation_params));
 
         // 4. Memory Map the Safetensors Array
-        let file = File::open(&weights_path)
-            .map_err(|e| RagError::EmbeddingError(format!("Weights not found at path {}: {e}", weights_path.display())))?;
-        let mmap = unsafe { Mmap::map(&file) }
-            .map_err(|e| RagError::EmbeddingError(format!("Failed mapping model layers into virtual memory address space: {e}")))?;
+        let file = File::open(&weights_path).map_err(|e| {
+            RagError::EmbeddingError(format!(
+                "Weights not found at path {}: {e}",
+                weights_path.display()
+            ))
+        })?;
+        let mmap = unsafe { Mmap::map(&file) }.map_err(|e| {
+            RagError::EmbeddingError(format!(
+                "Failed mapping model layers into virtual memory address space: {e}"
+            ))
+        })?;
 
         // 5. Select DType based on target hardware
-        let dtype = if device.is_cuda() { DType::F16 } else { DType::F32 };
+        let dtype = if device.is_cuda() {
+            DType::F16
+        } else {
+            DType::F32
+        };
 
         // 6. Zero-copy VarBuilder directly from the mmap slice
-        let vb = VarBuilder::from_slice_safetensors(&mmap[..], dtype, &device)
-            .map_err(|e| RagError::EmbeddingError(format!("Failed establishing Candle tensor storage graphs: {e}")))?;
+        let vb = VarBuilder::from_slice_safetensors(&mmap[..], dtype, &device).map_err(|e| {
+            RagError::EmbeddingError(format!(
+                "Failed establishing Candle tensor storage graphs: {e}"
+            ))
+        })?;
 
-        let model = BertModel::load(vb, &config)
-            .map_err(|e| RagError::EmbeddingError(format!("Failed compiling Bert network framework graph parameters: {e}")))?;
+        let model = BertModel::load(vb, &config).map_err(|e| {
+            RagError::EmbeddingError(format!(
+                "Failed compiling Bert network framework graph parameters: {e}"
+            ))
+        })?;
 
         Ok(Self {
             model,
@@ -108,20 +130,34 @@ impl NativeEmbedder {
         let len = usize::min(ids_slice.len(), MAX_BERT_SEQ_LEN);
 
         // Build tensors directly from slices without allocating temporary Vecs
-        let input_ids = Tensor::from_slice(&ids_slice[..len], (1, len), &self.device)
-            .map_err(|e| RagError::EmbeddingError(format!("Failed embedding array token tensor mappings: {e}")))?;
+        let input_ids =
+            Tensor::from_slice(&ids_slice[..len], (1, len), &self.device).map_err(|e| {
+                RagError::EmbeddingError(format!(
+                    "Failed embedding array token tensor mappings: {e}"
+                ))
+            })?;
 
         let token_type_ids = Tensor::from_slice(&types_slice[..len], (1, len), &self.device)
-            .map_err(|e| RagError::EmbeddingError(format!("Failed embedding type layer tensor configurations: {e}")))?;
+            .map_err(|e| {
+                RagError::EmbeddingError(format!(
+                    "Failed embedding type layer tensor configurations: {e}"
+                ))
+            })?;
 
         let attention_mask_tensor = Tensor::from_slice(&mask_slice[..len], (1, len), &self.device)
-            .map_err(|e| RagError::EmbeddingError(format!("Failed embedding attention mask tensor configurations: {e}")))?;
+            .map_err(|e| {
+                RagError::EmbeddingError(format!(
+                    "Failed embedding attention mask tensor configurations: {e}"
+                ))
+            })?;
 
         // Forward Pass
         let embeddings = self
             .model
             .forward(&input_ids, &token_type_ids, None)
-            .map_err(|e| RagError::EmbeddingError(format!("Candle core neural network execution error: {e}")))?;
+            .map_err(|e| {
+                RagError::EmbeddingError(format!("Candle core neural network execution error: {e}"))
+            })?;
 
         // Pool and L2 Normalize
         self.mean_pooling_and_normalize(&embeddings, &attention_mask_tensor)
@@ -146,7 +182,9 @@ impl NativeEmbedder {
             .unwrap_or(0);
 
         if max_len == 0 {
-            return Err(RagError::EmbeddingError("Batch contained only empty tokens".to_string()));
+            return Err(RagError::EmbeddingError(
+                "Batch contained only empty tokens".to_string(),
+            ));
         }
 
         // Prepare flat padded buffers for 2D Tensors [batch_size, max_len]
@@ -184,7 +222,11 @@ impl NativeEmbedder {
     }
 
     /// Compute GPU/CPU Mean Pooling + L2 Normalization for a single text input
-    fn mean_pooling_and_normalize(&self, embeddings: &Tensor, attention_mask: &Tensor) -> Result<Vec<f32>, RagError> {
+    fn mean_pooling_and_normalize(
+        &self,
+        embeddings: &Tensor,
+        attention_mask: &Tensor,
+    ) -> Result<Vec<f32>, RagError> {
         let mask_expanded = attention_mask
             .unsqueeze(2)?
             .broadcast_as(embeddings.shape())?
@@ -197,13 +239,17 @@ impl NativeEmbedder {
         let pooled = sum_embeddings.broadcast_div(&clamped_mask)?;
 
         // Apply L2 Normalization: v / sqrt(max(sum(v^2), 1e-12))
-        let norm = pooled.sqr()?.sum_keepdim(1)?.sqrt()?.clamp(1e-12f32, f32::MAX)?;
+        let norm = pooled
+            .sqr()?
+            .sum_keepdim(1)?
+            .sqrt()?
+            .clamp(1e-12f32, f32::MAX)?;
         let normalized = pooled.broadcast_div(&norm)?;
 
         let pooled_f32 = normalized.to_dtype(DType::F32)?.squeeze(0)?;
-        let finalized_vector = pooled_f32
-            .to_vec1::<f32>()
-            .map_err(|e| RagError::EmbeddingError(format!("Failed reading vector from tensor: {e}")))?;
+        let finalized_vector = pooled_f32.to_vec1::<f32>().map_err(|e| {
+            RagError::EmbeddingError(format!("Failed reading vector from tensor: {e}"))
+        })?;
 
         if finalized_vector.len() != self.hidden_size {
             return Err(RagError::EmbeddingError(format!(
@@ -243,7 +289,11 @@ impl NativeEmbedder {
         let pooled = sum_embeddings.broadcast_div(&clamped_mask)?;
 
         // L2 Normalize
-        let norm = pooled.sqr()?.sum_keepdim(1)?.sqrt()?.clamp(1e-12f32, f32::MAX)?;
+        let norm = pooled
+            .sqr()?
+            .sum_keepdim(1)?
+            .sqrt()?
+            .clamp(1e-12f32, f32::MAX)?;
         let normalized = pooled.broadcast_div(&norm)?.to_dtype(DType::F32)?;
 
         let flat_vectors = normalized

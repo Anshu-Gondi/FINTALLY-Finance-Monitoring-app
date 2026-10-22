@@ -5,18 +5,19 @@ use axum::{
 };
 use serde::{de, Deserialize, Deserializer, Serialize};
 use sqlx::PgPool;
-use time::{format_description::well_known::Rfc3339, Date, OffsetDateTime, PrimitiveDateTime, Time};
+use time::{
+    format_description::well_known::Rfc3339, Date, OffsetDateTime, PrimitiveDateTime, Time,
+};
 
 // Import your Claims middleware extractor
 use crate::auth::Claims;
 // Import your service methods
 use analytics_engine::analytics_service::{
-    budget_breach_prediction, budget_utilization_analysis, burn_rate_analysis,
-    cashflow_forecast, category_drift_analysis, category_summary, daily_summary,
-    emi_pressure, financial_health_score, goal_projection, income_stability_analysis,
-    lifetime_analysis, min_max_transaction, net_worth_analysis_service, period_summary,
-    recurring_anomalies, recurring_impact_analysis, savings_optimization_analysis,
-    spending_patterns, transaction_anomalies, trend_summary,
+    budget_breach_prediction, budget_utilization_analysis, burn_rate_analysis, cashflow_forecast,
+    category_drift_analysis, category_summary, daily_summary, emi_pressure, financial_health_score,
+    goal_projection, income_stability_analysis, lifetime_analysis, min_max_transaction,
+    net_worth_analysis_service, period_summary, recurring_anomalies, recurring_impact_analysis,
+    savings_optimization_analysis, spending_patterns, transaction_anomalies, trend_summary,
 };
 
 // --- CUSTOM DESERIALIZERS FOR QUERY PARAMS ---
@@ -164,10 +165,7 @@ impl IntoResponse for ApiError {
                 axum::http::StatusCode::BAD_REQUEST,
                 "The User ID payload cannot be parsed into a valid integer format.".to_string(),
             ),
-            ApiError::DatabaseError(err) => (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                err,
-            ),
+            ApiError::DatabaseError(err) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, err),
         };
 
         (status, axum::Json(serde_json::json!({ "error": msg }))).into_response()
@@ -176,7 +174,10 @@ impl IntoResponse for ApiError {
 
 // Helper to convert internal claims string to i64 efficiently
 fn parse_user_id(claims: &Claims) -> Result<i64, ApiError> {
-    claims.user_id.parse::<i64>().map_err(|_| ApiError::InvalidUserId)
+    claims
+        .user_id
+        .parse::<i64>()
+        .map_err(|_| ApiError::InvalidUserId)
 }
 
 // --- HANDLERS ---

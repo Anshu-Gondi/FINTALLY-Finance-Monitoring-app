@@ -9,9 +9,9 @@ pub struct DocumentChunk {
     pub document_id: Box<str>, // Changed from String -> Drops 8-byte capacity tracker and truncates heap slack
     pub text: Box<str>,        // Changed from String -> Exact-size immutable allocation
     pub sequence_index: usize, // Tracks structural order within the original file
-    
+
     // Changed from HashMap<String, String> -> Drops the huge bucket arrays and hashing calculations.
-    // For typical RAG chunks with 1-10 metadata items, a flat contiguous boxed slice 
+    // For typical RAG chunks with 1-10 metadata items, a flat contiguous boxed slice
     // minimizes memory footprint and streams directly into L1/L2 CPU caches.
     pub metadata: Box<[(Box<str>, Box<str>)]>,
 }
@@ -29,9 +29,9 @@ impl ChunkEmbedding {
     /// Constructs a new ChunkEmbedding, automatically reclaiming unused heap capacity
     #[inline] // Forces code injection at call-site to eliminate function call overhead
     pub fn new(chunk_id: u64, vector: Vec<f32>) -> Self {
-        Self { 
-            chunk_id, 
-            vector: vector.into_boxed_slice() // Instantly truncates system-allocated vector slack
+        Self {
+            chunk_id,
+            vector: vector.into_boxed_slice(), // Instantly truncates system-allocated vector slack
         }
     }
 
@@ -61,7 +61,8 @@ mod tests {
             metadata: vec![
                 ("department".into(), "finance".into()),
                 ("confidentiality".into(), "high".into()),
-            ].into_boxed_slice(),
+            ]
+            .into_boxed_slice(),
         };
 
         // 1. Serialize the structured exact-size chunk into a JSON text string
@@ -76,12 +77,24 @@ mod tests {
         assert_eq!(deserialized_chunk.id, original_chunk.id);
         assert_eq!(deserialized_chunk.document_id, original_chunk.document_id);
         assert_eq!(deserialized_chunk.text, original_chunk.text);
-        assert_eq!(deserialized_chunk.sequence_index, original_chunk.sequence_index);
-        
+        assert_eq!(
+            deserialized_chunk.sequence_index,
+            original_chunk.sequence_index
+        );
+
         // Confirm flat array-backed metadata tags persisted completely
-        assert_eq!(deserialized_chunk.metadata.len(), original_chunk.metadata.len());
-        assert_eq!(deserialized_chunk.metadata[0].0, original_chunk.metadata[0].0);
-        assert_eq!(deserialized_chunk.metadata[0].1, original_chunk.metadata[0].1);
+        assert_eq!(
+            deserialized_chunk.metadata.len(),
+            original_chunk.metadata.len()
+        );
+        assert_eq!(
+            deserialized_chunk.metadata[0].0,
+            original_chunk.metadata[0].0
+        );
+        assert_eq!(
+            deserialized_chunk.metadata[0].1,
+            original_chunk.metadata[0].1
+        );
     }
 
     // ==========================================
@@ -105,7 +118,11 @@ mod tests {
         let embedding = ChunkEmbedding::new(999, raw_vector);
 
         // Validate length properties match our data coordinates perfectly
-        assert_eq!(embedding.dimension_size(), 3, "Embedding dimension shifted during boxing.");
+        assert_eq!(
+            embedding.dimension_size(),
+            3,
+            "Embedding dimension shifted during boxing."
+        );
         assert_eq!(embedding.vector.as_ref(), &[0.15, -0.82, 0.94]);
     }
 

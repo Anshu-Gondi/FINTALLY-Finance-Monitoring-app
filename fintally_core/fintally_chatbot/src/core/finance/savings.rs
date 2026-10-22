@@ -4,10 +4,7 @@ use crate::core::types::{EmergencyFundPolicy, SavingsPolicy};
 use crate::core::utils::errors::AppError;
 
 /// Calculate emergency fund with validation
-pub fn emergency_fund(
-    monthly_expense: f64,
-    policy: &EmergencyFundPolicy,
-) -> Result<f64, AppError> {
+pub fn emergency_fund(monthly_expense: f64, policy: &EmergencyFundPolicy) -> Result<f64, AppError> {
     if monthly_expense < 0.0 {
         return Err(AppError::InvalidInput(
             "Monthly expense cannot be negative".to_string(),
@@ -23,10 +20,7 @@ pub fn emergency_fund(
 }
 
 /// Project savings over a number of months with validation
-pub fn savings_projection(
-    months: u32,
-    policy: &SavingsPolicy,
-) -> Result<f64, AppError> {
+pub fn savings_projection(months: u32, policy: &SavingsPolicy) -> Result<f64, AppError> {
     if months == 0 {
         return Err(AppError::InvalidInput(
             "Number of months must be positive".to_string(),

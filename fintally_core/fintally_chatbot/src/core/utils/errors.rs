@@ -1,7 +1,7 @@
-use std::fmt;
-use std::error::Error;
-use crate::core::utils::domain_error::DomainError;
 use crate::core::llm::tools::ToolDiagnosticReport;
+use crate::core::utils::domain_error::DomainError;
+use std::error::Error;
+use std::fmt;
 
 /// Core error type for the application
 #[derive(Debug)]

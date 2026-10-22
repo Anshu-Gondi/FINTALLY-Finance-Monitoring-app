@@ -1,5 +1,5 @@
-use crate::core::rag::errors::RagError;
 use super::overlap::OverlapStrategy;
+use crate::core::rag::errors::RagError;
 
 pub struct TextChunker {
     strategy: OverlapStrategy,
@@ -16,7 +16,7 @@ impl TextChunker {
     pub fn chunk_text(&self, text: &str) -> Result<Vec<Box<str>>, RagError> {
         if text.trim().is_empty() {
             return Err(RagError::ChunkingError(
-                "Cannot partition completely empty text context structures".into()
+                "Cannot partition completely empty text context structures".into(),
             ));
         }
         Ok(self.strategy.compute_windows(text))
@@ -39,7 +39,10 @@ mod tests {
         let valid_input = "system memory buffer alignment";
 
         let result = chunker.chunk_text(valid_input);
-        assert!(result.is_ok(), "Chunker threw error on valid text sequence.");
+        assert!(
+            result.is_ok(),
+            "Chunker threw error on valid text sequence."
+        );
 
         let chunks = result.unwrap();
         // Expecting: "system memory", "memory buffer", "buffer alignment"
@@ -56,10 +59,13 @@ mod tests {
     #[test]
     fn test_chunk_text_errors_on_completely_empty_input() {
         let chunker = TextChunker::new(10, 2);
-        
+
         // Pass a totally zero-length string literal
         let result = chunker.chunk_text("");
-        assert!(result.is_err(), "Chunker incorrectly allowed processing empty strings.");
+        assert!(
+            result.is_err(),
+            "Chunker incorrectly allowed processing empty strings."
+        );
 
         match result.unwrap_err() {
             RagError::ChunkingError(msg) => {
@@ -72,13 +78,13 @@ mod tests {
     #[test]
     fn test_chunk_text_errors_on_whitespace_only_input() {
         let chunker = TextChunker::new(5, 1);
-        
+
         // Pass text loaded with nothing but tabs, spacing, and structural newlines
         let bad_input = "   \n\t   \n   ";
         let result = chunker.chunk_text(bad_input);
-        
+
         assert!(
-            result.is_err(), 
+            result.is_err(),
             "Chunker failed to trap a text block containing only whitespace characters."
         );
     }

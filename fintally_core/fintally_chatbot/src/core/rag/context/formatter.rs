@@ -13,7 +13,7 @@ impl ContextFormatter {
         }
 
         // 1. CALCULATE CAPACITY UP FRONT (Exactly ONE Heap Allocation)
-        // We calculate the exact text lengths and add an estimated padding overhead 
+        // We calculate the exact text lengths and add an estimated padding overhead
         // for the reference headers (~120 bytes per node).
         let mut total_estimated_bytes = 100; // For top and bottom banners
         for (chunk, _) in matches {
@@ -26,14 +26,15 @@ impl ContextFormatter {
         // 2. ZERO-ALLOCATION STRING FORMATTING LOOP
         for (i, (chunk, score)) in matches.iter().enumerate() {
             // Linear scan over sequential slice memory to locate the "source_file"
-            let source_file = chunk.metadata
+            let source_file = chunk
+                .metadata
                 .iter()
                 .find(|(k, _)| k.as_ref() == "source_file")
                 .map(|(_, v)| v.as_ref())
                 .unwrap_or("unknown");
 
-            // Using the write! macro directly on the pre-allocated string block 
-            // streams characters straight into the main buffer. 
+            // Using the write! macro directly on the pre-allocated string block
+            // streams characters straight into the main buffer.
             // This bypasses the heap allocation cycles completely.
             let _ = write!(
                 &mut block,
@@ -82,7 +83,7 @@ mod tests {
 
         // Verify that empty arrays return the exact structural notification block
         assert_eq!(
-            result, 
+            result,
             "No background reference facts found matching this query scenario."
         );
     }
@@ -94,13 +95,16 @@ mod tests {
     #[test]
     fn test_format_context_builds_valid_unified_knowledge_block() {
         // Construct two distinct reference fragments paired with score coordinates
-        let chunk_a = make_mock_chunk("Line item asset margin tracking details.", Some("balance_sheet.csv"));
-        let chunk_b = make_mock_chunk("   Whitespace padded operational rules constraint string.   ", Some("audit_log.json"));
+        let chunk_a = make_mock_chunk(
+            "Line item asset margin tracking details.",
+            Some("balance_sheet.csv"),
+        );
+        let chunk_b = make_mock_chunk(
+            "   Whitespace padded operational rules constraint string.   ",
+            Some("audit_log.json"),
+        );
 
-        let matches = vec![
-            (chunk_a, 0.9234),
-            (chunk_b, 0.7512),
-        ];
+        let matches = vec![(chunk_a, 0.9234), (chunk_b, 0.7512)];
 
         let formatted_output = ContextFormatter::format_context(&matches);
 
@@ -109,12 +113,15 @@ mod tests {
         assert!(formatted_output.ends_with("============================================="));
 
         // 2. Verify Reference Node 1 metadata resolution and precise 2-decimal score truncation
-        assert!(formatted_output.contains("[Reference Node 1 | Source: balance_sheet.csv | Match Confidence: 0.92]"));
+        assert!(formatted_output
+            .contains("[Reference Node 1 | Source: balance_sheet.csv | Match Confidence: 0.92]"));
         assert!(formatted_output.contains("Text: Line item asset margin tracking details."));
 
         // 3. Verify Reference Node 2 elements and check that your .trim() hook cleaned trailing padding
-        assert!(formatted_output.contains("[Reference Node 2 | Source: audit_log.json | Match Confidence: 0.75]"));
-        assert!(formatted_output.contains("Text: Whitespace padded operational rules constraint string."));
+        assert!(formatted_output
+            .contains("[Reference Node 2 | Source: audit_log.json | Match Confidence: 0.75]"));
+        assert!(formatted_output
+            .contains("Text: Whitespace padded operational rules constraint string."));
     }
 
     // ==========================================

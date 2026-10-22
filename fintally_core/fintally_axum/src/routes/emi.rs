@@ -1,16 +1,20 @@
-use axum::{ extract::{ Extension, Json, Path }, http::StatusCode, response::IntoResponse };
+use axum::{
+    extract::{Extension, Json, Path},
+    http::StatusCode,
+    response::IntoResponse,
+};
 use chrono::Utc;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::Row; // ◄─ CRITICAL: Required to use row.get() on anonymous rows
 
 // Bring in your existing shared structural models from your workspace
+use crate::auth::Claims;
 use fintally_db::{
+    models::{EmiCalculateRequest, EmiCheckRequest, EmiCreateRequest, RecurringFrequency},
     DbContext,
-    models::{ EmiCalculateRequest, EmiCheckRequest, EmiCreateRequest, RecurringFrequency },
-};
-use crate::auth::Claims; // Your extractor structure
- // Core finance calculations module
+}; // Your extractor structure
+   // Core finance calculations module
 
 // ─── Shared Response Payloads ────────────────────────────────────────────────
 
@@ -70,11 +74,9 @@ pub struct EmiCreateResponse {
 fn calculate_single_emi(principal: f64, annual_rate: f64, months: i32) -> f64 {
     let principal_paise = (principal * 100.0).round() as i64;
 
-    if let Ok(res_vector) = fintally_finance::emi_batch(
-        &[principal_paise],
-        &[annual_rate],
-        &[months]
-    ) {
+    if let Ok(res_vector) =
+        fintally_finance::emi_batch(&[principal_paise], &[annual_rate], &[months])
+    {
         if let Some(&paise_output) = res_vector.first() {
             return (((paise_output as f64) / 100.0) * 100.0).round() / 100.0;
         }
@@ -91,7 +93,7 @@ fn calculate_single_emi(principal: f64, annual_rate: f64, months: i32) -> f64 {
 
 pub async fn emi_calculate(
     _claims: Claims,
-    Json(body): Json<EmiCalculateRequest>
+    Json(body): Json<EmiCalculateRequest>,
 ) -> impl IntoResponse {
     let emi = calculate_single_emi(body.principal, body.annual_rate, body.months);
     let months_f = body.months as f64;
@@ -115,7 +117,7 @@ pub async fn emi_calculate(
 pub async fn emi_check(
     Extension(ctx): Extension<DbContext>,
     claims: Claims,
-    Json(body): Json<EmiCheckRequest>
+    Json(body): Json<EmiCheckRequest>,
 ) -> impl IntoResponse {
     let emi = calculate_single_emi(body.principal, body.annual_rate, body.months);
     let months_f = body.months as f64;
@@ -172,7 +174,10 @@ pub async fn emi_check(
             let message = if affordable {
                 "EMI fits within your budget.".to_string()
             } else {
-                format!("EMI of ₹{:.2} exceeds remaining budget of ₹{:.2}.", emi, remaining)
+                format!(
+                    "EMI of ₹{:.2} exceeds remaining budget of ₹{:.2}.",
+                    emi, remaining
+                )
             };
 
             BudgetImpactData {
@@ -206,7 +211,7 @@ pub async fn emi_check(
 pub async fn emi_create(
     Extension(ctx): Extension<DbContext>,
     claims: Claims,
-    Json(body): Json<EmiCreateRequest>
+    Json(body): Json<EmiCreateRequest>,
 ) -> impl IntoResponse {
     let emi = calculate_single_emi(body.principal, body.annual_rate, body.months);
 
@@ -220,7 +225,8 @@ pub async fn emi_create(
                     "success": false,
                     "error": "Invalid User ID format (UUID expected)"
                 })),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
@@ -279,7 +285,10 @@ pub async fn emi_create(
         }
     }
 
-    let description = format!("EMI for loan ({} months @ {}%)", body.months, body.annual_rate);
+    let description = format!(
+        "EMI for loan ({} months @ {}%)",
+        body.months, body.annual_rate
+    );
 
     // ─── 3. INSERT RECORD (Now open transaction clean) ──────────────────
     let mut tx = match ctx.pool.begin().await {
@@ -321,7 +330,8 @@ pub async fn emi_create(
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({"success": false, "error": format!("Insertion failure: {}", e)})),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
@@ -329,7 +339,8 @@ pub async fn emi_create(
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({"success": false, "error": format!("Commit failure: {}", e)})),
-        ).into_response();
+        )
+            .into_response();
     }
 
     let out = EmiCreateResponse {
@@ -345,14 +356,15 @@ pub async fn emi_create(
             message: Some("EMI added as recurring transaction".to_string()),
             data: Some(out),
         }),
-    ).into_response()
+    )
+        .into_response()
 }
 
 // ─── DELETE /api/emi/:id ─────────────────────────────────────────────────────
 pub async fn emi_delete(
     Extension(ctx): Extension<DbContext>,
     claims: Claims,
-    Path(id): Path<i32>
+    Path(id): Path<i32>,
 ) -> impl IntoResponse {
     // Fixed: Configured runtime binds matching column maps
     let result = sqlx::query(
@@ -375,7 +387,10 @@ pub async fn emi_delete(
                     StatusCode::NOT_FOUND,
                     Json(ApiResponse::<()> {
                         success: false,
-                        message: Some("EMI record not found or you are not authorized to delete it.".to_string()),
+                        message: Some(
+                            "EMI record not found or you are not authorized to delete it."
+                                .to_string(),
+                        ),
                         data: None,
                     }),
                 );
@@ -390,15 +405,13 @@ pub async fn emi_delete(
                 }),
             )
         }
-        Err(err) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::<()> {
-                    success: false,
-                    message: Some(format!("Database error occurred: {}", err)),
-                    data: None,
-                }),
-            )
-        }
+        Err(err) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiResponse::<()> {
+                success: false,
+                message: Some(format!("Database error occurred: {}", err)),
+                data: None,
+            }),
+        ),
     }
 }

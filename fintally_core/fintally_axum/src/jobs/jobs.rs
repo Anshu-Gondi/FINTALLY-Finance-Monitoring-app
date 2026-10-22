@@ -2,8 +2,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 // Replace chrono with the time crate
-use time::{Duration as TimeDuration, OffsetDateTime, Time};
 use sqlx::{PgPool, Postgres, Transaction};
+use time::{Duration as TimeDuration, OffsetDateTime, Time};
 use tracing::{error, info, warn};
 
 use fintally_chatbot::chatbot_service::rag_service::RagService;
@@ -13,14 +13,14 @@ use fintally_db::models::RecurringFrequency;
 // Period Boundary Check Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn is_due(frequency: &RecurringFrequency, last_generated: OffsetDateTime, now: OffsetDateTime) -> bool {
+fn is_due(
+    frequency: &RecurringFrequency,
+    last_generated: OffsetDateTime,
+    now: OffsetDateTime,
+) -> bool {
     match frequency {
-        RecurringFrequency::Daily => {
-            now >= last_generated + TimeDuration::days(1)
-        }
-        RecurringFrequency::Weekly => {
-            now >= last_generated + TimeDuration::weeks(1)
-        }
+        RecurringFrequency::Daily => now >= last_generated + TimeDuration::days(1),
+        RecurringFrequency::Weekly => now >= last_generated + TimeDuration::weeks(1),
         RecurringFrequency::Monthly => {
             now >= last_generated + TimeDuration::days(28)
                 && (last_generated.year(), last_generated.month()) != (now.year(), now.month())
@@ -66,8 +66,8 @@ async fn generate_recurring_transactions(pool: &PgPool) -> Result<(), sqlx::Erro
 
         // DB returns i64 timestamps, fallback to transaction's datetime if last_generated_at is missing
         let last_generated_i64 = row.last_generated_at.unwrap_or(row.datetime);
-        let last_generated_dt = OffsetDateTime::from_unix_timestamp(last_generated_i64)
-            .unwrap_or(now_dt);
+        let last_generated_dt =
+            OffsetDateTime::from_unix_timestamp(last_generated_i64).unwrap_or(now_dt);
 
         if !is_due(&freq, last_generated_dt, now_dt) {
             continue;
@@ -124,7 +124,10 @@ async fn generate_recurring_transactions(pool: &PgPool) -> Result<(), sqlx::Erro
 
     if inserts_count > 0 {
         tx.commit().await?;
-        info!("✅ {} recurring transactions generated successfully.", inserts_count);
+        info!(
+            "✅ {} recurring transactions generated successfully.",
+            inserts_count
+        );
     } else {
         let _ = tx.rollback().await;
     }
@@ -135,7 +138,10 @@ async fn generate_recurring_transactions(pool: &PgPool) -> Result<(), sqlx::Erro
 async fn run_daily_rag_sync(rag_service: Arc<RagService>) {
     info!("[RAG-JOB] Triggering Google Drive ingestion synchronization...");
     if let Err(e) = rag_service.sync_and_reindex_trusted_sources().await {
-        error!("❌ Error executing automated Google Drive synchronization: {:?}", e);
+        error!(
+            "❌ Error executing automated Google Drive synchronization: {:?}",
+            e
+        );
     } else {
         info!("✅ Refreshed native vector layer indexes.");
     }
@@ -192,7 +198,10 @@ pub fn start_scheduler(pool: PgPool, rag_service: Arc<RagService>) {
                 Duration::from_secs(60) // Fallback just in case
             };
 
-            info!("[RAG-SCHEDULER] Next indexing sync scheduled in {:.2} hours.", duration_to_sleep.as_secs_f64() / 3600.0);
+            info!(
+                "[RAG-SCHEDULER] Next indexing sync scheduled in {:.2} hours.",
+                duration_to_sleep.as_secs_f64() / 3600.0
+            );
             tokio::time::sleep(duration_to_sleep).await;
 
             run_daily_rag_sync(rag_service.clone()).await;

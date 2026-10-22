@@ -1,5 +1,5 @@
-use fintally_db::DbContext;
 use fintally_db::chat_service::ChatHistoryService;
+use fintally_db::DbContext;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,9 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Test basic SQL execution (Raw ping)
     println!("🛰️ Pinging database instance directly...");
-    let row: (i32,) = sqlx::query_as("SELECT 1")
-        .fetch_one(&db_ctx.pool)
-        .await?;
+    let row: (i32,) = sqlx::query_as("SELECT 1").fetch_one(&db_ctx.pool).await?;
     println!("✅ Database responded live (Ping value: {}).", row.0);
 
     // 3. Test your tables and Service logic
@@ -34,24 +32,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let test_session_id: Option<i64> = Some(101);
 
     // Write a mock entry
-    chat_service.append_message(
-        test_user_id,
-        "user",
-        "Hello Supabase from my N4020 machine!",
-        test_session_id,
-        None
-    ).await?;
+    chat_service
+        .append_message(
+            test_user_id,
+            "user",
+            "Hello Supabase from my N4020 machine!",
+            test_session_id,
+            None,
+        )
+        .await?;
     println!("✅ Wrote test message to `chat_messages` table.");
 
     // Read it back
-    let history = chat_service.get_history(test_user_id, test_session_id, 5).await?;
-    println!("✅ Read history back safely. Record count: {}", history.len());
+    let history = chat_service
+        .get_history(test_user_id, test_session_id, 5)
+        .await?;
+    println!(
+        "✅ Read history back safely. Record count: {}",
+        history.len()
+    );
     if let Some(msg) = history.first() {
         println!("    Message content: \"{}\"", msg.content);
     }
 
     // Clean up our test footprint
-    chat_service.clear_history(test_user_id, test_session_id).await?;
+    chat_service
+        .clear_history(test_user_id, test_session_id)
+        .await?;
     println!("🗑️ Cleaned up test rows successfully.");
 
     println!("\n🎉 Everything is fully operational! Database is ready for Axum routing.");

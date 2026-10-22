@@ -6,6 +6,8 @@ members = [
     "fintally_chatbot",
     "fintally_db",
     "fintally_axum",
+    "fintally_voice",
+    "fintally_voice/offline_builder",
 ]
 
 [workspace.package]

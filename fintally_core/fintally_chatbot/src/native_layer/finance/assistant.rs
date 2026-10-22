@@ -1,13 +1,10 @@
-use serde_json::Value;
 use crate::core::llm::planner::Planner;
 use crate::core::utils::errors::AppError;
+use serde_json::Value;
 
 /// High-performance tool executor for LLM planner and financial mathematical tools.
 /// Executes the tool asynchronously, matching your core architecture.
-pub async fn execute_tool(
-    tool_name: &str,
-    args_json: &str,
-) -> Result<String, AppError> {
+pub async fn execute_tool(tool_name: &str, args_json: &str) -> Result<String, AppError> {
     // 1. Parse JSON string parameter slice into a queryable serde object
     let args: Value = serde_json::from_str(args_json)
         .map_err(|e| AppError::ValidationError(format!("Malformed engine tool arguments: {e}")))?;

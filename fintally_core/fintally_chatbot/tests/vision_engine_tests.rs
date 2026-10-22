@@ -73,10 +73,7 @@ fn create_synthetic_pdf_bytes() -> Vec<u8> {
     // Object 5: Content stream (draws image Im1)
     offsets.push(pdf.len());
     let content_bytes = b"q 64 0 0 64 0 0 cm /Im1 Do Q\n";
-    let obj5_header = format!(
-        "5 0 obj\n<< /Length {} >>\nstream\r\n",
-        content_bytes.len()
-    );
+    let obj5_header = format!("5 0 obj\n<< /Length {} >>\nstream\r\n", content_bytes.len());
     pdf.extend_from_slice(obj5_header.as_bytes());
     pdf.extend_from_slice(content_bytes);
     pdf.extend_from_slice(b"\r\nendstream\nendobj\n");

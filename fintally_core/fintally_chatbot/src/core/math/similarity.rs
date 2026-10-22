@@ -2,10 +2,7 @@ use crate::core::types::*;
 use crate::core::utils::errors::AppError;
 
 /// Euclidean Distance (lower = more similar)
-pub fn euclidean_distance(
-    a: &UserProfileVector,
-    b: &UserProfileVector,
-) -> Result<f64, AppError> {
+pub fn euclidean_distance(a: &UserProfileVector, b: &UserProfileVector) -> Result<f64, AppError> {
     let len = a.metrics.len().min(b.metrics.len());
     if len == 0 {
         return Err(AppError::InvalidInput(
@@ -24,10 +21,7 @@ pub fn euclidean_distance(
 }
 
 /// Cosine Similarity (1.0 = identical)
-pub fn cosine_similarity(
-    a: &UserProfileVector,
-    b: &UserProfileVector,
-) -> Result<f64, AppError> {
+pub fn cosine_similarity(a: &UserProfileVector, b: &UserProfileVector) -> Result<f64, AppError> {
     let len = a.metrics.len().min(b.metrics.len());
     if len == 0 {
         return Err(AppError::InvalidInput(
@@ -43,8 +37,20 @@ pub fn cosine_similarity(
         .map(|(x, y)| x * y)
         .sum();
 
-    let norm_a = a.metrics.iter().take(len).map(|x| x.powi(2)).sum::<f64>().sqrt();
-    let norm_b = b.metrics.iter().take(len).map(|x| x.powi(2)).sum::<f64>().sqrt();
+    let norm_a = a
+        .metrics
+        .iter()
+        .take(len)
+        .map(|x| x.powi(2))
+        .sum::<f64>()
+        .sqrt();
+    let norm_b = b
+        .metrics
+        .iter()
+        .take(len)
+        .map(|x| x.powi(2))
+        .sum::<f64>()
+        .sqrt();
 
     if norm_a == 0.0 || norm_b == 0.0 {
         return Err(AppError::InvalidInput(
@@ -56,10 +62,7 @@ pub fn cosine_similarity(
 }
 
 /// Pearson Correlation Coefficient (-1 to 1)
-pub fn pearson_correlation(
-    a: &UserProfileVector,
-    b: &UserProfileVector,
-) -> Result<f64, AppError> {
+pub fn pearson_correlation(a: &UserProfileVector, b: &UserProfileVector) -> Result<f64, AppError> {
     let len = a.metrics.len().min(b.metrics.len());
     if len == 0 {
         return Err(AppError::InvalidInput(

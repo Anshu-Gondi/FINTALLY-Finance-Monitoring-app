@@ -1,18 +1,18 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::core::rag::errors::RagError;
-use crate::core::rag::service::RagService;
-use crate::core::rag::ingestion::IngestionPipeline;
-use crate::core::rag::vectorstore::{UsearchStore, MemoryVectorStore};
 use crate::core::rag::embedding::{EmbeddingGenerator, NativeEmbedder};
+use crate::core::rag::errors::RagError;
+use crate::core::rag::ingestion::IngestionPipeline;
 use crate::core::rag::retrieval::VectorRetriever;
+use crate::core::rag::service::RagService;
+use crate::core::rag::vectorstore::{MemoryVectorStore, UsearchStore};
 
 pub struct RagServiceBuilder {
     chunk_size: usize,
     chunk_overlap: usize,
     dimensions: usize,
-    initial_capacity: usize, 
+    initial_capacity: usize,
     alpha: f32,
     default_top_k: usize,
     index_path: Option<String>,
@@ -22,12 +22,12 @@ pub struct RagServiceBuilder {
 impl RagServiceBuilder {
     pub fn new() -> Self {
         Self {
-            chunk_size: 200,          
-            chunk_overlap: 40,        
-            dimensions: 384,          // Perfect fit for BGE-small-en-v1.5
-            initial_capacity: 5000,   
-            alpha: 0.7,               
-            default_top_k: 5,         
+            chunk_size: 200,
+            chunk_overlap: 40,
+            dimensions: 384, // Perfect fit for BGE-small-en-v1.5
+            initial_capacity: 5000,
+            alpha: 0.7,
+            default_top_k: 5,
             index_path: None,
             chunks_path: None,
         }
@@ -74,7 +74,7 @@ impl RagServiceBuilder {
         let pipeline = IngestionPipeline::new(self.chunk_size, self.chunk_overlap);
         let vector_store = UsearchStore::new(self.dimensions, self.initial_capacity)?;
         let memory_store = MemoryVectorStore::new();
-        
+
         // Pass the native embedder reference down into the core generator
         let generator = EmbeddingGenerator::new(embedder);
         let retriever = VectorRetriever::new(self.alpha);

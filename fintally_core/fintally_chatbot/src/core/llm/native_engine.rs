@@ -252,7 +252,7 @@ impl LlmEngine for NativeLlamaEngine {
             // Low temperature (0.5) and top_p (0.85) stabilize quantized weight noise.
             let mut logits_processor = LogitsProcessor::new(seed, Some(0.5), Some(0.85));
             let repetition_penalty: f32 = 1.05; // Reduced from 1.15 to prevent quality degradation
-            const PENALTY_WINDOW: usize = 64;   // Restrict penalty to the last 64 generated tokens
+            const PENALTY_WINDOW: usize = 64; // Restrict penalty to the last 64 generated tokens
 
             let mut token_stream = TokenOutputStream::new(tokenizer_instance);
             let mut recent_tokens: Vec<u32> = Vec::with_capacity(PENALTY_WINDOW);
@@ -270,18 +270,21 @@ impl LlmEngine for NativeLlamaEngine {
                 let chunk_len = usize::min(TILE_CHUNK_SIZE, total_prompt_len - offset);
                 let chunk_tokens = &prompt_tokens[offset..offset + chunk_len];
 
-                let input_tensor = match Tensor::from_slice(chunk_tokens, (1, chunk_len), &compute_device) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        let _ = tx.blocking_send(Err(AppError::InferenceError(e.to_string())));
-                        return;
-                    }
-                };
+                let input_tensor =
+                    match Tensor::from_slice(chunk_tokens, (1, chunk_len), &compute_device) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            let _ = tx.blocking_send(Err(AppError::InferenceError(e.to_string())));
+                            return;
+                        }
+                    };
 
                 let logits = match model.forward(&input_tensor, pos) {
                     Ok(l) => l,
                     Err(e) => {
-                        let _ = tx.blocking_send(Err(AppError::InferenceError(format!("Forward pass error: {e}"))));
+                        let _ = tx.blocking_send(Err(AppError::InferenceError(format!(
+                            "Forward pass error: {e}"
+                        ))));
                         return;
                     }
                 };
@@ -294,7 +297,8 @@ impl LlmEngine for NativeLlamaEngine {
             let mut logits = match last_logits {
                 Some(l) => l,
                 None => {
-                    let _ = tx.blocking_send(Err(AppError::InferenceError("Empty prompt tokens".into())));
+                    let _ = tx
+                        .blocking_send(Err(AppError::InferenceError("Empty prompt tokens".into())));
                     return;
                 }
             };
@@ -337,15 +341,20 @@ impl LlmEngine for NativeLlamaEngine {
                 }
 
                 // Apply windowed repetition penalty
-                Self::apply_windowed_repetition_penalty(&mut logits_vec, repetition_penalty, &recent_tokens);
+                Self::apply_windowed_repetition_penalty(
+                    &mut logits_vec,
+                    repetition_penalty,
+                    &recent_tokens,
+                );
 
-                let mut logits_tensor = match Tensor::from_vec(logits_vec, (vocab_size,), &Device::Cpu) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        let _ = tx.blocking_send(Err(AppError::InferenceError(e.to_string())));
-                        break;
-                    }
-                };
+                let mut logits_tensor =
+                    match Tensor::from_vec(logits_vec, (vocab_size,), &Device::Cpu) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            let _ = tx.blocking_send(Err(AppError::InferenceError(e.to_string())));
+                            break;
+                        }
+                    };
 
                 let next_token_id = match logits_processor.sample(&mut logits_tensor) {
                     Ok(id) => id,
@@ -372,13 +381,14 @@ impl LlmEngine for NativeLlamaEngine {
                     }
                 }
 
-                let input_tensor = match Tensor::from_slice(&[next_token_id], (1, 1), &compute_device) {
-                    Ok(t) => t,
-                    Err(e) => {
-                        let _ = tx.blocking_send(Err(AppError::InferenceError(e.to_string())));
-                        break;
-                    }
-                };
+                let input_tensor =
+                    match Tensor::from_slice(&[next_token_id], (1, 1), &compute_device) {
+                        Ok(t) => t,
+                        Err(e) => {
+                            let _ = tx.blocking_send(Err(AppError::InferenceError(e.to_string())));
+                            break;
+                        }
+                    };
 
                 logits = match model.forward(&input_tensor, pos) {
                     Ok(l) => l,

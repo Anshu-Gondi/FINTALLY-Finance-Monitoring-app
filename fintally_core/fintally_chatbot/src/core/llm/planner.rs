@@ -1,7 +1,7 @@
 // src/core/llm/planner.rs
 
-use serde_json::{json, Value};
 use crate::core::llm::tools::{execute_tool_async, ToolDiagnosticReport};
+use serde_json::{json, Value};
 
 /// Async Planner for orchestrating LLM tool execution
 pub struct Planner;
@@ -37,10 +37,7 @@ mod tests {
         let response = Planner::execute_with_diagnostic_fallback("calculate_emi", args).await;
 
         assert_eq!(response["status"], "error");
-        assert_eq!(
-            response["diagnostic_report"]["status"],
-            "MissingArguments"
-        );
+        assert_eq!(response["diagnostic_report"]["status"], "MissingArguments");
         assert!(response["diagnostic_report"]["remediation_prompt"]
             .as_str()
             .unwrap()

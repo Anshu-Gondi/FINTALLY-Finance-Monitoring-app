@@ -1,44 +1,49 @@
-use fintally_db::DbContext;
-use fintally_chatbot::chatbot_service::RagService;
-use fintally_chatbot::chatbot_service::ChatbotOrchestrator;
 use fintally_chatbot::chatbot_service::vision_service::VisionChatbotService;
-use fintally_db::chat_service::ChatHistoryService;
-use fintally_chatbot::core::llm::native_engine::NativeLlamaEngine;
+use fintally_chatbot::chatbot_service::ChatbotOrchestrator;
+use fintally_chatbot::chatbot_service::RagService;
 use fintally_chatbot::core::llm::engine::LlmEngine;
+use fintally_chatbot::core::llm::native_engine::NativeLlamaEngine;
+use fintally_db::chat_service::ChatHistoryService;
+use fintally_db::DbContext;
 
 // Vision imports
 use fintally_chatbot::core::vision::engine::{DocumentInput, VisionEngine};
 
-use axum::{ routing::{ get, post, delete }, Router, response::IntoResponse, Json, Extension };
 use axum::http::HeaderValue;
-use tower_http::cors::CorsLayer;
+use axum::{
+    response::IntoResponse,
+    routing::{delete, get, post},
+    Extension, Json, Router,
+};
 use futures_util::StreamExt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use tower_http::cors::CorsLayer;
 
 use anyhow::Context;
 
 pub mod auth;
-pub mod routes;
 pub mod jobs;
+pub mod routes;
 
-use crate::routes::chat::{ chat_routes, ChatState };
 use crate::auth::Claims;
+use crate::routes::chat::{chat_routes, ChatState};
 
 async fn get_protected_finance_summary(claims: Claims) -> impl IntoResponse {
-    println!("🔐 Authenticated Request processed for User ID: {}", claims.user_id);
-    Json(
-        serde_json::json!({
-            "status": "success",
-            "data": { "balance": 1250.45, "currency": "INR" }
-        })
-    )
+    println!(
+        "🔐 Authenticated Request processed for User ID: {}",
+        claims.user_id
+    );
+    Json(serde_json::json!({
+        "status": "success",
+        "data": { "balance": 1250.45, "currency": "INR" }
+    }))
 }
 
 async fn manual_rag_sync_handler(
     claims: Claims,
-    Extension(rag_service): Extension<Arc<RagService>>
+    Extension(rag_service): Extension<Arc<RagService>>,
 ) -> impl IntoResponse {
     println!(
         "🔐 Authenticated RAG Engine Synchronization run requested by User: {}",
@@ -46,26 +51,20 @@ async fn manual_rag_sync_handler(
     );
 
     match rag_service.sync_and_reindex_trusted_sources().await {
-        Ok(_) =>
-            (
-                axum::http::StatusCode::OK,
-                Json(
-                    serde_json::json!({
-                        "status": "success",
-                        "message": "Pure Rust Google Drive indexing completed successfully."
-                    })
-                ),
-            ),
-        Err(err) =>
-            (
-                axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-                Json(
-                    serde_json::json!({
-                        "status": "error",
-                        "detail": format!("{:?}", err)
-                    })
-                ),
-            ),
+        Ok(_) => (
+            axum::http::StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "success",
+                "message": "Pure Rust Google Drive indexing completed successfully."
+            })),
+        ),
+        Err(err) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "status": "error",
+                "detail": format!("{:?}", err)
+            })),
+        ),
     }
 }
 
@@ -73,25 +72,64 @@ fn build_analytics_router(pool: sqlx::PgPool) -> Router {
     Router::new()
         .route("/daily", get(routes::analytics::handle_daily_summary))
         .route("/period", get(routes::analytics::handle_period_summary))
-        .route("/lifetime", get(routes::analytics::handle_lifetime_analysis))
-        .route("/min-max", get(routes::analytics::handle_min_max_transaction))
+        .route(
+            "/lifetime",
+            get(routes::analytics::handle_lifetime_analysis),
+        )
+        .route(
+            "/min-max",
+            get(routes::analytics::handle_min_max_transaction),
+        )
         .route("/category", get(routes::analytics::handle_category_summary))
         .route("/trend", get(routes::analytics::handle_trend_summary))
         .route("/emi-pressure", get(routes::analytics::handle_emi_pressure))
-        .route("/cashflow-forecast", get(routes::analytics::handle_cashflow_forecast))
-        .route("/budget-breach", get(routes::analytics::handle_budget_breach_prediction))
-        .route("/anomalies/recurring", get(routes::analytics::handle_recurring_anomalies))
-        .route("/anomalies/transactions", get(routes::analytics::handle_transaction_anomalies))
+        .route(
+            "/cashflow-forecast",
+            get(routes::analytics::handle_cashflow_forecast),
+        )
+        .route(
+            "/budget-breach",
+            get(routes::analytics::handle_budget_breach_prediction),
+        )
+        .route(
+            "/anomalies/recurring",
+            get(routes::analytics::handle_recurring_anomalies),
+        )
+        .route(
+            "/anomalies/transactions",
+            get(routes::analytics::handle_transaction_anomalies),
+        )
         .route("/drift", get(routes::analytics::handle_category_drift))
-        .route("/recurring-impact", get(routes::analytics::handle_recurring_impact))
-        .route("/utilization", get(routes::analytics::handle_budget_utilization))
+        .route(
+            "/recurring-impact",
+            get(routes::analytics::handle_recurring_impact),
+        )
+        .route(
+            "/utilization",
+            get(routes::analytics::handle_budget_utilization),
+        )
         .route("/burn-rate", get(routes::analytics::handle_burn_rate))
-        .route("/income-stability", get(routes::analytics::handle_income_stability))
-        .route("/savings-optimization", get(routes::analytics::handle_savings_optimization))
+        .route(
+            "/income-stability",
+            get(routes::analytics::handle_income_stability),
+        )
+        .route(
+            "/savings-optimization",
+            get(routes::analytics::handle_savings_optimization),
+        )
         .route("/net-worth", get(routes::analytics::handle_net_worth))
-        .route("/health-score", get(routes::analytics::handle_financial_health_score))
-        .route("/spending-patterns", get(routes::analytics::handle_spending_patterns))
-        .route("/goal-projection", get(routes::analytics::handle_goal_projection))
+        .route(
+            "/health-score",
+            get(routes::analytics::handle_financial_health_score),
+        )
+        .route(
+            "/spending-patterns",
+            get(routes::analytics::handle_spending_patterns),
+        )
+        .route(
+            "/goal-projection",
+            get(routes::analytics::handle_goal_projection),
+        )
         .with_state(pool)
 }
 
@@ -198,33 +236,21 @@ fn resolve_qwen_model(root: impl AsRef<Path>) -> anyhow::Result<ResolvedQwenMode
     let root = root.as_ref();
 
     if !root.exists() {
-        anyhow::bail!(
-            "Qwen model directory does not exist: {}",
-            root.display()
-        );
+        anyhow::bail!("Qwen model directory does not exist: {}", root.display());
     }
 
     let gguf_files = collect_gguf_files(root)
-        .with_context(|| {
-            format!(
-                "failed to inspect Qwen model directory: {}",
-                root.display()
-            )
-        })?;
+        .with_context(|| format!("failed to inspect Qwen model directory: {}", root.display()))?;
 
     if gguf_files.is_empty() {
-        anyhow::bail!(
-            "no usable GGUF model files found under {}",
-            root.display()
-        );
+        anyhow::bail!("no usable GGUF model files found under {}", root.display());
     }
 
     // -------------------------------------------------------------------------
     // First resolve complete sharded models.
     // -------------------------------------------------------------------------
 
-    let mut shard_groups:
-        std::collections::BTreeMap<String, Vec<(usize, usize, PathBuf)>> =
+    let mut shard_groups: std::collections::BTreeMap<String, Vec<(usize, usize, PathBuf)>> =
         std::collections::BTreeMap::new();
 
     for path in &gguf_files {
@@ -362,9 +388,7 @@ fn resolve_qwen_model(root: impl AsRef<Path>) -> anyhow::Result<ResolvedQwenMode
     })
 }
 
-fn prepare_qwen_model_for_engine(
-    root: impl AsRef<Path>,
-) -> anyhow::Result<ResolvedQwenModel> {
+fn prepare_qwen_model_for_engine(root: impl AsRef<Path>) -> anyhow::Result<ResolvedQwenModel> {
     let resolved = resolve_qwen_model(root)?;
 
     println!("🧠 Resolved Qwen runtime model:");
@@ -376,11 +400,7 @@ fn prepare_qwen_model_for_engine(
             .map(|m| m.len() as f64 / 1024.0 / 1024.0)
             .unwrap_or(0.0);
 
-        println!(
-            "   GGUF : {} ({:.2} MB)",
-            file.display(),
-            size_mb
-        );
+        println!("   GGUF : {} ({:.2} MB)", file.display(), size_mb);
     }
 
     Ok(resolved)
@@ -392,15 +412,14 @@ fn prepare_qwen_model_for_engine(
 /// wildcard origin. If ALLOWED_ORIGIN is unset or invalid, startup fails
 /// loudly instead of silently opening the API to any origin.
 fn build_cors_layer() -> CorsLayer {
-    let allowed_origin = std::env::var("ALLOWED_ORIGIN")
-        .expect(
-            "ALLOWED_ORIGIN environment variable must be set to your frontend's \
+    let allowed_origin = std::env::var("ALLOWED_ORIGIN").expect(
+        "ALLOWED_ORIGIN environment variable must be set to your frontend's \
              origin (e.g. https://app.fintally.com). Refusing to start with an \
-             open CORS policy on a financial API."
-        );
+             open CORS policy on a financial API.",
+    );
 
-    let origin_value = HeaderValue::from_str(&allowed_origin)
-        .expect("ALLOWED_ORIGIN is not a valid header value");
+    let origin_value =
+        HeaderValue::from_str(&allowed_origin).expect("ALLOWED_ORIGIN is not a valid header value");
 
     println!("🔒 CORS restricted to origin: {}", allowed_origin);
 
@@ -412,7 +431,10 @@ fn build_cors_layer() -> CorsLayer {
             axum::http::Method::PUT,
             axum::http::Method::DELETE,
         ])
-        .allow_headers([axum::http::header::AUTHORIZATION, axum::http::header::CONTENT_TYPE])
+        .allow_headers([
+            axum::http::header::AUTHORIZATION,
+            axum::http::header::CONTENT_TYPE,
+        ])
 }
 
 /// Waits for either Ctrl+C or a SIGTERM (container stop / k8s pod eviction)
@@ -457,7 +479,9 @@ const WARMUP_PNG_1X1: [u8; 69] = [
 
 #[tokio::main]
 async fn main() {
-    let db_ctx = DbContext::init().await.expect("Failed to initialize Supabase connection pool");
+    let db_ctx = DbContext::init()
+        .await
+        .expect("Failed to initialize Supabase connection pool");
     println!("Successfully connected to Supabase Postgres!");
 
     let pool = db_ctx.pool.clone();
@@ -465,8 +489,9 @@ async fn main() {
     let rag_service = Arc::new(
         RagService::new(
             "./vector_storage",
-            "./llm_models/embedding/bge_safetensors_output"
-        ).expect("Failed to build pure-Rust Vector engine service layer")
+            "./llm_models/embedding/bge_safetensors_output",
+        )
+        .expect("Failed to build pure-Rust Vector engine service layer"),
     );
 
     jobs::jobs::start_scheduler(pool.clone(), rag_service.clone());
@@ -478,8 +503,7 @@ async fn main() {
     // download_models is responsible for selecting the correct model for the
     // machine; startup discovers exactly what was installed.
 
-    const QWEN_MODEL_ROOT: &str =
-        "./llm_models/chat/qwen_safetensors_output";
+    const QWEN_MODEL_ROOT: &str = "./llm_models/chat/qwen_safetensors_output";
 
     println!("🔎 Resolving installed Qwen model...");
 
@@ -502,11 +526,11 @@ async fn main() {
         .expect("Invalid Qwen model root path")
         .to_owned();
 
-    let native_engine = tokio::task
-        ::spawn_blocking(move || NativeLlamaEngine::load_from_vault(&qwen_root_str))
-        .await
-        .expect("Qwen engine load thread panicked")
-        .expect("Failed to instantiate native Qwen inference engine from validated model path");
+    let native_engine =
+        tokio::task::spawn_blocking(move || NativeLlamaEngine::load_from_vault(&qwen_root_str))
+            .await
+            .expect("Qwen engine load thread panicked")
+            .expect("Failed to instantiate native Qwen inference engine from validated model path");
 
     let native_engine = Arc::new(native_engine);
 
@@ -536,10 +560,9 @@ async fn main() {
         // A real, decodable 1x1 PNG — the previous 3 raw bytes with format
         // string "format" were not a valid image and this step likely failed
         // (or no-opped) on every startup.
-        vision_engine.process_input(
-            DocumentInput::RawImageBytes(&WARMUP_PNG_1X1)
-        )
-    }).await;
+        vision_engine.process_input(DocumentInput::RawImageBytes(&WARMUP_PNG_1X1))
+    })
+    .await;
 
     match vision_warmup_result {
         Ok(Ok(_)) => println!("✅ GOT-OCR 2.0 Vision Engine successfully warmed up."),
@@ -550,9 +573,12 @@ async fn main() {
     let vision_service = Arc::new(VisionChatbotService::new());
 
     // ─── 4. Instantiate Orchestrator and Context States ────────────────────
-    let orchestrator = Arc::new(
-        ChatbotOrchestrator::new(pool.clone(), rag_service.clone(), vision_service, native_engine)
-    );
+    let orchestrator = Arc::new(ChatbotOrchestrator::new(
+        pool.clone(),
+        rag_service.clone(),
+        vision_service,
+        native_engine,
+    ));
     let db_context = DbContext { pool: pool.clone() };
     let history_service = Arc::new(ChatHistoryService::new(db_context));
 
@@ -570,31 +596,38 @@ async fn main() {
         .route("/api/login", post(routes::auth::login))
         .route("/api/google-auth", post(routes::auth::google_auth))
         .route("/api/feedback", post(routes::feedback::submit_feedback))
-        .route("/api/transaction/test", get(routes::transactions::test_route))
+        .route(
+            "/api/transaction/test",
+            get(routes::transactions::test_route),
+        )
         .route(
             "/api/transaction",
-            post(routes::transactions::create_transaction).get(
-                routes::transactions::get_transactions
-            )
+            post(routes::transactions::create_transaction)
+                .get(routes::transactions::get_transactions),
         )
         .route(
             "/api/transaction/:id",
-            delete(routes::transactions::delete_transaction).put(
-                routes::transactions::update_transaction
-            )
+            delete(routes::transactions::delete_transaction)
+                .put(routes::transactions::update_transaction),
         )
-        .route("/api/transaction/receipt/:id", get(routes::transactions::get_receipt))
+        .route(
+            "/api/transaction/receipt/:id",
+            get(routes::transactions::get_receipt),
+        )
         .route("/api/emi/calculate", post(routes::emi::emi_calculate))
         .route("/api/emi/check", post(routes::emi::emi_check))
         .route("/api/emi/create", post(routes::emi::emi_create))
         .route("/api/emi/:id", delete(routes::emi::emi_delete))
-        .route("/api/v1/finance/summary", get(get_protected_finance_summary))
+        .route(
+            "/api/v1/finance/summary",
+            get(get_protected_finance_summary),
+        )
         .route("/api/rag/sync", post(manual_rag_sync_handler))
         .nest("/api/analytics", build_analytics_router(pool))
         .nest("/api/chat", chat_routes(chat_state))
         .route(
             "/api/budget",
-            post(routes::budget::create_or_update_budget).get(routes::budget::get_budgets)
+            post(routes::budget::create_or_update_budget).get(routes::budget::get_budgets),
         )
         .route("/api/budget/:id", delete(routes::budget::delete_budget))
         .route("/api/budget/summary", get(routes::budget::budget_summary))
@@ -602,8 +635,7 @@ async fn main() {
         .layer(Extension(db_ctx))
         .layer(Extension(rag_service));
 
-    let port = std::env
-        ::var("PORT")
+    let port = std::env::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
         .parse::<u16>()
         .expect("PORT environment variable must be a valid number");

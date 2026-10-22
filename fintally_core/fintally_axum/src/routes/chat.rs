@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, sync::Arc};
 
 use crate::auth::Claims;
-use fintally_chatbot::chatbot_service::chatbot_orchestrator::{ChatbotOrchestrator, ChatMessage};
+use fintally_chatbot::chatbot_service::chatbot_orchestrator::{ChatMessage, ChatbotOrchestrator};
 use fintally_chatbot::chatbot_service::vision_service::VisionAttachment;
 use fintally_db::chat_service::ChatHistoryService;
 
@@ -92,12 +92,7 @@ fn parse_json_attachments(
             "image" | "png" | "jpg" | "jpeg" => attachments.push(VisionAttachment::Image(bytes)),
             "pdf" => attachments.push(VisionAttachment::Pdf(bytes)),
             "chart" => attachments.push(VisionAttachment::Chart(bytes)),
-            _ => {
-                return Err((
-                    StatusCode::BAD_REQUEST,
-                    "Unsupported attachment file_type.",
-                ))
-            }
+            _ => return Err((StatusCode::BAD_REQUEST, "Unsupported attachment file_type.")),
         }
     }
 
@@ -115,11 +110,7 @@ async fn chat_stream_endpoint(
     let target_user_id = match claims.user_id.parse::<i64>() {
         Ok(parsed) => parsed,
         Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Invalid User ID format signature.",
-            )
-                .into_response()
+            return (StatusCode::BAD_REQUEST, "Invalid User ID format signature.").into_response()
         }
     };
 
@@ -240,11 +231,7 @@ async fn chat_stream_multipart_endpoint(
     let target_user_id = match claims.user_id.parse::<i64>() {
         Ok(parsed) => parsed,
         Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Invalid User ID format signature.",
-            )
-                .into_response()
+            return (StatusCode::BAD_REQUEST, "Invalid User ID format signature.").into_response()
         }
     };
 
@@ -316,12 +303,11 @@ async fn chat_stream_multipart_endpoint(
         .append_message(target_user_id, "user", &message, session_id, None)
         .await;
 
-    let raw_token_stream = state.orchestrator.clone().chat_stream(
-        target_user_id,
-        message,
-        chat_history,
-        attachments,
-    );
+    let raw_token_stream =
+        state
+            .orchestrator
+            .clone()
+            .chat_stream(target_user_id, message, chat_history, attachments);
 
     let sse_stream = async_stream::stream! {
         tokio::pin!(raw_token_stream);
@@ -351,11 +337,7 @@ async fn chat_once_endpoint(
     let target_user_id = match claims.user_id.parse::<i64>() {
         Ok(parsed) => parsed,
         Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Invalid User ID format signature.",
-            )
-                .into_response()
+            return (StatusCode::BAD_REQUEST, "Invalid User ID format signature.").into_response()
         }
     };
 

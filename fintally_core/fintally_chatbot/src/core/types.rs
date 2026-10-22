@@ -274,7 +274,6 @@ pub enum StatProfileVariant {
     SingleParent,
 }
 
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StatProfile {
     pub metrics: Vec<StatMetric>,

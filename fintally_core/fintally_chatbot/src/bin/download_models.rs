@@ -89,25 +89,19 @@ const QWEN_7B_Q8_0_FILES: &[&str] = &[
 ];
 
 // Qwen 2.5 3B
-const QWEN_3B_Q4_K_M_FILES: &[&str] =
-    &["qwen2.5-3b-instruct-q4_k_m.gguf"];
+const QWEN_3B_Q4_K_M_FILES: &[&str] = &["qwen2.5-3b-instruct-q4_k_m.gguf"];
 
-const QWEN_3B_Q8_0_FILES: &[&str] =
-    &["qwen2.5-3b-instruct-q8_0.gguf"];
+const QWEN_3B_Q8_0_FILES: &[&str] = &["qwen2.5-3b-instruct-q8_0.gguf"];
 
 // Qwen 2.5 1.5B
-const QWEN_1_5B_Q4_K_M_FILES: &[&str] =
-    &["qwen2.5-1.5b-instruct-q4_k_m.gguf"];
+const QWEN_1_5B_Q4_K_M_FILES: &[&str] = &["qwen2.5-1.5b-instruct-q4_k_m.gguf"];
 
-const QWEN_1_5B_Q8_0_FILES: &[&str] =
-    &["qwen2.5-1.5b-instruct-q8_0.gguf"];
+const QWEN_1_5B_Q8_0_FILES: &[&str] = &["qwen2.5-1.5b-instruct-q8_0.gguf"];
 
 // Qwen 2.5 0.5B
-const QWEN_0_5B_Q4_K_M_FILES: &[&str] =
-    &["qwen2.5-0.5b-instruct-q4_k_m.gguf"];
+const QWEN_0_5B_Q4_K_M_FILES: &[&str] = &["qwen2.5-0.5b-instruct-q4_k_m.gguf"];
 
-const QWEN_0_5B_Q8_0_FILES: &[&str] =
-    &["qwen2.5-0.5b-instruct-q8_0.gguf"];
+const QWEN_0_5B_Q8_0_FILES: &[&str] = &["qwen2.5-0.5b-instruct-q8_0.gguf"];
 
 // =============================================================================
 // BGE manifest
@@ -219,14 +213,9 @@ fn detect_system_ram_bytes() -> Option<u64> {
 }
 
 fn parse_positive_watts(value: &str) -> Option<f64> {
-    let cleaned = value
-        .trim()
-        .trim_matches(|c: char| c == '"' || c == '\'');
+    let cleaned = value.trim().trim_matches(|c: char| c == '"' || c == '\'');
 
-    let first_numeric = cleaned
-        .split_whitespace()
-        .next()
-        .unwrap_or(cleaned);
+    let first_numeric = cleaned.split_whitespace().next().unwrap_or(cleaned);
 
     first_numeric
         .parse::<f64>()
@@ -328,12 +317,18 @@ fn detect_nvidia_gpu() -> Option<GpuProfile> {
     for line in stdout.lines() {
         let mut fields = line.split(',');
 
-        let gpu_index = match fields.next().and_then(|value| value.trim().parse::<usize>().ok()) {
+        let gpu_index = match fields
+            .next()
+            .and_then(|value| value.trim().parse::<usize>().ok())
+        {
             Some(index) => index,
             None => continue,
         };
 
-        let memory_mb = match fields.next().and_then(|value| value.trim().parse::<u64>().ok()) {
+        let memory_mb = match fields
+            .next()
+            .and_then(|value| value.trim().parse::<u64>().ok())
+        {
             Some(value) if value > 0 => value,
             _ => continue,
         };
@@ -400,10 +395,8 @@ fn select_optimal_qwen_model(hw: HardwareProfile) -> ModelConfig {
     // -------------------------------------------------------------------------
 
     if ram_gb >= 16.0 {
-        let can_run_7b_q8 = vram_gb >= 12.0
-            && power_watts
-                .map(|watts| watts >= 90.0)
-                .unwrap_or(false);
+        let can_run_7b_q8 =
+            vram_gb >= 12.0 && power_watts.map(|watts| watts >= 90.0).unwrap_or(false);
 
         if can_run_7b_q8 {
             return ModelConfig {
@@ -423,10 +416,8 @@ fn select_optimal_qwen_model(hw: HardwareProfile) -> ModelConfig {
     }
 
     if ram_gb >= 8.0 {
-        let can_run_3b_q8 = vram_gb >= 6.0
-            && power_watts
-                .map(|watts| watts >= 80.0)
-                .unwrap_or(false);
+        let can_run_3b_q8 =
+            vram_gb >= 6.0 && power_watts.map(|watts| watts >= 80.0).unwrap_or(false);
 
         if can_run_3b_q8 {
             return ModelConfig {
@@ -446,10 +437,8 @@ fn select_optimal_qwen_model(hw: HardwareProfile) -> ModelConfig {
     }
 
     if ram_gb >= 4.0 {
-        let can_run_1_5b_q8 = vram_gb >= 4.0
-            && power_watts
-                .map(|watts| watts >= 65.0)
-                .unwrap_or(false);
+        let can_run_1_5b_q8 =
+            vram_gb >= 4.0 && power_watts.map(|watts| watts >= 65.0).unwrap_or(false);
 
         if can_run_1_5b_q8 {
             return ModelConfig {
@@ -540,9 +529,7 @@ impl HuggingFaceDownloader {
                     let shift = (attempt - 1).min(5);
                     let multiplier = 1_u64 << shift;
 
-                    let delay_ms = self
-                        .backoff_ms
-                        .saturating_mul(multiplier);
+                    let delay_ms = self.backoff_ms.saturating_mul(multiplier);
 
                     eprintln!(
                         "⚠️ {} failed (attempt {}/{}). Retrying in {:.1}s...",
@@ -557,10 +544,8 @@ impl HuggingFaceDownloader {
             }
         }
 
-        Err(last_error.unwrap_or_else(|| {
-            anyhow::anyhow!("{} failed without an error", operation)
-        }))
-        .with_context(|| format!("{} failed after {} attempts", operation, self.max_retries))
+        Err(last_error.unwrap_or_else(|| anyhow::anyhow!("{} failed without an error", operation)))
+            .with_context(|| format!("{} failed after {} attempts", operation, self.max_retries))
     }
 
     fn validate_relative_repo_path(path: &str) -> Result<()> {
@@ -587,30 +572,17 @@ impl HuggingFaceDownloader {
         Ok(())
     }
 
-    fn destination_is_usable(
-        destination: &Path,
-        source: &Path,
-    ) -> Result<bool> {
+    fn destination_is_usable(destination: &Path, source: &Path) -> Result<bool> {
         if !destination.exists() {
             return Ok(false);
         }
 
         let destination_size = fs::metadata(destination)
-            .with_context(|| {
-                format!(
-                    "failed to inspect existing destination {:?}",
-                    destination
-                )
-            })?
+            .with_context(|| format!("failed to inspect existing destination {:?}", destination))?
             .len();
 
         let source_size = fs::metadata(source)
-            .with_context(|| {
-                format!(
-                    "failed to inspect cached source {:?}",
-                    source
-                )
-            })?
+            .with_context(|| format!("failed to inspect cached source {:?}", source))?
             .len();
 
         // Zero-byte files are always considered broken.
@@ -629,9 +601,7 @@ impl HuggingFaceDownloader {
     fn atomic_install(&self, source: &Path, destination: &Path) -> Result<()> {
         if let Some(parent) = destination.parent() {
             fs::create_dir_all(parent)
-                .with_context(|| {
-                    format!("failed to create directory {:?}", parent)
-                })?;
+                .with_context(|| format!("failed to create directory {:?}", parent))?;
         }
 
         let file_name = destination
@@ -639,11 +609,7 @@ impl HuggingFaceDownloader {
             .and_then(|name| name.to_str())
             .context("destination filename is not valid UTF-8")?;
 
-        let temporary_name = format!(
-            ".{}.part-{}",
-            file_name,
-            std::process::id()
-        );
+        let temporary_name = format!(".{}.part-{}", file_name, std::process::id());
 
         let temporary_path = destination
             .parent()
@@ -653,28 +619,19 @@ impl HuggingFaceDownloader {
         // A stale temporary file from a previous crash must never be reused.
         let _ = fs::remove_file(&temporary_path);
 
-        fs::copy(source, &temporary_path)
-            .with_context(|| {
-                format!(
-                    "failed copying cached file {:?} -> {:?}",
-                    source,
-                    temporary_path
-                )
-            })?;
+        fs::copy(source, &temporary_path).with_context(|| {
+            format!(
+                "failed copying cached file {:?} -> {:?}",
+                source, temporary_path
+            )
+        })?;
 
         let copied_size = fs::metadata(&temporary_path)
-            .with_context(|| {
-                format!(
-                    "failed to inspect temporary file {:?}",
-                    temporary_path
-                )
-            })?
+            .with_context(|| format!("failed to inspect temporary file {:?}", temporary_path))?
             .len();
 
         let source_size = fs::metadata(source)
-            .with_context(|| {
-                format!("failed to inspect source {:?}", source)
-            })?
+            .with_context(|| format!("failed to inspect source {:?}", source))?
             .len();
 
         if copied_size == 0 || copied_size != source_size {
@@ -693,9 +650,7 @@ impl HuggingFaceDownloader {
         // copy has succeeded.
         if destination.exists() {
             fs::remove_file(destination)
-                .with_context(|| {
-                    format!("failed removing stale destination {:?}", destination)
-                })?;
+                .with_context(|| format!("failed removing stale destination {:?}", destination))?;
         }
 
         if let Err(error) = fs::rename(&temporary_path, destination) {
@@ -704,8 +659,7 @@ impl HuggingFaceDownloader {
             return Err(error).with_context(|| {
                 format!(
                     "failed atomically installing {:?} -> {:?}",
-                    temporary_path,
-                    destination
+                    temporary_path, destination
                 )
             });
         }
@@ -723,26 +677,14 @@ impl HuggingFaceDownloader {
 
         let destination = destination_root.join(repository_filename);
 
-        let cached_path = self.retry(
-            &format!("download {}", repository_filename),
-            || {
-                repo.get(repository_filename)
-                    .with_context(|| {
-                        format!(
-                            "failed downloading repository file {}",
-                            repository_filename
-                        )
-                    })
-            },
-        )?;
+        let cached_path = self.retry(&format!("download {}", repository_filename), || {
+            repo.get(repository_filename).with_context(|| {
+                format!("failed downloading repository file {}", repository_filename)
+            })
+        })?;
 
         let source_size = fs::metadata(&cached_path)
-            .with_context(|| {
-                format!(
-                    "failed reading cached file metadata {:?}",
-                    cached_path
-                )
-            })?
+            .with_context(|| format!("failed reading cached file metadata {:?}", cached_path))?
             .len();
 
         if source_size == 0 {
@@ -753,10 +695,7 @@ impl HuggingFaceDownloader {
         }
 
         if Self::destination_is_usable(&destination, &cached_path)? {
-            println!(
-                "⏭️ Up to date: {}",
-                repository_filename
-            );
+            println!("⏭️ Up to date: {}", repository_filename);
 
             return Ok(());
         }
@@ -770,12 +709,7 @@ impl HuggingFaceDownloader {
         self.atomic_install(&cached_path, &destination)?;
 
         let installed_size = fs::metadata(&destination)
-            .with_context(|| {
-                format!(
-                    "failed inspecting installed file {:?}",
-                    destination
-                )
-            })?
+            .with_context(|| format!("failed inspecting installed file {:?}", destination))?
             .len();
 
         if installed_size != source_size {
@@ -799,12 +733,7 @@ impl HuggingFaceDownloader {
         let destination_dir = destination_dir.as_ref();
 
         fs::create_dir_all(destination_dir)
-            .with_context(|| {
-                format!(
-                    "failed to create output directory {:?}",
-                    destination_dir
-                )
-            })?;
+            .with_context(|| format!("failed to create output directory {:?}", destination_dir))?;
 
         println!();
         println!("📦 Repository: {}", repo_id);
@@ -814,13 +743,9 @@ impl HuggingFaceDownloader {
         let repo_info = self.retry(
             &format!("repository metadata lookup for {}", repo_id),
             || {
-                repo.info()
-                    .with_context(|| {
-                        format!(
-                            "failed looking up repository metadata for {}",
-                            repo_id
-                        )
-                    })
+                repo.info().with_context(|| {
+                    format!("failed looking up repository metadata for {}", repo_id)
+                })
             },
         )?;
 
@@ -843,17 +768,10 @@ impl HuggingFaceDownloader {
         }
 
         for required in required_files {
-            self.sync_one(
-                &repo,
-                required,
-                destination_dir,
-            )?;
+            self.sync_one(&repo, required, destination_dir)?;
         }
 
-        println!(
-            "✅ Repository ready: {}",
-            destination_dir.display()
-        );
+        println!("✅ Repository ready: {}", destination_dir.display());
 
         Ok(())
     }
@@ -877,13 +795,11 @@ fn print_selected_model(config: ModelConfig) {
 }
 
 fn validate_output_roots() -> Result<()> {
-    for path in [
-        QWEN_OUTPUT_DIR,
-        BGE_OUTPUT_DIR,
-    ] {
-        if Path::new(path).components().any(|component| {
-            matches!(component, Component::ParentDir)
-        }) {
+    for path in [QWEN_OUTPUT_DIR, BGE_OUTPUT_DIR] {
+        if Path::new(path)
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
+        {
             bail!("unsafe output directory configured: {}", path);
         }
     }
@@ -901,8 +817,7 @@ fn main() -> Result<()> {
     println!(" Production Hardware-Adaptive Hugging Face Synchronization");
     println!("==============================================================");
 
-    validate_output_roots()
-        .context("output path validation failed")?;
+    validate_output_roots().context("output path validation failed")?;
 
     // -------------------------------------------------------------------------
     // 1. Hardware detection
@@ -925,9 +840,7 @@ fn main() -> Result<()> {
 
             match gpu.power_limit_watts {
                 Some(power) => println!("   TGP  : {:.0} W", power),
-                None => println!(
-                    "   TGP  : unavailable from NVIDIA driver (treated as unknown)"
-                ),
+                None => println!("   TGP  : unavailable from NVIDIA driver (treated as unknown)"),
             }
         }
 
@@ -940,8 +853,8 @@ fn main() -> Result<()> {
     // 2. Build HF client once
     // -------------------------------------------------------------------------
 
-    let downloader = HuggingFaceDownloader::new()
-        .context("failed to initialize model downloader")?;
+    let downloader =
+        HuggingFaceDownloader::new().context("failed to initialize model downloader")?;
 
     // -------------------------------------------------------------------------
     // 3. Dynamic Qwen selection
@@ -952,11 +865,7 @@ fn main() -> Result<()> {
     print_selected_model(qwen_config);
 
     downloader
-        .sync_exact_files(
-            qwen_config.repo_id,
-            QWEN_OUTPUT_DIR,
-            qwen_config.files,
-        )
+        .sync_exact_files(qwen_config.repo_id, QWEN_OUTPUT_DIR, qwen_config.files)
         .context("Qwen model synchronization failed")?;
 
     // -------------------------------------------------------------------------
@@ -971,11 +880,7 @@ fn main() -> Result<()> {
     // - avoiding pickle-based artifacts reduces the deployment attack surface
 
     downloader
-        .sync_exact_files(
-            "BAAI/bge-small-en-v1.5",
-            BGE_OUTPUT_DIR,
-            BGE_FILES,
-        )
+        .sync_exact_files("BAAI/bge-small-en-v1.5", BGE_OUTPUT_DIR, BGE_FILES)
         .context("BGE model synchronization failed")?;
 
     // -------------------------------------------------------------------------
@@ -985,17 +890,11 @@ fn main() -> Result<()> {
     println!();
     println!("🔎 Final artifact validation");
 
-    for directory in [
-        QWEN_OUTPUT_DIR,
-        BGE_OUTPUT_DIR,
-    ] {
+    for directory in [QWEN_OUTPUT_DIR, BGE_OUTPUT_DIR] {
         let path = Path::new(directory);
 
         if !path.exists() {
-            bail!(
-                "expected model directory does not exist: {}",
-                directory
-            );
+            bail!("expected model directory does not exist: {}", directory);
         }
 
         println!("   ✅ {}", path.display());

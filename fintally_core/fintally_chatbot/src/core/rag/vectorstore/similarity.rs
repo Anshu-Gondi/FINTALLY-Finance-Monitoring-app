@@ -1,7 +1,7 @@
 pub struct Similarity;
 
 impl Similarity {
-    /// Public entry point. Performs quick sanity checks and invokes runtime dispatching 
+    /// Public entry point. Performs quick sanity checks and invokes runtime dispatching
     /// to choose the best physical SIMD layer available on the host processor.
     pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
         if a.len() != b.len() || a.is_empty() {
@@ -220,9 +220,18 @@ mod tests {
     fn test_hardware_diagnostic_printout() {
         // Run with `cargo test -- --nocapture` to see what path your chip uses!
         println!("\n=== HOST CPU DETECTED ARCHITECTURAL LAYERS ===");
-        println!("  -> AVX-512 Support : {}", is_x86_feature_detected!("avx512f"));
-        println!("  -> AVX2+FMA Support: {}", is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma"));
-        println!("  -> SSE4.2 Support  : {}", is_x86_feature_detected!("sse4.2"));
+        println!(
+            "  -> AVX-512 Support : {}",
+            is_x86_feature_detected!("avx512f")
+        );
+        println!(
+            "  -> AVX2+FMA Support: {}",
+            is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma")
+        );
+        println!(
+            "  -> SSE4.2 Support  : {}",
+            is_x86_feature_detected!("sse4.2")
+        );
         println!("==============================================\n");
     }
 
@@ -233,37 +242,49 @@ mod tests {
     fn test_cosine_similarity_identical_vectors() {
         let vec_a = vec![1.0, 2.0, 3.0, 4.0];
         let vec_b = vec![1.0, 2.0, 3.0, 4.0];
-        
+
         let score = Similarity::cosine_similarity(&vec_a, &vec_b);
-        assert!(approx_eq(score, 1.0), "Identical vectors must return 1.0, got: {score}");
+        assert!(
+            approx_eq(score, 1.0),
+            "Identical vectors must return 1.0, got: {score}"
+        );
     }
 
     #[test]
     fn test_cosine_similarity_orthogonal_vectors() {
         let vec_a = vec![1.0, 0.0, 0.0, 0.0];
         let vec_b = vec![0.0, 1.0, 0.0, 0.0];
-        
+
         let score = Similarity::cosine_similarity(&vec_a, &vec_b);
-        assert!(approx_eq(score, 0.0), "Orthogonal vectors must return 0.0, got: {score}");
+        assert!(
+            approx_eq(score, 0.0),
+            "Orthogonal vectors must return 0.0, got: {score}"
+        );
     }
 
     #[test]
     fn test_cosine_similarity_inverse_vectors() {
         let vec_a = vec![2.0, -4.0, 5.5];
         let vec_b = vec![-2.0, 4.0, -5.5];
-        
+
         let score = Similarity::cosine_similarity(&vec_a, &vec_b);
-        assert!(approx_eq(score, -1.0), "Exactly reversed vectors must return -1.0, got: {score}");
+        assert!(
+            approx_eq(score, -1.0),
+            "Exactly reversed vectors must return -1.0, got: {score}"
+        );
     }
 
     #[test]
     fn test_safety_guardrails_on_empty_and_mismatched() {
         // Size mismatch check
-        assert_eq!(Similarity::cosine_similarity(&[1.0, 2.0], &[1.0, 2.0, 3.0]), 0.0);
-        
+        assert_eq!(
+            Similarity::cosine_similarity(&[1.0, 2.0], &[1.0, 2.0, 3.0]),
+            0.0
+        );
+
         // Cold empty slice check
         assert_eq!(Similarity::cosine_similarity(&[], &[]), 0.0);
-        
+
         // Zero division / Zero magnitude check
         assert_eq!(Similarity::cosine_similarity(&[0.0, 0.0], &[1.0, 5.0]), 0.0);
     }

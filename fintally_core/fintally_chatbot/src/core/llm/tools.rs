@@ -169,7 +169,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Loan Assessment =================
         json!({
             "type": "function",
@@ -201,7 +200,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Emergency Fund =================
         json!({
             "type": "function",
@@ -222,7 +220,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Savings Projection =================
         json!({
             "type": "function",
@@ -239,7 +236,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Tax Calculation =================
         json!({
             "type": "function",
@@ -256,7 +252,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Investment Planner =================
         json!({
             "type": "function",
@@ -287,7 +282,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Cashflow Tool ==================
         json!({
             "type": "function",
@@ -314,7 +308,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Budget =================
         json!({
             "type": "function",
@@ -340,7 +333,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Profile Similarity =================
         json!({
             "type": "function",
@@ -361,7 +353,6 @@ pub fn tool_definitions() -> Vec<Value> {
                 }
             }
         }),
-
         // ================= Stat Analysis =================
         json!({
             "type": "function",
@@ -387,7 +378,7 @@ pub fn tool_definitions() -> Vec<Value> {
                     "required": ["profile"]
                 }
             }
-        })
+        }),
     ]
 }
 
@@ -395,7 +386,10 @@ pub fn tool_definitions() -> Vec<Value> {
 // 3. Pre-Execution Schema Validator
 // ============================================================================
 
-pub fn validate_arguments(tool_name: &str, arguments: &mut Value) -> Result<(), ToolDiagnosticReport> {
+pub fn validate_arguments(
+    tool_name: &str,
+    arguments: &mut Value,
+) -> Result<(), ToolDiagnosticReport> {
     let schema = match get_tool_schema(tool_name) {
         Some(s) => s,
         None => {
@@ -443,7 +437,11 @@ pub fn validate_arguments(tool_name: &str, arguments: &mut Value) -> Result<(), 
                             if val.is_number() {
                                 true
                             } else if let Some(s) = val.as_str() {
-                                let cleaned = s.replace('₹', "").replace('$', "").replace(',', "").replace(' ', "");
+                                let cleaned = s
+                                    .replace('₹', "")
+                                    .replace('$', "")
+                                    .replace(',', "")
+                                    .replace(' ', "");
                                 if let Ok(parsed) = cleaned.parse::<f64>() {
                                     *val = json!(parsed);
                                     true
@@ -458,7 +456,11 @@ pub fn validate_arguments(tool_name: &str, arguments: &mut Value) -> Result<(), 
                             if val.is_i64() || val.is_u64() {
                                 true
                             } else if let Some(s) = val.as_str() {
-                                let cleaned = s.replace('₹', "").replace('$', "").replace(',', "").replace(' ', "");
+                                let cleaned = s
+                                    .replace('₹', "")
+                                    .replace('$', "")
+                                    .replace(',', "")
+                                    .replace(' ', "");
                                 if let Ok(parsed) = cleaned.parse::<i64>() {
                                     *val = json!(parsed);
                                     true
@@ -481,7 +483,10 @@ pub fn validate_arguments(tool_name: &str, arguments: &mut Value) -> Result<(), 
                             field: key.clone(),
                             expected_type: expected_type.to_string(),
                             actual_value: Some(val.clone()),
-                            issue: format!("Value for field '{}' must be of type '{}'.", key, expected_type),
+                            issue: format!(
+                                "Value for field '{}' must be of type '{}'.",
+                                key, expected_type
+                            ),
                         });
                     }
                 }
@@ -638,7 +643,10 @@ pub async fn execute_tool_async(
                         }],
                         expected_schema: get_tool_schema(tool_name),
                         available_tools: ToolName::all_names(),
-                        remediation_prompt: format!("Provide a valid tax profile name. Details: {}", e),
+                        remediation_prompt: format!(
+                            "Provide a valid tax profile name. Details: {}",
+                            e
+                        ),
                     });
                 }
             }

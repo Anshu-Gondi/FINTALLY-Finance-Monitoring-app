@@ -1,6 +1,5 @@
 use std::{
-    env,
-    fs,
+    env, fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -41,9 +40,9 @@ fn cmake_bool(value: bool) -> &'static str {
 // ============================================================================
 
 fn run_command(command: &mut Command, description: &str) {
-    let status = command.status().unwrap_or_else(|error| {
-        panic!("[FinOCR] Failed to execute {description}: {error}")
-    });
+    let status = command
+        .status()
+        .unwrap_or_else(|error| panic!("[FinOCR] Failed to execute {description}: {error}"));
 
     if !status.success() {
         panic!("[FinOCR] {description} failed with status: {status}");
@@ -71,11 +70,7 @@ fn find_file(root: &Path, filename: &str) -> Option<PathBuf> {
         let path = entry.path();
 
         if path.is_file() {
-            if path
-                .file_name()
-                .and_then(|name| name.to_str())
-                == Some(filename)
-            {
+            if path.file_name().and_then(|name| name.to_str()) == Some(filename) {
                 return Some(path);
             }
         } else if path.is_dir() {
@@ -92,11 +87,7 @@ fn find_file(root: &Path, filename: &str) -> Option<PathBuf> {
 // Find CMake-generated native library (Target OS aware)
 // ============================================================================
 
-fn find_native_library(
-    cmake_build_dir: &Path,
-    shared: bool,
-    target_os: &str,
-) -> PathBuf {
+fn find_native_library(cmake_build_dir: &Path, shared: bool, target_os: &str) -> PathBuf {
     let candidates: &[&str] = if target_os == "windows" {
         if shared {
             &["fin_ocr_native.lib", "fin_ocr_native.dll"]
@@ -173,22 +164,34 @@ fn setup_native_link(shared: bool, target_os: &str) {
 fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
 
-    let manifest_dir = PathBuf::from(
-        env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is not set"),
-    );
+    let manifest_dir =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is not set"));
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR is not set"));
 
     let cpp_engine_dir = manifest_dir.join(CPP_ENGINE_DIR);
     let cmake_build_dir = out_dir.join("fin_ocr_cmake");
 
-    fs::create_dir_all(&cmake_build_dir)
-        .expect("[FinOCR] Failed to create CMake build directory");
+    fs::create_dir_all(&cmake_build_dir).expect("[FinOCR] Failed to create CMake build directory");
 
     // Rebuild triggers - Source files
-    println!("cargo:rerun-if-changed={}", cpp_engine_dir.join("CMakeLists.txt").display());
-    println!("cargo:rerun-if-changed={}", manifest_dir.join(CPP_HEADER).display());
-    println!("cargo:rerun-if-changed={}", manifest_dir.join("cpp_engine/src/ffi_bridge.cpp").display());
-    println!("cargo:rerun-if-changed={}", manifest_dir.join("cpp_engine/src/ocr_pipeline.cpp").display());
+    println!(
+        "cargo:rerun-if-changed={}",
+        cpp_engine_dir.join("CMakeLists.txt").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir.join(CPP_HEADER).display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir.join("cpp_engine/src/ffi_bridge.cpp").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        manifest_dir
+            .join("cpp_engine/src/ocr_pipeline.cpp")
+            .display()
+    );
 
     // Rebuild triggers - Environment variables
     println!("cargo:rerun-if-env-changed=PDFIUM_ROOT_DIR");
@@ -213,16 +216,33 @@ fn main() {
     // CMake Configure
     let mut configure = Command::new("cmake");
     configure
-        .arg("-S").arg(&cpp_engine_dir)
-        .arg("-B").arg(&cmake_build_dir)
+        .arg("-S")
+        .arg(&cpp_engine_dir)
+        .arg("-B")
+        .arg(&cmake_build_dir)
         .arg("-DCMAKE_BUILD_TYPE=Release")
-        .arg(format!("-DFIN_BUILD_SHARED={}", cmake_bool(fin_build_shared)))
-        .arg(format!("-DFIN_ENABLE_NATIVE={}", cmake_bool(fin_enable_native)))
+        .arg(format!(
+            "-DFIN_BUILD_SHARED={}",
+            cmake_bool(fin_build_shared)
+        ))
+        .arg(format!(
+            "-DFIN_ENABLE_NATIVE={}",
+            cmake_bool(fin_enable_native)
+        ))
         .arg(format!("-DFIN_ENABLE_AVX2={}", cmake_bool(fin_enable_avx2)))
-        .arg(format!("-DFIN_ENABLE_AVX512={}", cmake_bool(fin_enable_avx512)))
+        .arg(format!(
+            "-DFIN_ENABLE_AVX512={}",
+            cmake_bool(fin_enable_avx512)
+        ))
         .arg(format!("-DFIN_ENABLE_LTO={}", cmake_bool(fin_enable_lto)))
-        .arg(format!("-DFIN_ENABLE_TESSERACT={}", cmake_bool(fin_enable_tesseract)))
-        .arg(format!("-DFIN_WARNINGS_AS_ERRORS={}", cmake_bool(fin_warnings_as_errors)));
+        .arg(format!(
+            "-DFIN_ENABLE_TESSERACT={}",
+            cmake_bool(fin_enable_tesseract)
+        ))
+        .arg(format!(
+            "-DFIN_WARNINGS_AS_ERRORS={}",
+            cmake_bool(fin_warnings_as_errors)
+        ));
 
     if let Ok(pdfium_root) = env::var("PDFIUM_ROOT_DIR") {
         configure.arg(format!("-DPDFIUM_ROOT_DIR={pdfium_root}"));
@@ -237,9 +257,12 @@ fn main() {
     // CMake Build
     let mut build = Command::new("cmake");
     build
-        .arg("--build").arg(&cmake_build_dir)
-        .arg("--target").arg(CMAKE_NATIVE_TARGET)
-        .arg("--config").arg("Release");
+        .arg("--build")
+        .arg(&cmake_build_dir)
+        .arg("--target")
+        .arg(CMAKE_NATIVE_TARGET)
+        .arg("--config")
+        .arg("Release");
 
     if let Ok(num_jobs) = env::var("NUM_JOBS") {
         if let Ok(jobs) = num_jobs.parse::<usize>() {
@@ -251,12 +274,23 @@ fn main() {
 
     // Locate Built Native Library
     let native_library = find_native_library(&cmake_build_dir, fin_build_shared, &target_os);
-    let native_library_dir = native_library.parent().expect("[FinOCR] Missing parent dir");
+    let native_library_dir = native_library
+        .parent()
+        .expect("[FinOCR] Missing parent dir");
 
     // Emit search paths first
-    println!("cargo:rustc-link-search=native={}", native_library_dir.display());
-    println!("cargo:rustc-link-search=native={}", cmake_build_dir.display());
-    println!("cargo:rustc-link-search=native={}", cmake_build_dir.join("lib").display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        native_library_dir.display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        cmake_build_dir.display()
+    );
+    println!(
+        "cargo:rustc-link-search=native={}",
+        cmake_build_dir.join("lib").display()
+    );
 
     setup_native_link(fin_build_shared, &target_os);
 

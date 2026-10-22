@@ -1,0 +1,77 @@
+[package]
+name = "offline_builder"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+license-file.workspace = true
+
+# ============================================================================
+# FEATURES
+# ============================================================================
+
+[features]
+default = []
+
+# Enable CUDA acceleration for K-means / other offline numerical kernels.
+cuda = ["dep:cudarc"]
+
+# ============================================================================
+# RUNTIME DEPENDENCIES
+# ============================================================================
+
+[dependencies]
+anyhow = "1"
+walkdir = "2"
+clap = { version = "4", features = ["derive"] }
+csv = "1.4"
+
+# MP3 is the current input format for SPS/Common Voice datasets.
+symphonia = { version = "0.6.1", features = ["mp3"] }
+
+# Offline sample-rate conversion to the canonical 16 kHz pipeline.
+rubato = "5.0.1"
+audioadapter-buffers = "5.1"
+
+# WAV output.
+hound = "3.5.1"
+
+# Offline conversion, feature extraction and CPU K-means.
+rayon = "1.12"
+
+# Deterministic / controlled initialization.
+rand = "0.10"
+
+# Builder configuration, manifests and statistics.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Progress / status.
+indicatif = "0.18"
+
+# Structured logging.
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+
+# Optional CUDA 12.1 backend.
+cudarc = { version = "0.19.8", optional = true, features = ["cuda-12010"] }
+
+
+[build-dependencies]
+# ============================================================================
+# BUILD DEPENDENCIES — native C23 bridge
+# ============================================================================
+
+# CMake remains the canonical build system for ../c_core.
+cmake = "0.1.58"
+
+# Compile only the thin C bridge; do not duplicate the C-core source list here.
+cc = "1.8.0"
+
+# Disable the optional prettyplease formatter to avoid the syn-major mismatch.
+# Preserve runtime libclang loading and bindgen logging.
+bindgen = {
+    version = "0.73.2",
+    default-features = false,
+    features = ["runtime", "logging"]
+}

@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use super::similarity::Similarity;
 use crate::core::rag::embedding::types::DocumentChunk;
 use crate::core::rag::errors::RagError;
-use super::similarity::Similarity;
+use std::collections::HashMap;
 
 pub struct MemoryVectorStore {
     // Retained for O(1) direct chunk retrieval by ID
@@ -35,16 +35,15 @@ impl MemoryVectorStore {
     pub fn search(
         &self,
         query_vector: &[f32],
-        top_k: usize
+        top_k: usize,
     ) -> Result<Vec<(DocumentChunk, f32)>, RagError> {
         if self.flat_vectors.is_empty() {
             return Ok(Vec::new());
         }
 
         // 1. Pre-allocate reference arrays on the stack to prevent dynamic loop scaling
-        let mut intermediate_matches: Vec<(&DocumentChunk, f32)> = Vec::with_capacity(
-            self.flat_vectors.len()
-        );
+        let mut intermediate_matches: Vec<(&DocumentChunk, f32)> =
+            Vec::with_capacity(self.flat_vectors.len());
 
         // 2. Continuous linear stream pass over adjacent memory addresses
         for (id, vec) in &self.flat_vectors {
@@ -59,9 +58,8 @@ impl MemoryVectorStore {
         }
 
         // 3. In-place unstable sort without auxiliary memory heap usage
-        intermediate_matches.sort_unstable_by(|a, b|
-            b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
-        );
+        intermediate_matches
+            .sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         if intermediate_matches.len() > top_k {
             intermediate_matches.truncate(top_k);
@@ -87,16 +85,15 @@ impl MemoryVectorStore {
 mod tests {
     use super::*;
     use crate::core::rag::embedding::types::DocumentChunk;
-    
 
     /// Helper to easily spawn dummy document chunks matching your schema fields
     fn make_mock_chunk(id: u64, text: &str) -> DocumentChunk {
         DocumentChunk {
             id,
             document_id: "default_doc".into(), // Add this field
-            sequence_index: 0, // Add this field
-            text: text.into(), // Use .into() to convert String/&str to Box<str>
-            metadata: Box::from([]), // Assuming your metadata is now a box-slice
+            sequence_index: 0,                 // Add this field
+            text: text.into(),                 // Use .into() to convert String/&str to Box<str>
+            metadata: Box::from([]),           // Assuming your metadata is now a box-slice
         }
     }
 
@@ -107,7 +104,10 @@ mod tests {
 
         let result = store.search(&query, 5);
         assert!(result.is_ok());
-        assert!(result.unwrap().is_empty(), "Empty store should return zero matches safely.");
+        assert!(
+            result.unwrap().is_empty(),
+            "Empty store should return zero matches safely."
+        );
     }
 
     #[test]
@@ -123,7 +123,9 @@ mod tests {
         assert!(fetched.is_some());
         assert_eq!(
             fetched.unwrap().text,
-            "Direct memory allocation lookup verification.".to_string().into_boxed_str()
+            "Direct memory allocation lookup verification."
+                .to_string()
+                .into_boxed_str()
         );
         // Verify missing key requests return None safely
         assert!(store.get_chunk(999).is_none());
@@ -165,10 +167,16 @@ mod tests {
         let (ref first_chunk, first_score) = matches[0];
         let (ref second_chunk, second_score) = matches[1];
 
-        assert_eq!(first_chunk.id, 101, "Highest scoring item did not rank first.");
+        assert_eq!(
+            first_chunk.id, 101,
+            "Highest scoring item did not rank first."
+        );
         assert!(first_score > 0.99);
 
-        assert_eq!(second_chunk.id, 102, "Secondary ranked item missed positional slot matching.");
+        assert_eq!(
+            second_chunk.id, 102,
+            "Secondary ranked item missed positional slot matching."
+        );
         assert!(second_score < 0.01 && second_score > -0.01);
     }
 

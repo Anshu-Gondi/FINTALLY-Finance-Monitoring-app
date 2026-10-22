@@ -1,14 +1,14 @@
 use std::collections::{BTreeMap, HashMap};
-use std::time::Instant;
 use std::path::Path;
+use std::time::Instant;
 
-use crate::core::rag::errors::RagError;
-use crate::core::rag::dto::{IngestionResponse, QueryResponse, TextChunkMatch};
-use crate::core::rag::ingestion::IngestionPipeline;
-use crate::core::rag::vectorstore::{UsearchStore, MemoryVectorStore, StorePersistence};
-use crate::core::rag::embedding::EmbeddingGenerator;
-use crate::core::rag::retrieval::VectorRetriever;
 use crate::core::rag::context::ContextFormatter;
+use crate::core::rag::dto::{IngestionResponse, QueryResponse, TextChunkMatch};
+use crate::core::rag::embedding::EmbeddingGenerator;
+use crate::core::rag::errors::RagError;
+use crate::core::rag::ingestion::IngestionPipeline;
+use crate::core::rag::retrieval::VectorRetriever;
+use crate::core::rag::vectorstore::{MemoryVectorStore, StorePersistence, UsearchStore};
 
 pub struct RagService {
     pipeline: IngestionPipeline,
@@ -52,7 +52,7 @@ impl RagService {
         let start_time = Instant::now();
         let chunks = self.pipeline.process_file(file_path)?;
         let chunks_count = chunks.len();
-        
+
         if chunks.is_empty() {
             return Ok(IngestionResponse {
                 document_id: file_path.into(),
@@ -66,10 +66,10 @@ impl RagService {
 
         for chunk in chunks {
             let chunk_id = chunk.id;
-            
+
             // Native Candle execution loop occurs here
             let embedding = self.generator.generate(chunk_id, &chunk.text)?;
-            
+
             self.vector_store.add_vector(chunk_id, &embedding.vector)?;
             self.memory_store.insert(chunk, embedding.vector.into_vec());
         }
@@ -91,7 +91,7 @@ impl RagService {
         query_text: &str,
         top_k: Option<usize>,
         score_threshold: Option<f32>,
-        filters: Option<BTreeMap<Box<str>, Box<str>>>, 
+        filters: Option<BTreeMap<Box<str>, Box<str>>>,
     ) -> Result<QueryResponse, RagError> {
         let limit = top_k.unwrap_or(self.default_top_k);
         let query_embedding = self.generator.generate(0, query_text)?;
@@ -112,7 +112,10 @@ impl RagService {
         )?;
 
         let filtered_matches: Vec<_> = if let Some(threshold) = score_threshold {
-            matched_results.into_iter().filter(|(_, score)| *score >= threshold).collect()
+            matched_results
+                .into_iter()
+                .filter(|(_, score)| *score >= threshold)
+                .collect()
         } else {
             matched_results
         };
@@ -124,7 +127,9 @@ impl RagService {
                 document_id: chunk.document_id.clone().into(),
                 text: chunk.text.clone().into(),
                 score: *score,
-                metadata: chunk.metadata.iter()
+                metadata: chunk
+                    .metadata
+                    .iter()
                     .map(|(k, v)| (k.clone().into(), v.clone().into()))
                     .collect(),
             })
@@ -139,12 +144,18 @@ impl RagService {
     }
 
     pub fn save_to_disk(&self) -> Result<(), RagError> {
-        let idx_p = self.index_path.as_ref().ok_or_else(|| RagError::SerializationError("Missing Index Dump Path Setup".into()))?;
-        let chk_p = self.chunks_path.as_ref().ok_or_else(|| RagError::SerializationError("Missing Chunks Dump Path Setup".into()))?;
+        let idx_p = self
+            .index_path
+            .as_ref()
+            .ok_or_else(|| RagError::SerializationError("Missing Index Dump Path Setup".into()))?;
+        let chk_p = self
+            .chunks_path
+            .as_ref()
+            .ok_or_else(|| RagError::SerializationError("Missing Chunks Dump Path Setup".into()))?;
 
         let mut all_chunks = Vec::new();
         let mut counter = 1u64;
-        
+
         while let Some(chunk) = self.memory_store.get_chunk(counter) {
             all_chunks.push(chunk.clone());
             counter += 1;
@@ -156,8 +167,12 @@ impl RagService {
     }
 
     pub fn load_from_disk(&mut self) -> Result<(), RagError> {
-        let idx_p = self.index_path.as_ref().ok_or_else(|| RagError::SerializationError("Missing Index Restoration Target Path".into()))?;
-        let chk_p = self.chunks_path.as_ref().ok_or_else(|| RagError::SerializationError("Missing Chunks Restoration Target Path".into()))?;
+        let idx_p = self.index_path.as_ref().ok_or_else(|| {
+            RagError::SerializationError("Missing Index Restoration Target Path".into())
+        })?;
+        let chk_p = self.chunks_path.as_ref().ok_or_else(|| {
+            RagError::SerializationError("Missing Chunks Restoration Target Path".into())
+        })?;
 
         if !Path::new(idx_p).exists() || !Path::new(chk_p).exists() {
             return Err(RagError::IoError(std::io::Error::new(
@@ -190,26 +205,29 @@ mod tests {
 
     const BGE_VAULT_PATH: &str = "../llm_models/embedding/bge_safetensors_output";
 
-    fn setup_test_service(index_path: Option<String>, chunks_path: Option<String>) -> Option<RagService> {
+    fn setup_test_service(
+        index_path: Option<String>,
+        chunks_path: Option<String>,
+    ) -> Option<RagService> {
         if !Path::new(BGE_VAULT_PATH).exists() {
             return None; // Guard for headless testing envs without large assets
         }
 
-        let pipeline = IngestionPipeline::new(512, 50); 
-        let vector_store = UsearchStore::new(384, 1000).expect("Failed to init Usearch"); 
+        let pipeline = IngestionPipeline::new(512, 50);
+        let vector_store = UsearchStore::new(384, 1000).expect("Failed to init Usearch");
         let memory_store = MemoryVectorStore::new();
-        
+
         let embedder = NativeEmbedder::load_from_vault(BGE_VAULT_PATH).unwrap();
         let generator = EmbeddingGenerator::new(Arc::new(embedder));
         let retriever = VectorRetriever::new(0.5);
-        
+
         Some(RagService::new(
             pipeline,
             vector_store,
             memory_store,
             generator,
             retriever,
-            5, 
+            5,
             index_path,
             chunks_path,
         ))
@@ -217,16 +235,21 @@ mod tests {
 
     #[test]
     fn test_has_persisted_data_validation() {
-        let Some(service_no_path) = setup_test_service(None, None) else { return; };
+        let Some(service_no_path) = setup_test_service(None, None) else {
+            return;
+        };
         assert!(!service_no_path.has_persisted_data());
 
-        let service_with_paths = setup_test_service(Some("index.bin".into()), Some("chunks.json".into())).unwrap();
+        let service_with_paths =
+            setup_test_service(Some("index.bin".into()), Some("chunks.json".into())).unwrap();
         let _ = service_with_paths.has_persisted_data();
     }
 
     #[test]
     fn test_save_to_disk_missing_paths_errors() {
-        let Some(service) = setup_test_service(None, None) else { return; };
+        let Some(service) = setup_test_service(None, None) else {
+            return;
+        };
         let result = service.save_to_disk();
         assert!(result.is_err());
     }

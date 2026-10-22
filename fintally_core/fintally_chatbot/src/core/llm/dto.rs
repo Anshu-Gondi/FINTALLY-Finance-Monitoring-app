@@ -1,6 +1,6 @@
 // src/core/llm/dto.rs
-use serde::{Deserialize, Serialize};
 use crate::core::types::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct EmergencyFundArgs {

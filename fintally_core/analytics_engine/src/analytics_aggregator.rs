@@ -1,8 +1,8 @@
-use std::collections::HashMap;
-use time::{Date, Duration, OffsetDateTime, PrimitiveDateTime};
+use fintally_db::models::RecurringFrequency;
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
-use fintally_db::models::RecurringFrequency;
+use std::collections::HashMap;
+use time::{Date, Duration, OffsetDateTime, PrimitiveDateTime};
 
 /// Helper to parse datetime strings across various formats (RFC3339, custom UTC format, or simple dates)
 fn parse_datetime(s: &str) -> Option<OffsetDateTime> {
@@ -12,23 +12,30 @@ fn parse_datetime(s: &str) -> Option<OffsetDateTime> {
     }
 
     // 2. Try "YYYY-MM-DD HH:MM:SS.fff UTC" / "YYYY-MM-DD HH:MM:SS UTC"
-    let fmt_utc_sub = time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond] UTC");
+    let fmt_utc_sub = time::macros::format_description!(
+        "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond] UTC"
+    );
     if let Ok(p) = PrimitiveDateTime::parse(s, &fmt_utc_sub) {
         return Some(p.assume_utc());
     }
 
-    let fmt_utc = time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second] UTC");
+    let fmt_utc =
+        time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second] UTC");
     if let Ok(p) = PrimitiveDateTime::parse(s, &fmt_utc) {
         return Some(p.assume_utc());
     }
 
     // 3. Try "YYYY-MM-DD HH:MM:SS.fff +0000" / "YYYY-MM-DD HH:MM:SS +0000"
-    let fmt_offset_sub = time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second].[subsecond] [offset_hour][offset_minute]");
+    let fmt_offset_sub = time::macros::format_description!(
+        "[year]-[month]-[day] [hour]:[minute]:[second].[subsecond] [offset_hour][offset_minute]"
+    );
     if let Ok(dt) = OffsetDateTime::parse(s, &fmt_offset_sub) {
         return Some(dt);
     }
 
-    let fmt_offset = time::macros::format_description!("[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour][offset_minute]");
+    let fmt_offset = time::macros::format_description!(
+        "[year]-[month]-[day] [hour]:[minute]:[second] [offset_hour][offset_minute]"
+    );
     if let Ok(dt) = OffsetDateTime::parse(s, &fmt_offset) {
         return Some(dt);
     }
@@ -74,7 +81,12 @@ pub fn aggregate_by_interval(
         .into_iter()
         .map(|((hour, minute), (income, expense))| {
             let total = income + expense.abs();
-            (format!("{:02}:{:02}", hour, minute), income, expense.abs(), total)
+            (
+                format!("{:02}:{:02}", hour, minute),
+                income,
+                expense.abs(),
+                total,
+            )
         })
         .collect()
 }
@@ -99,7 +111,11 @@ pub fn aggregate_by_category(
 
     // convert to vector and sort descending by total
     let mut results: Vec<_> = map.into_iter().collect();
-    results.sort_by(|a, b| b.1.0.partial_cmp(&a.1.0).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.1 .0
+            .partial_cmp(&a.1 .0)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     // apply limit if provided
     let limited = if let Some(lim) = limit {
@@ -153,9 +169,7 @@ pub fn aggregate_by_day(
 
         let mut out: Vec<_> = grouped
             .into_iter()
-            .map(|(i, (inc, exp))| {
-                (format!("Group {}", i + 1), inc, exp.abs(), inc + exp.abs())
-            })
+            .map(|(i, (inc, exp))| (format!("Group {}", i + 1), inc, exp.abs(), inc + exp.abs()))
             .collect();
 
         out.sort_by(|a, b| a.0.cmp(&b.0));
@@ -225,8 +239,16 @@ pub fn find_min_max(
         }
     }
 
-    let max_result = if max_val.is_finite() { Some((max_date, max_val)) } else { None };
-    let min_result = if min_val.is_finite() { Some((min_date, min_val)) } else { None };
+    let max_result = if max_val.is_finite() {
+        Some((max_date, max_val))
+    } else {
+        None
+    };
+    let min_result = if min_val.is_finite() {
+        Some((min_date, min_val))
+    } else {
+        None
+    };
 
     (min_result, max_result)
 }
@@ -272,7 +294,11 @@ pub fn aggregate_trend(
 pub fn budget_utilization(budget_amount: f64, prices: Vec<f64>) -> (f64, f64, f64) {
     let spent: f64 = prices.iter().map(|p| p.abs()).sum();
     let remaining = (budget_amount - spent).max(0.0);
-    let usage_percent = if budget_amount > 0.0 { (spent / budget_amount) * 100.0 } else { 0.0 };
+    let usage_percent = if budget_amount > 0.0 {
+        (spent / budget_amount) * 100.0
+    } else {
+        0.0
+    };
 
     (spent, remaining, usage_percent)
 }
@@ -288,7 +314,11 @@ pub fn budget_burn_rate(
     }
 
     let burn_rate = total_spent / (days_elapsed as f64);
-    let days_left = if burn_rate > 0.0 { Some(budget_remaining / burn_rate) } else { None };
+    let days_left = if burn_rate > 0.0 {
+        Some(budget_remaining / burn_rate)
+    } else {
+        None
+    };
 
     (burn_rate, days_left)
 }
@@ -439,8 +469,7 @@ pub fn predict_budget_breach(
             continue;
         }
 
-        let dt = parse_datetime(ds)
-            .ok_or_else(|| format!("Invalid date parsing: {}", ds))?;
+        let dt = parse_datetime(ds).ok_or_else(|| format!("Invalid date parsing: {}", ds))?;
 
         let day = dt.date();
         *daily_map.entry(day).or_insert(0.0) += price.abs();
@@ -461,8 +490,9 @@ pub fn predict_budget_breach(
 
     let std_dev = variance.sqrt().max(1.0);
 
-    let dist = Normal::new(mean, std_dev)
-        .map_err(|_| "Failed setup: Invalid normal distribution configuration parameters".to_string())?;
+    let dist = Normal::new(mean, std_dev).map_err(|_| {
+        "Failed setup: Invalid normal distribution configuration parameters".to_string()
+    })?;
 
     let mut rng = thread_rng();
     let mut breach_count = 0usize;
@@ -512,7 +542,11 @@ pub fn cashflow_forecast(
     let now = OffsetDateTime::now_utc();
     let ymd_fmt = time::macros::format_description!("[year]-[month]-[day]");
 
-    for ((date_str, price), freq) in start_dates.iter().zip(prices.iter()).zip(frequencies.iter()) {
+    for ((date_str, price), freq) in start_dates
+        .iter()
+        .zip(prices.iter())
+        .zip(frequencies.iter())
+    {
         let Some(mut dt) = parse_datetime(date_str) else {
             continue;
         };

@@ -29,7 +29,12 @@ impl ChatHistoryService {
     }
 
     /// Stripped role+content only — what the LLM bridge needs
-    pub async fn get_history(&self, user_id: i64, session_id: Option<i64>, limit: i64) -> Result<Vec<SlimMessage>, sqlx::Error> {
+    pub async fn get_history(
+        &self,
+        user_id: i64,
+        session_id: Option<i64>,
+        limit: i64,
+    ) -> Result<Vec<SlimMessage>, sqlx::Error> {
         let sid = session_id.unwrap_or(0);
 
         let rows = sqlx::query(
@@ -39,7 +44,7 @@ impl ChatHistoryService {
                 WHERE user_id = $1 AND session_id = $2
                 ORDER BY id DESC LIMIT $3
             ) sub ORDER BY id ASC
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(sid)
@@ -47,16 +52,24 @@ impl ChatHistoryService {
         .fetch_all(&self.ctx.pool)
         .await?;
 
-        let messages = rows.into_iter().map(|r| SlimMessage {
-            role: r.get::<String, _>("role"),
-            content: r.get::<String, _>("content"),
-        }).collect();
+        let messages = rows
+            .into_iter()
+            .map(|r| SlimMessage {
+                role: r.get::<String, _>("role"),
+                content: r.get::<String, _>("content"),
+            })
+            .collect();
 
         Ok(messages)
     }
 
     /// Full objects with timestamps + metadata — for the /history endpoint
-    pub async fn get_full_history(&self, user_id: i64, session_id: Option<i64>, limit: i64) -> Result<Vec<FullMessageRow>, sqlx::Error> {
+    pub async fn get_full_history(
+        &self,
+        user_id: i64,
+        session_id: Option<i64>,
+        limit: i64,
+    ) -> Result<Vec<FullMessageRow>, sqlx::Error> {
         let sid = session_id.unwrap_or(0);
 
         sqlx::query_as::<_, FullMessageRow>(
@@ -67,7 +80,7 @@ impl ChatHistoryService {
                 WHERE user_id = $1 AND session_id = $2
                 ORDER BY id DESC LIMIT $3
             ) sub ORDER BY id ASC
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(sid)
@@ -85,7 +98,10 @@ impl ChatHistoryService {
         .fetch_all(&self.ctx.pool)
         .await?;
 
-        Ok(rows.into_iter().map(|r| r.get::<i64, _>("session_id")).collect())
+        Ok(rows
+            .into_iter()
+            .map(|r| r.get::<i64, _>("session_id"))
+            .collect())
     }
 
     /// Appends message log and trims history to maximum bounds natively in-place
@@ -119,7 +135,7 @@ impl ChatHistoryService {
             r#"
             INSERT INTO chat_messages (user_id, session_id, role, content, timestamp, metadata)
             VALUES ($1, $2, $3, $4, (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT, $5)
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(sid)
@@ -139,7 +155,7 @@ impl ChatHistoryService {
                 ORDER BY id DESC
                 OFFSET 100
             )
-            "#
+            "#,
         )
         .bind(user_id)
         .bind(sid)
@@ -149,7 +165,11 @@ impl ChatHistoryService {
         Ok(())
     }
 
-    pub async fn clear_history(&self, user_id: i64, session_id: Option<i64>) -> Result<(), sqlx::Error> {
+    pub async fn clear_history(
+        &self,
+        user_id: i64,
+        session_id: Option<i64>,
+    ) -> Result<(), sqlx::Error> {
         let sid = session_id.unwrap_or(0);
         sqlx::query("DELETE FROM chat_messages WHERE user_id = $1 AND session_id = $2")
             .bind(user_id)
@@ -159,7 +179,11 @@ impl ChatHistoryService {
         Ok(())
     }
 
-    pub async fn delete_session(&self, user_id: i64, session_id: Option<i64>) -> Result<(), sqlx::Error> {
+    pub async fn delete_session(
+        &self,
+        user_id: i64,
+        session_id: Option<i64>,
+    ) -> Result<(), sqlx::Error> {
         let sid = session_id.unwrap_or(0);
         sqlx::query("DELETE FROM chat_sessions WHERE user_id = $1 AND session_id = $2")
             .bind(user_id)

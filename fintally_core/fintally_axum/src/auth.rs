@@ -9,7 +9,7 @@ use axum_extra::{
     headers::{authorization::Bearer, Authorization},
     TypedHeader,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 use tracing::{error, warn};
@@ -54,10 +54,19 @@ pub enum AuthError {
 impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, detail) = match self {
-            AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing or malformed Authorization header."),
-            AuthError::ExpiredToken => (StatusCode::UNAUTHORIZED, "Token has expired. Please re-authenticate."),
+            AuthError::MissingToken => (
+                StatusCode::UNAUTHORIZED,
+                "Missing or malformed Authorization header.",
+            ),
+            AuthError::ExpiredToken => (
+                StatusCode::UNAUTHORIZED,
+                "Token has expired. Please re-authenticate.",
+            ),
             // We purposefully return 401 Unauthorized (not 403) and obscure the exact crypto failure
-            AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid authentication credentials."),
+            AuthError::InvalidToken => (
+                StatusCode::UNAUTHORIZED,
+                "Invalid authentication credentials.",
+            ),
         };
 
         let body = Json(AuthErrorResponse {
@@ -91,16 +100,17 @@ where
             .to_string();
 
         // Step A: Extract the Bearer Token
-        let TypedHeader(Authorization(bearer)) = TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
-            .await
-            .map_err(|_| {
-                warn!(
-                    target: "dpdpa_auth_audit",
-                    "🔒 [AUTH ALERT] Missing or malformed token | Path: {} | IP: {}",
-                    uri_path, client_ip
-                );
-                AuthError::MissingToken
-            })?;
+        let TypedHeader(Authorization(bearer)) =
+            TypedHeader::<Authorization<Bearer>>::from_request_parts(parts, state)
+                .await
+                .map_err(|_| {
+                    warn!(
+                        target: "dpdpa_auth_audit",
+                        "🔒 [AUTH ALERT] Missing or malformed token | Path: {} | IP: {}",
+                        uri_path, client_ip
+                    );
+                    AuthError::MissingToken
+                })?;
 
         // Step B: Configure Strict Cryptographic Validation
         let secret = get_jwt_secret();

@@ -23,9 +23,10 @@ impl Quantizer {
     /// Optimized with reciprocal multiplication and zero bounds-checking branches.
     pub fn quantize_q8(data: &[f32]) -> Result<Vec<BlockQ8_0>, RagError> {
         if data.is_empty() || data.len() % BLOCK_SIZE != 0 {
-            return Err(RagError::QuantizationError(
-                format!("Vector size ({}) must be a multiple of block size (32).", data.len())
-            ));
+            return Err(RagError::QuantizationError(format!(
+                "Vector size ({}) must be a multiple of block size (32).",
+                data.len()
+            )));
         }
 
         let mut blocks = Vec::with_capacity(data.len() / BLOCK_SIZE);
@@ -46,7 +47,7 @@ impl Quantizer {
                 // CELERON TUNING: Compute the reciprocal multiplication factor once.
                 // This replaces 32 slow divisions with 32 blazing-fast multiplications.
                 let inv_scale = 1.0 / scale;
-                
+
                 // Using a direct zip iterator tells the compiler both arrays have matching lengths,
                 // completely removing all array bounds-checking panics from the assembly loop.
                 for (qs_elem, &chunk_val) in qs.iter_mut().zip(chunk) {
@@ -77,9 +78,10 @@ impl Quantizer {
     /// Compresses standard f32 arrays into Q4_0 blocks (Packing two 4-bit nibbles into a single byte)
     pub fn quantize_q4(data: &[f32]) -> Result<Vec<BlockQ4_0>, RagError> {
         if data.is_empty() || data.len() % BLOCK_SIZE != 0 {
-            return Err(RagError::QuantizationError(
-                format!("Vector size ({}) must be a multiple of block size (32).", data.len())
-            ));
+            return Err(RagError::QuantizationError(format!(
+                "Vector size ({}) must be a multiple of block size (32).",
+                data.len()
+            )));
         }
 
         let mut blocks = Vec::with_capacity(data.len() / BLOCK_SIZE);
@@ -103,7 +105,7 @@ impl Quantizer {
                 for (i, pair) in chunk.chunks_exact(2).enumerate() {
                     let v0 = (pair[0] * inv_scale).round().clamp(-7.0, 7.0) as i8;
                     let v1 = (pair[1] * inv_scale).round().clamp(-7.0, 7.0) as i8;
-                    
+
                     let u0 = (v0 + 8) as u8 & 0x0F;
                     let u1 = (v1 + 8) as u8 & 0x0F;
 
@@ -148,7 +150,10 @@ mod tests {
             assert!(
                 (act - exp).abs() <= tolerance,
                 "Divergence too high at index {}: actual={}, expected={} (diff={})",
-                i, act, exp, (act - exp).abs()
+                i,
+                act,
+                exp,
+                (act - exp).abs()
             );
         }
     }
@@ -165,11 +170,13 @@ mod tests {
 
         // Inputs that aren't multiples of BLOCK_SIZE (32) must fail
         let unaligned_data = vec![1.0f32; 31];
-        
+
         let q8_res = Quantizer::quantize_q8(&unaligned_data);
         assert!(q8_res.is_err());
         match q8_res.unwrap_err() {
-            RagError::QuantizationError(msg) => assert!(msg.contains("must be a multiple of block size")),
+            RagError::QuantizationError(msg) => {
+                assert!(msg.contains("must be a multiple of block size"))
+            }
             _ => panic!("Expected QuantizationError variant"),
         }
 
@@ -181,7 +188,7 @@ mod tests {
     fn test_zero_vector_handling_does_not_panic() {
         // An all-zero array should produce a scale of 0.0 without triggering division by zero
         let zero_data = vec![0.0f32; BLOCK_SIZE];
-        
+
         let q8_blocks = Quantizer::quantize_q8(&zero_data).unwrap();
         assert_eq!(q8_blocks[0].scale, 0.0);
         let deq_q8 = Quantizer::dequantize_q8(&q8_blocks);
@@ -194,7 +201,7 @@ mod tests {
     }
 
     // ==========================================
-    // 2. Q8_0 COMPRESSION ROUNDTRIP 
+    // 2. Q8_0 COMPRESSION ROUNDTRIP
     // ==========================================
 
     #[test]
@@ -209,7 +216,7 @@ mod tests {
         // Compress and extract
         let blocks = Quantizer::quantize_q8(&original_data).unwrap();
         assert_eq!(blocks.len(), 1);
-        
+
         let reconstructed = Quantizer::dequantize_q8(&blocks);
 
         // Q8_0 quantization splits the maximum range into 127 discrete intervals.
@@ -233,7 +240,7 @@ mod tests {
         // Compress down to 4-bit blocks
         let blocks = Quantizer::quantize_q4(&original_data).unwrap();
         assert_eq!(blocks.len(), 1);
-        
+
         // Assert that 32 elements are tightly packed down into 16 bytes (u8 array)
         assert_eq!(blocks[0].qs.len(), 16);
 
@@ -253,7 +260,7 @@ mod tests {
     fn test_extreme_value_clamping_ranges() {
         let mut data = vec![0.1f32; BLOCK_SIZE];
         // Introduce an extreme outlier that forces a high scale value
-        data[0] = 50.0; 
+        data[0] = 50.0;
         data[1] = -50.0;
 
         // Q8 verification

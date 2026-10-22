@@ -32,7 +32,10 @@ mod tests {
                 target_channels, // Fixed: Changed from 3 to 1
             );
 
-            assert!(!buf_ptr.is_null(), "fin_process_document_bytes returned null buffer pointer");
+            assert!(
+                !buf_ptr.is_null(),
+                "fin_process_document_bytes returned null buffer pointer"
+            );
             let buf = &*buf_ptr;
 
             assert!(!buf.data.is_null());

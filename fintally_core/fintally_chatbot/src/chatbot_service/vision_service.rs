@@ -53,12 +53,20 @@ impl VisionChatbotService {
                 };
 
                 let res = match attachment {
-                    VisionAttachment::Image(bytes) => service.process_image(&bytes, &prompt_clone)?,
+                    VisionAttachment::Image(bytes) => {
+                        service.process_image(&bytes, &prompt_clone)?
+                    }
                     VisionAttachment::Pdf(bytes) => service.process_pdf(&bytes, &prompt_clone)?,
-                    VisionAttachment::Chart(bytes) => service.process_financial_chart(&bytes, &prompt_clone)?,
+                    VisionAttachment::Chart(bytes) => {
+                        service.process_financial_chart(&bytes, &prompt_clone)?
+                    }
                 };
 
-                Ok(format!("--- FILE #{} EXTRACTED CONTEXT ---\n{}", idx + 1, res.trim()))
+                Ok(format!(
+                    "--- FILE #{} EXTRACTED CONTEXT ---\n{}",
+                    idx + 1,
+                    res.trim()
+                ))
             });
 
             tasks.push(task);

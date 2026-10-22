@@ -4,11 +4,11 @@ use axum::{
     Extension, Json,
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
+use google_jwt_signin::Client as GoogleClient;
 use jsonwebtoken::{encode, EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
-use google_jwt_signin::Client as GoogleClient;
 
 use fintally_db::DbContext;
 
@@ -56,8 +56,14 @@ pub enum AuthRouteError {
 impl IntoResponse for AuthRouteError {
     fn into_response(self) -> Response {
         let (status, detail) = match self {
-            AuthRouteError::EmailExists => (StatusCode::BAD_REQUEST, "Email already registered".to_string()),
-            AuthRouteError::InvalidCredentials => (StatusCode::UNAUTHORIZED, "Invalid email or password".to_string()),
+            AuthRouteError::EmailExists => (
+                StatusCode::BAD_REQUEST,
+                "Email already registered".to_string(),
+            ),
+            AuthRouteError::InvalidCredentials => (
+                StatusCode::UNAUTHORIZED,
+                "Invalid email or password".to_string(),
+            ),
             AuthRouteError::DatabaseError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
 

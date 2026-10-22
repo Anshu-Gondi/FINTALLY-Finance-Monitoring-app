@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 // ──────────────────────────────────────────────
 // Enums
@@ -139,8 +139,12 @@ pub struct EmiCreateRequest {
     pub name: String,
 }
 
-fn default_emi_category() -> String { "EMI".to_string() }
-fn default_emi_name() -> String { "Loan EMI".to_string() }
+fn default_emi_category() -> String {
+    "EMI".to_string()
+}
+fn default_emi_name() -> String {
+    "Loan EMI".to_string()
+}
 
 // ──────────────────────────────────────────────
 // Feedback

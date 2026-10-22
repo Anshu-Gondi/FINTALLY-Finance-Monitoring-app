@@ -1,4 +1,4 @@
-use crate::core::llm::engine::{LlmEngine, CancelableStream};
+use crate::core::llm::engine::{CancelableStream, LlmEngine};
 use crate::core::llm::prompt::Prompt;
 use crate::core::utils::errors::AppError;
 
@@ -23,7 +23,7 @@ impl LLM {
     pub async fn generate_text(
         &self,
         prompt_text: &str,
-        context: Option<&str>
+        context: Option<&str>,
     ) -> Result<String, AppError> {
         let full_prompt = Prompt::build(prompt_text, context)?;
         self.engine.generate(&full_prompt, self.max_tokens).await
@@ -33,10 +33,12 @@ impl LLM {
     pub async fn stream_text(
         &self,
         prompt_text: &str,
-        context: Option<&str>
+        context: Option<&str>,
     ) -> Result<CancelableStream, AppError> {
         let full_prompt = Prompt::build(prompt_text, context)?;
-        self.engine.stream_generate(&full_prompt, self.max_tokens).await
+        self.engine
+            .stream_generate(&full_prompt, self.max_tokens)
+            .await
     }
 
     /// Computes raw multi-dimensional semantic vector spaces
@@ -55,14 +57,14 @@ mod tests {
     use futures_core::Stream;
     use futures_util::StreamExt;
     use std::pin::Pin;
-    use tokio_util::sync::CancellationToken;
     use tokio_stream::iter;
+    use tokio_util::sync::CancellationToken;
 
     struct MockEngine;
 
     impl MockEngine {
         fn new() -> Self {
-            Self 
+            Self
         }
     }
 
@@ -75,11 +77,10 @@ mod tests {
         async fn stream_generate(
             &self,
             prompt: &str,
-            max_tokens: usize
+            max_tokens: usize,
         ) -> Result<CancelableStream, AppError> {
-            let stream: Pin<Box<dyn Stream<Item = Result<String, AppError>> + Send>> = Box::pin(
-                iter(vec![Ok(format!("STREAM:{}:{}", prompt, max_tokens))])
-            );
+            let stream: Pin<Box<dyn Stream<Item = Result<String, AppError>> + Send>> =
+                Box::pin(iter(vec![Ok(format!("STREAM:{}:{}", prompt, max_tokens))]));
 
             Ok(CancelableStream {
                 stream,
@@ -99,7 +100,10 @@ mod tests {
         let llm = LLM::new(engine, "test", 128);
 
         let result = llm.generate_text("", None).await;
-        assert!(result.is_err(), "Empty prompts must be explicitly rejected by Prompt validation layer.");
+        assert!(
+            result.is_err(),
+            "Empty prompts must be explicitly rejected by Prompt validation layer."
+        );
     }
 
     #[tokio::test]
@@ -109,7 +113,10 @@ mod tests {
         let llm = LLM::new(engine, "test", 10_000);
 
         let result = llm.generate_text("Hello", None).await.unwrap();
-        assert!(result.ends_with(":512"), "Token inputs should cap firmly at upper ceiling limit (512).");
+        assert!(
+            result.ends_with(":512"),
+            "Token inputs should cap firmly at upper ceiling limit (512)."
+        );
     }
 
     #[tokio::test]

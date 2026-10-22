@@ -109,7 +109,11 @@ fn test_input_processing_and_jpeg_filtering() {
     // 1. Non-JPEG Input (BMP) -> Exercises Transcoding Path
     let synthetic_bmp = create_synthetic_bmp_bytes(512, 512);
     let bmp_result = engine.process_input(DocumentInput::RawImageBytes(&synthetic_bmp));
-    assert!(bmp_result.is_ok(), "Non-JPEG image processing failed: {:?}", bmp_result.err());
+    assert!(
+        bmp_result.is_ok(),
+        "Non-JPEG image processing failed: {:?}",
+        bmp_result.err()
+    );
 
     let bmp_buffer = bmp_result.unwrap();
     let (width, height, channels) = bmp_buffer.dimensions();
@@ -118,12 +122,20 @@ fn test_input_processing_and_jpeg_filtering() {
     // 2. Direct JPEG Input -> Exercises Zero-Copy Fast-Path Filter
     let synthetic_jpeg = create_synthetic_jpeg_bytes(512, 512);
     let jpeg_result = engine.process_input(DocumentInput::RawImageBytes(&synthetic_jpeg));
-    assert!(jpeg_result.is_ok(), "JPEG fast-path image processing failed: {:?}", jpeg_result.err());
+    assert!(
+        jpeg_result.is_ok(),
+        "JPEG fast-path image processing failed: {:?}",
+        jpeg_result.err()
+    );
 
     // 3. PDF Visual Stream Input
     let synthetic_pdf = create_synthetic_pdf_bytes();
     let pdf_result = engine.process_input(DocumentInput::PdfDocumentBytes(&synthetic_pdf));
-    assert!(pdf_result.is_ok(), "PDF stream processing failed: {:?}", pdf_result.err());
+    assert!(
+        pdf_result.is_ok(),
+        "PDF stream processing failed: {:?}",
+        pdf_result.err()
+    );
 
     // 4. Financial Chart with Custom Dimensions (1024x1024)
     let chart_result = engine.process_input_with_dims(
@@ -132,7 +144,11 @@ fn test_input_processing_and_jpeg_filtering() {
         1024,
         3,
     );
-    assert!(chart_result.is_ok(), "Financial chart processing failed: {:?}", chart_result.err());
+    assert!(
+        chart_result.is_ok(),
+        "Financial chart processing failed: {:?}",
+        chart_result.err()
+    );
 }
 
 // ============================================================================
@@ -154,13 +170,19 @@ fn test_vision_engine_multi_threaded_parallel_throughput() {
             let mut engine_guard = engine_ref.lock().unwrap();
             let res = engine_guard.process_input(DocumentInput::RawImageBytes(&img));
 
-            assert!(res.is_ok(), "Thread {} failed processing image input", thread_id);
+            assert!(
+                res.is_ok(),
+                "Thread {} failed processing image input",
+                thread_id
+            );
         });
         handles.push(handle);
     }
 
     for handle in handles {
-        handle.join().expect("Worker thread panicked during parallel execution");
+        handle
+            .join()
+            .expect("Worker thread panicked during parallel execution");
     }
 }
 
@@ -185,10 +207,16 @@ fn test_e2e_image_processing_and_text_retrieval() {
         .expect("End-to-End image processing failed");
 
     let (w, h, c) = buffer.dimensions();
-    assert!(w > 0 && h > 0 && c > 0, "Buffer returned invalid dimension bounds");
+    assert!(
+        w > 0 && h > 0 && c > 0,
+        "Buffer returned invalid dimension bounds"
+    );
 
     if let Some(extracted_text) = buffer.extracted_text() {
-        println!("Extracted OCR Text from native engine: {:?}", extracted_text);
+        println!(
+            "Extracted OCR Text from native engine: {:?}",
+            extracted_text
+        );
     }
 }
 

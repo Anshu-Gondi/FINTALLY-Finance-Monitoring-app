@@ -3,10 +3,10 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::core::rag::builder::RagServiceBuilder;
-use crate::core::rag::service::RagService;
-use crate::core::rag::errors::RagError;
 use crate::core::rag::dto::{IngestionResponse, QueryResponse};
 use crate::core::rag::embedding::NativeEmbedder;
+use crate::core::rag::errors::RagError;
+use crate::core::rag::service::RagService;
 
 /// High-Performance Local RAG Execution Engine
 pub struct RagEngine {
@@ -66,7 +66,8 @@ impl RagEngine {
                 .collect()
         });
 
-        self.service.query(query_text, top_k, score_threshold, optimized_filters)
+        self.service
+            .query(query_text, top_k, score_threshold, optimized_filters)
     }
 
     /// Explicitly commands the HNSW layer to persist snapshot data to disk

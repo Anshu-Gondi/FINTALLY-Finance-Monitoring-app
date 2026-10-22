@@ -198,7 +198,13 @@ pub fn budget_projection_batch(
             100.0
         };
 
-        let flag = if usage >= 100.0 { 2u8 } else if usage >= 80.0 { 1u8 } else { 0u8 };
+        let flag = if usage >= 100.0 {
+            2u8
+        } else if usage >= 80.0 {
+            1u8
+        } else {
+            0u8
+        };
         (projected, usage, flag)
     };
 

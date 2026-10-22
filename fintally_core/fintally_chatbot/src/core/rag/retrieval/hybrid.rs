@@ -6,11 +6,9 @@ impl HybridScorer {
     /// and executing a zero-heap sequential stream check.
     pub fn keyword_score(query: &str, document_text: &str) -> f32 {
         // 1. Clean query tokens into a small, flat stack vector
-        let mut query_tokens: Vec<String> = query
-            .split_whitespace()
-            .map(|w| w.to_lowercase())
-            .collect();
-        
+        let mut query_tokens: Vec<String> =
+            query.split_whitespace().map(|w| w.to_lowercase()).collect();
+
         // Deduplicate query tokens to establish an accurate unique baseline count
         query_tokens.sort_unstable();
         query_tokens.dedup();
@@ -32,7 +30,7 @@ impl HybridScorer {
                 if !matched[i] && doc_word.eq_ignore_ascii_case(query_token) {
                     matched[i] = true;
                     match_count += 1;
-                    
+
                     // Instant early exit if every query token has been successfully located
                     if match_count == total_query_tokens {
                         return 1.0;
@@ -68,9 +66,15 @@ mod tests {
     #[test]
     fn test_keyword_score_empty_and_whitespace_queries() {
         // Empty query strings must safely drop out without causing division-by-zero panics
-        assert_eq!(HybridScorer::keyword_score("", "Valid document text block."), 0.0);
-        assert_eq!(HybridScorer::keyword_score("   ", "Valid document text block."), 0.0);
-        
+        assert_eq!(
+            HybridScorer::keyword_score("", "Valid document text block."),
+            0.0
+        );
+        assert_eq!(
+            HybridScorer::keyword_score("   ", "Valid document text block."),
+            0.0
+        );
+
         // Empty documents with valid queries should evaluate to zero matches
         assert_eq!(HybridScorer::keyword_score("ledger", ""), 0.0);
     }
@@ -79,20 +83,26 @@ mod tests {
     fn test_keyword_score_perfect_match_triggering_early_exit() {
         let query = "finance cash ledger";
         let doc = "Tracking corporate finance cash ledger balances closely.";
-        
+
         // Every single query token is present; must hit the internal early-exit arm and return exactly 1.0
         let score = HybridScorer::keyword_score(query, doc);
-        assert_eq!(score, 1.0, "Perfect word matches must instantly trigger a 1.0 early exit score.");
+        assert_eq!(
+            score, 1.0,
+            "Perfect word matches must instantly trigger a 1.0 early exit score."
+        );
     }
 
     #[test]
     fn test_keyword_score_partial_matches_and_fractions() {
         let query = "rust python java typescript"; // 4 unique tokens
-        let doc = "We use rust and python pipelines across our production environment."; 
+        let doc = "We use rust and python pipelines across our production environment.";
         // 2 matches found ("rust", "python") out of 4 total -> expected score: 2.0 / 4.0 = 0.5
 
         let score = HybridScorer::keyword_score(query, doc);
-        assert!(approx_eq(score, 0.5), "Partial token coverage expected 0.5, got: {score}");
+        assert!(
+            approx_eq(score, 0.5),
+            "Partial token coverage expected 0.5, got: {score}"
+        );
     }
 
     // ==========================================
@@ -106,18 +116,24 @@ mod tests {
 
         // Your use of eq_ignore_ascii_case should successfully pair these across capitalization casing
         let score = HybridScorer::keyword_score(query, doc);
-        assert_eq!(score, 1.0, "Token casing caused a match failure instead of resolving case-insensitively.");
+        assert_eq!(
+            score, 1.0,
+            "Token casing caused a match failure instead of resolving case-insensitively."
+        );
     }
 
     #[test]
     fn test_keyword_score_deduplicates_query_tokens() {
-        // Query repeats the word "cache" 4 times. 
+        // Query repeats the word "cache" 4 times.
         // The sorting and dedup calls must reduce this query baseline size down to exactly 1 unique token.
         let query = "cache cache cache cache";
         let doc = "System memory layer uses a fast hardware cache pipeline.";
 
         let score = HybridScorer::keyword_score(query, doc);
-        assert_eq!(score, 1.0, "Query deduplication failed, skewing token total counts.");
+        assert_eq!(
+            score, 1.0,
+            "Query deduplication failed, skewing token total counts."
+        );
     }
 
     // ==========================================

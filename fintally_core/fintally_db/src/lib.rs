@@ -1,7 +1,7 @@
-pub mod models;
 pub mod chat_service;
+pub mod models;
 
-use sqlx::postgres::{PgPoolOptions, PgConnectOptions};
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::PgPool;
 use std::env;
 use std::str::FromStr;
@@ -20,10 +20,10 @@ impl DbContext {
         let database_url = env::var("DATABASE_URL")
             .map_err(|_| "DATABASE_URL environment variable is not set in your .env file")?;
 
-        // Parse connection options and strictly disable cached prepared statements 
+        // Parse connection options and strictly disable cached prepared statements
         // to make it 100% compatible with Supabase's transaction pooler.
-        let connection_options = PgConnectOptions::from_str(&database_url)?
-            .statement_cache_capacity(0);
+        let connection_options =
+            PgConnectOptions::from_str(&database_url)?.statement_cache_capacity(0);
 
         // Tailor the connection pool boundaries specifically for your N4020 CPU profile
         let pool = PgPoolOptions::new()

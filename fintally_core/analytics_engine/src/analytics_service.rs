@@ -1,25 +1,24 @@
-use std::collections::HashMap;
 use sqlx::{postgres::PgRow, PgPool, Row};
-use time::{Duration, OffsetDateTime, Time};
+use std::collections::HashMap;
 use time::format_description::well_known::Rfc3339;
+use time::{Duration, OffsetDateTime, Time};
 
 // Import domain models from your crate
 use fintally_db::models::{
-    AnalyticsPoint, AnalyticsResult, BudgetBreachResult, BudgetUtilizationResult,
-    BurnRateResult, CashflowForecastPoint, CashflowForecastResult, CategoryDriftPoint,
-    CategoryDriftResult, CategoryPoint, CategoryResult, EmiPressureResult,
-    FinancialHealthScoreResult, GoalProjectionResult, IncomeStabilityResult, NetWorthResult,
-    RecurringAnomaly, RecurringFrequency, RecurringImpactResult, SavingsOptimizationResult,
-    SpendingPatternPoint, SpendingPatternResult, TransactionAnomaly, TransactionAnomalyResult,
+    AnalyticsPoint, AnalyticsResult, BudgetBreachResult, BudgetUtilizationResult, BurnRateResult,
+    CashflowForecastPoint, CashflowForecastResult, CategoryDriftPoint, CategoryDriftResult,
+    CategoryPoint, CategoryResult, EmiPressureResult, FinancialHealthScoreResult,
+    GoalProjectionResult, IncomeStabilityResult, NetWorthResult, RecurringAnomaly,
+    RecurringFrequency, RecurringImpactResult, SavingsOptimizationResult, SpendingPatternPoint,
+    SpendingPatternResult, TransactionAnomaly, TransactionAnomalyResult,
 };
 
 // Import computational functions from your pure Rust engine
 use crate::analytics_aggregator::{
     aggregate_by_category, aggregate_by_day, aggregate_by_interval, aggregate_trend,
-    budget_burn_rate, budget_utilization, category_drift,
-    cashflow_forecast as rust_cashflow_forecast, detect_anomalies, emi_monthly_pressure,
-    emi_survivability_score, find_min_max, income_stability, net_worth_analysis,
-    predict_budget_breach, recurring_impact, savings_metrics,
+    budget_burn_rate, budget_utilization, cashflow_forecast as rust_cashflow_forecast,
+    category_drift, detect_anomalies, emi_monthly_pressure, emi_survivability_score, find_min_max,
+    income_stability, net_worth_analysis, predict_budget_breach, recurring_impact, savings_metrics,
 };
 
 // ---------------- HELPER UTILITIES ----------------
@@ -359,7 +358,9 @@ pub async fn trend_summary(
         "6months" => (now - Duration::days(30 * 6), "monthly"),
         "12weeks" => (now - Duration::days(7 * 12), "weekly"),
         _ => {
-            return Err(sqlx::Error::Protocol("Invalid trend range parameter".into()));
+            return Err(sqlx::Error::Protocol(
+                "Invalid trend range parameter".into(),
+            ));
         }
     };
 
@@ -502,12 +503,8 @@ pub async fn cashflow_forecast(
     sorted_horizons.sort_unstable();
 
     for horizon in sorted_horizons {
-        let daily_rows = rust_cashflow_forecast(
-            dates.clone(),
-            prices.clone(),
-            freqs.clone(),
-            horizon as u32,
-        );
+        let daily_rows =
+            rust_cashflow_forecast(dates.clone(), prices.clone(), freqs.clone(), horizon as u32);
         let cumulative_balance: f64 = daily_rows.into_iter().map(|(_, _, _, net)| net).sum();
         points.push(CashflowForecastPoint {
             horizon_days: horizon,
@@ -544,8 +541,8 @@ pub async fn budget_breach_prediction(
     };
 
     let budget_amount: f64 = budget.get("amount");
-    let budget_start = get_opt_datetime_from_row(&budget, "start_date")
-        .unwrap_or_else(OffsetDateTime::now_utc);
+    let budget_start =
+        get_opt_datetime_from_row(&budget, "start_date").unwrap_or_else(OffsetDateTime::now_utc);
     let horizon_days = (end_date - budget_start).whole_days().max(1) as u32;
 
     let rows = sqlx::query(
@@ -691,10 +688,11 @@ pub async fn category_drift_analysis(
     pool: &PgPool,
     user_id: i64,
 ) -> Result<CategoryDriftResult, sqlx::Error> {
-    let rows = sqlx::query(r#"SELECT category, price, datetime FROM transactions WHERE user_id = $1"#)
-        .bind(user_id)
-        .fetch_all(pool)
-        .await?;
+    let rows =
+        sqlx::query(r#"SELECT category, price, datetime FROM transactions WHERE user_id = $1"#)
+            .bind(user_id)
+            .fetch_all(pool)
+            .await?;
 
     let now = OffsetDateTime::now_utc();
     let prev_month = now.month().previous();
@@ -837,8 +835,8 @@ pub async fn burn_rate_analysis(
         }
     };
 
-    let start = get_opt_datetime_from_row(&budget, "start_date")
-        .unwrap_or_else(OffsetDateTime::now_utc);
+    let start =
+        get_opt_datetime_from_row(&budget, "start_date").unwrap_or_else(OffsetDateTime::now_utc);
     let amount = budget.get::<f64, _>("amount");
 
     let tx_rows = sqlx::query(
@@ -880,10 +878,7 @@ pub async fn income_stability_analysis(
         .fetch_all(pool)
         .await?;
 
-    let incomes: Vec<f64> = rows
-        .into_iter()
-        .map(|r| r.get::<f64, _>("price"))
-        .collect();
+    let incomes: Vec<f64> = rows.into_iter().map(|r| r.get::<f64, _>("price")).collect();
     let (volatility, predictability) = income_stability(incomes);
 
     Ok(IncomeStabilityResult {
@@ -1048,7 +1043,10 @@ pub async fn goal_projection(
     let months_to_goal = if monthly_savings <= 0.0 {
         -1.0
     } else {
-        safe_float((target_amount - nw.net_worth).max(0.0) / monthly_savings, 0.0)
+        safe_float(
+            (target_amount - nw.net_worth).max(0.0) / monthly_savings,
+            0.0,
+        )
     };
 
     Ok(GoalProjectionResult {

@@ -83,7 +83,10 @@ mod tests {
         let context = "You are a financial assistant.";
         let prompt = "Explain budgeting basics.";
         let result = Prompt::build(prompt, Some(context)).unwrap();
-        assert_eq!(result, "You are a financial assistant.\n\nExplain budgeting basics.");
+        assert_eq!(
+            result,
+            "You are a financial assistant.\n\nExplain budgeting basics."
+        );
     }
 
     #[test]

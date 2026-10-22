@@ -1,0 +1,63 @@
+[package]
+name = "fintally_voice"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+license-file.workspace = true
+
+[dependencies]
+# Error handling
+anyhow = "1"
+thiserror = "2"
+
+# Runtime observability
+tracing = "0.1"
+
+# Bounded communication between runtime workers
+crossbeam-channel = "0.5"
+
+# Optional parallel CPU work; use selectively
+rayon = "1.10"
+
+# Worker affinity where supported
+core_affinity = "0.8"
+
+# Typed data and configuration serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Optional native ASR backend
+sherpa-onnx = { version = "1.13.8", optional = true }
+
+[features]
+default = []
+
+# Enable explicitly while developing/testing the ASR integration.
+asr-sherpa-onnx = ["dep:sherpa-onnx"]
+
+[build-dependencies]
+# Build the existing native C core through its CMake project.
+cmake = "0.1"
+
+# Available for auxiliary C compilation if needed.
+# Do not use it to compile the same sources already built by CMake.
+cc = "1"
+
+# Generate Rust declarations from the public C headers.
+bindgen = "0.72"
+
+[dev-dependencies]
+# Numerical and workflow tests can use these as needed.
+approx = "0.5"
+tempfile = "3"
+
+[[bench]]
+name = "voice_runtime"
+path = "benches/voice_runtime.rs"
+harness = false
+
+[[bench]]
+name = "voice_allocations"
+path = "benches/voice_allocations.rs"
+harness = false

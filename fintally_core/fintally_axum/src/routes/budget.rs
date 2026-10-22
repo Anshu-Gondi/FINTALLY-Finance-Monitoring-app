@@ -1,9 +1,4 @@
-use axum::{
-    extract::Path,
-    http::StatusCode,
-    response::IntoResponse,
-    Extension, Json,
-};
+use axum::{extract::Path, http::StatusCode, response::IntoResponse, Extension, Json};
 use fintally_db::DbContext;
 use fintally_finance::budget_projection_batch;
 use serde::Deserialize;
@@ -32,9 +27,16 @@ impl IntoResponse for BudgetApiError {
         let (status, msg) = match self {
             BudgetApiError::DatabaseError(err) => (StatusCode::INTERNAL_SERVER_ERROR, err),
             BudgetApiError::EngineError(err) => (StatusCode::BAD_REQUEST, err),
-            BudgetApiError::NotFound => (StatusCode::NOT_FOUND, "Budget allocation target not found.".to_string()),
+            BudgetApiError::NotFound => (
+                StatusCode::NOT_FOUND,
+                "Budget allocation target not found.".to_string(),
+            ),
         };
-        (status, Json(serde_json::json!({ "success": false, "error": msg }))).into_response()
+        (
+            status,
+            Json(serde_json::json!({ "success": false, "error": msg })),
+        )
+            .into_response()
     }
 }
 
@@ -46,10 +48,15 @@ pub async fn create_or_update_budget(
     claims: Claims,
     Json(body): Json<BudgetCreate>,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    let user_id = claims.user_id.parse::<i64>()
+    let user_id = claims
+        .user_id
+        .parse::<i64>()
         .map_err(|e| BudgetApiError::EngineError(format!("Invalid User ID: {}", e)))?;
 
-    let start = body.start_date.unwrap_or_else(OffsetDateTime::now_utc).unix_timestamp();
+    let start = body
+        .start_date
+        .unwrap_or_else(OffsetDateTime::now_utc)
+        .unix_timestamp();
     let end = body.end_date.map(|dt| dt.unix_timestamp());
 
     // Check for an overlapping existing budget setup
@@ -89,20 +96,27 @@ pub async fn create_or_update_budget(
         .await
         .map_err(|e| BudgetApiError::DatabaseError(e.to_string()))?;
 
-        let start_dt = updated.start_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
-        let end_dt = updated.end_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+        let start_dt = updated
+            .start_date
+            .and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+        let end_dt = updated
+            .end_date
+            .and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
 
-        return Ok((StatusCode::OK, Json(serde_json::json!({
-            "success": true,
-            "data": {
-                "id": updated.id,
-                "category": updated.category,
-                "amount": updated.amount,
-                "startDate": start_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
-                "endDate": end_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
-                "is_recurring": updated.is_recurring
-            }
-        }))));
+        return Ok((
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "success": true,
+                "data": {
+                    "id": updated.id,
+                    "category": updated.category,
+                    "amount": updated.amount,
+                    "startDate": start_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
+                    "endDate": end_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
+                    "is_recurring": updated.is_recurring
+                }
+            })),
+        ));
     }
 
     let inserted = sqlx::query!(
@@ -122,20 +136,27 @@ pub async fn create_or_update_budget(
     .await
     .map_err(|e| BudgetApiError::DatabaseError(e.to_string()))?;
 
-    let start_dt = inserted.start_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
-    let end_dt = inserted.end_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+    let start_dt = inserted
+        .start_date
+        .and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+    let end_dt = inserted
+        .end_date
+        .and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
 
-    Ok((StatusCode::CREATED, Json(serde_json::json!({
-        "success": true,
-        "data": {
-            "id": inserted.id,
-            "category": inserted.category,
-            "amount": inserted.amount,
-            "startDate": start_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
-            "endDate": end_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
-            "is_recurring": inserted.is_recurring
-        }
-    }))))
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::json!({
+            "success": true,
+            "data": {
+                "id": inserted.id,
+                "category": inserted.category,
+                "amount": inserted.amount,
+                "startDate": start_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
+                "endDate": end_dt.map(|dt| dt.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()),
+                "is_recurring": inserted.is_recurring
+            }
+        })),
+    ))
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -145,7 +166,9 @@ pub async fn get_budgets(
     Extension(db_ctx): Extension<DbContext>,
     claims: Claims,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    let user_id = claims.user_id.parse::<i64>()
+    let user_id = claims
+        .user_id
+        .parse::<i64>()
         .map_err(|e| BudgetApiError::EngineError(format!("Invalid User ID: {}", e)))?;
 
     let rows = sqlx::query!(
@@ -171,7 +194,9 @@ pub async fn get_budgets(
         })
     }).collect();
 
-    Ok(Json(serde_json::json!({ "success": true, "data": response_data })))
+    Ok(Json(
+        serde_json::json!({ "success": true, "data": response_data }),
+    ))
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -181,7 +206,9 @@ pub async fn budget_summary(
     Extension(db_ctx): Extension<DbContext>,
     claims: Claims,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    let user_id = claims.user_id.parse::<i64>()
+    let user_id = claims
+        .user_id
+        .parse::<i64>()
         .map_err(|e| BudgetApiError::EngineError(format!("Invalid User ID: {}", e)))?;
 
     let user_budgets = sqlx::query!(
@@ -212,25 +239,40 @@ pub async fn budget_summary(
         if b.category == "Overall" {
             spent_per_budget.push(total_spent);
         } else {
-            let matched_val = expense_rows.iter().find(|r| r.category == b.category).map(|r| r.total).unwrap_or(0.0);
+            let matched_val = expense_rows
+                .iter()
+                .find(|r| r.category == b.category)
+                .map(|r| r.total)
+                .unwrap_or(0.0);
             spent_per_budget.push(matched_val);
         }
     }
 
-    let budget_amounts_paise: Vec<i64> = user_budgets.iter().map(|b| (b.amount * 100.0).round() as i64).collect();
-    let spent_paise: Vec<i64> = spent_per_budget.iter().map(|s| (s * 100.0).round() as i64).collect();
+    let budget_amounts_paise: Vec<i64> = user_budgets
+        .iter()
+        .map(|b| (b.amount * 100.0).round() as i64)
+        .collect();
+    let spent_paise: Vec<i64> = spent_per_budget
+        .iter()
+        .map(|s| (s * 100.0).round() as i64)
+        .collect();
     let zero_rates = vec![0_i64; user_budgets.len()];
     let one_month = vec![1_i32; user_budgets.len()];
 
-    let rust_result = budget_projection_batch(&zero_rates, &budget_amounts_paise, &spent_paise, &one_month)
-        .map_err(|e| BudgetApiError::EngineError(e))?;
+    let rust_result =
+        budget_projection_batch(&zero_rates, &budget_amounts_paise, &spent_paise, &one_month)
+            .map_err(|e| BudgetApiError::EngineError(e))?;
 
     let warning_labels = ["healthy", "warning", "over_budget"];
     let mut summaries = Vec::with_capacity(user_budgets.len());
 
     for (i, b) in user_budgets.into_iter().enumerate() {
-        let start_dt = b.start_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
-        let end_dt = b.end_date.and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+        let start_dt = b
+            .start_date
+            .and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
+        let end_dt = b
+            .end_date
+            .and_then(|ts| OffsetDateTime::from_unix_timestamp(ts).ok());
 
         let start_str = start_dt
             .map(|dt| format!("{}-{:02}-{:02}", dt.year(), u8::from(dt.month()), dt.day()))
@@ -253,7 +295,9 @@ pub async fn budget_summary(
         }));
     }
 
-    Ok(Json(serde_json::json!({ "success": true, "data": summaries })))
+    Ok(Json(
+        serde_json::json!({ "success": true, "data": summaries }),
+    ))
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -264,7 +308,9 @@ pub async fn delete_budget(
     claims: Claims,
     Path(budget_id): Path<i64>,
 ) -> Result<impl IntoResponse, BudgetApiError> {
-    let user_id = claims.user_id.parse::<i64>()
+    let user_id = claims
+        .user_id
+        .parse::<i64>()
         .map_err(|e| BudgetApiError::EngineError(format!("Invalid User ID: {}", e)))?;
 
     let result = sqlx::query!(
@@ -280,5 +326,7 @@ pub async fn delete_budget(
         return Err(BudgetApiError::NotFound);
     }
 
-    Ok(Json(serde_json::json!({ "success": true, "message": "Budget allocation cleared down successfully" })))
+    Ok(Json(
+        serde_json::json!({ "success": true, "message": "Budget allocation cleared down successfully" }),
+    ))
 }

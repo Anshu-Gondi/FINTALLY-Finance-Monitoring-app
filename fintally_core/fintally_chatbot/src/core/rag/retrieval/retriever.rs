@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use crate::core::rag::errors::RagError;
-use crate::core::rag::embedding::types::DocumentChunk;
-use crate::core::rag::vectorstore::{UsearchStore, MemoryVectorStore};
 use super::filters::MetadataFilter;
 use super::hybrid::HybridScorer;
+use crate::core::rag::embedding::types::DocumentChunk;
+use crate::core::rag::errors::RagError;
+use crate::core::rag::vectorstore::{MemoryVectorStore, UsearchStore};
+use std::collections::HashMap;
 
 pub struct VectorRetriever {
     alpha: f32, // Structural weight bias (e.g., 0.7 dense + 0.3 sparse)
@@ -25,10 +25,11 @@ impl VectorRetriever {
     ) -> Result<Vec<(DocumentChunk, f32)>, RagError> {
         // Query double top_k elements from USearch to maintain top accuracy through metadata filtering
         let graph_matches = vector_store.search_vectors(query_vector, top_k * 2)?;
-        
+
         // 1. CELERON TUNING: Pre-allocate memory capacity for the exact candidate size
         // Storing lightweight reference pointers (&DocumentChunk) ensures ZERO heap allocations in the loop.
-        let mut intermediate_matches: Vec<(&DocumentChunk, f32)> = Vec::with_capacity(graph_matches.len());
+        let mut intermediate_matches: Vec<(&DocumentChunk, f32)> =
+            Vec::with_capacity(graph_matches.len());
 
         for (chunk_id, dense_score) in graph_matches {
             if let Some(chunk) = memory_store.get_chunk(chunk_id) {
@@ -41,7 +42,8 @@ impl VectorRetriever {
 
                 // Compute sparse term coverage metrics using optimized zero-alloc methods
                 let sparse_score = HybridScorer::keyword_score(query, &chunk.text);
-                let combined_score = HybridScorer::combine_scores(dense_score, sparse_score, self.alpha);
+                let combined_score =
+                    HybridScorer::combine_scores(dense_score, sparse_score, self.alpha);
 
                 // Zero-copy: just store the pointer reference and the score
                 intermediate_matches.push((chunk, combined_score));
@@ -49,16 +51,17 @@ impl VectorRetriever {
         }
 
         // 2. USE UNSTABLE SORT FOR IN-PLACE PERFORMANCE
-        // Standard sort allocates an auxiliary backup array on the heap. 
+        // Standard sort allocates an auxiliary backup array on the heap.
         // sort_unstable_by sorts in-place using O(1) auxiliary memory space—critical for 8 GB RAM limits.
-        intermediate_matches.sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+        intermediate_matches
+            .sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
         if intermediate_matches.len() > top_k {
             intermediate_matches.truncate(top_k);
         }
 
         // 3. POST-TRUNCATION CLONING
-        // Now that the pool has shrunk down to the actual top_k winners, we safely execute 
+        // Now that the pool has shrunk down to the actual top_k winners, we safely execute
         // clones ONLY on the documents that Python will actually use.
         let final_matches = intermediate_matches
             .into_iter()
@@ -72,9 +75,8 @@ impl VectorRetriever {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::rag::vectorstore::{UsearchStore, MemoryVectorStore};
     use crate::core::rag::embedding::types::DocumentChunk;
-    
+    use crate::core::rag::vectorstore::{MemoryVectorStore, UsearchStore};
 
     /// Inline helper to generate standard document chunks matching system schemas
     fn make_mock_chunk(id: u64, text: &str) -> DocumentChunk {
@@ -125,7 +127,11 @@ mod tests {
         );
 
         assert!(retrieval_res.is_ok());
-        assert_eq!(retrieval_res.unwrap().len(), 2, "Retriever failed to truncate candidate pools.");
+        assert_eq!(
+            retrieval_res.unwrap().len(),
+            2,
+            "Retriever failed to truncate candidate pools."
+        );
     }
 
     // ==========================================
@@ -166,15 +172,20 @@ mod tests {
         let memory_store = MemoryVectorStore::new();
 
         let blank_query_vector = vec![0.0; 384];
-        let results = retriever.retrieve(
-            "empty index target search",
-            &blank_query_vector,
-            &vector_store,
-            &memory_store,
-            5,
-            None,
-        ).unwrap();
+        let results = retriever
+            .retrieve(
+                "empty index target search",
+                &blank_query_vector,
+                &vector_store,
+                &memory_store,
+                5,
+                None,
+            )
+            .unwrap();
 
-        assert!(results.is_empty(), "Retriever populated phantom elements from cold index layouts.");
+        assert!(
+            results.is_empty(),
+            "Retriever populated phantom elements from cold index layouts."
+        );
     }
 }

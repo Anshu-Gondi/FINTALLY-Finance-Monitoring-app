@@ -1,10 +1,6 @@
-use axum::{
-    http::StatusCode,
-    response::IntoResponse,
-    Extension, Json,
-};
-use serde::Serialize;
+use axum::{http::StatusCode, response::IntoResponse, Extension, Json};
 use fintally_db::DbContext;
+use serde::Serialize;
 
 // Importing the FeedbackCreate schema model you shared earlier
 use fintally_db::models::FeedbackCreate;
@@ -26,7 +22,7 @@ impl IntoResponse for FeedbackRouteError {
         let (status, err_msg) = match self {
             FeedbackRouteError::DatabaseError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
-        
+
         let body = Json(serde_json::json!({
             "error": "FeedbackError",
             "detail": err_msg
@@ -43,7 +39,6 @@ pub async fn submit_feedback(
     Extension(db_ctx): Extension<DbContext>,
     Json(body): Json<FeedbackCreate>,
 ) -> Result<impl IntoResponse, FeedbackRouteError> {
-    
     // Insert structured payload safely into Postgres
     sqlx::query!(
         "INSERT INTO feedbacks (name, email, message) VALUES ($1, $2, $3)",

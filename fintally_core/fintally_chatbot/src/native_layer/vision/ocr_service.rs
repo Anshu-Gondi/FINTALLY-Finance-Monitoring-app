@@ -1,5 +1,5 @@
-use std::path::Path;
 use anyhow::{bail, Context, Result};
+use std::path::Path;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::core::vision::engine::{DocumentInput, VisionEngine};

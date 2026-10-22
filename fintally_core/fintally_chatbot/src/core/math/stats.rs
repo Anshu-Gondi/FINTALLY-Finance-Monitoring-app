@@ -12,18 +12,18 @@ pub fn compute_stat_scores(profile: &StatProfile) -> Result<HashMap<StatCategory
 
     for metric in &profile.metrics {
         if metric.weight < 0.0 {
-            return Err(
-                AppError::InvalidInput(format!("Metric weight cannot be negative: {}", metric.name))
-            );
+            return Err(AppError::InvalidInput(format!(
+                "Metric weight cannot be negative: {}",
+                metric.name
+            )));
         }
 
         let score = if let Some(target) = metric.target {
             if target <= 0.0 {
-                return Err(
-                    AppError::InvalidInput(
-                        format!("Metric target must be positive: {}", metric.name)
-                    )
-                );
+                return Err(AppError::InvalidInput(format!(
+                    "Metric target must be positive: {}",
+                    metric.name
+                )));
             }
             let diff = (metric.value - target).abs();
             let s = (1.0 - diff / target).max(0.0); // normalized 0-1
@@ -32,16 +32,16 @@ pub fn compute_stat_scores(profile: &StatProfile) -> Result<HashMap<StatCategory
             metric.weight
         };
 
-        let entry = category_scores.entry(metric.category.clone()).or_insert(0.0);
+        let entry = category_scores
+            .entry(metric.category.clone())
+            .or_insert(0.0);
         *entry += score;
     }
 
-    Ok(
-        category_scores
-            .into_iter()
-            .map(|(cat, val)| (cat, val.min(1.0) * 100.0))
-            .collect()
-    )
+    Ok(category_scores
+        .into_iter()
+        .map(|(cat, val)| (cat, val.min(1.0) * 100.0))
+        .collect())
 }
 
 /// Generate alerts based on current value vs target & trends
@@ -73,9 +73,7 @@ pub fn generate_alerts(profile: &StatProfile) -> Result<Vec<StatAlert>, AppError
                         category: metric.category.clone(),
                         message: format!(
                             "{} is {:.1}% away from target {:.1}",
-                            metric.name,
-                            diff_percent,
-                            target
+                            metric.name, diff_percent, target
                         ),
                         level,
                     });
@@ -100,8 +98,7 @@ pub fn generate_alerts(profile: &StatProfile) -> Result<Vec<StatAlert>, AppError
                     category: metric.category.clone(),
                     message: format!(
                         "{} changed by {:.1}% from last measurement",
-                        metric.name,
-                        change_percent
+                        metric.name, change_percent
                     ),
                     level: AlertLevel::Warning,
                 });
@@ -121,8 +118,10 @@ mod tests {
         let mut profile = StatProfile::single_parent_profile();
 
         // Simulate metric values
-        profile.metrics.iter_mut().for_each(|m| {
-            match m.name.as_str() {
+        profile
+            .metrics
+            .iter_mut()
+            .for_each(|m| match m.name.as_str() {
                 "BMI" => {
                     m.value = 23.0;
                 }
@@ -142,8 +141,7 @@ mod tests {
                     m.value = 5.5;
                 }
                 _ => (),
-            }
-        });
+            });
 
         let scores = compute_stat_scores(&profile).unwrap();
 
@@ -163,8 +161,10 @@ mod tests {
     fn test_alerts_generation() {
         let mut profile = StatProfile::single_parent_profile();
 
-        profile.metrics.iter_mut().for_each(|m| {
-            match m.name.as_str() {
+        profile
+            .metrics
+            .iter_mut()
+            .for_each(|m| match m.name.as_str() {
                 "BMI" => {
                     m.value = 30.0;
                     m.history = vec![23.0, 25.0, 30.0];
@@ -178,8 +178,7 @@ mod tests {
                     m.history = vec![30_000.0, 20_000.0, 10_000.0];
                 }
                 _ => {}
-            }
-        });
+            });
 
         profile.metrics.push(StatMetric {
             name: "Custom Metric".into(),

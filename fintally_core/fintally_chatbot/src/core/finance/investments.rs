@@ -179,10 +179,7 @@ mod tests {
         let result = generate_investment_plan_domain(investable_amount, &profile);
 
         assert!(
-            matches!(
-                result,
-                Err(DomainError::AllocationOverflow { .. })
-            ),
+            matches!(result, Err(DomainError::AllocationOverflow { .. })),
             "Expected AllocationOverflow, got: {:?}",
             result
         );

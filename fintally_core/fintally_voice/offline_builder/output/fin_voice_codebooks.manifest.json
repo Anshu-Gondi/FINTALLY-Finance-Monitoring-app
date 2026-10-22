@@ -1,0 +1,50 @@
+{
+  "artifact": "FinTally Voice Codebook",
+  "format": "FVCB",
+  "format_version": 1,
+  "codebook_schema_version": 1,
+  "feature_contract": {
+    "feature_schema_version": 1,
+    "sample_rate_hz": 16000,
+    "channels": 1,
+    "frame_samples": 320,
+    "hop_samples": 160,
+    "feature_dimension": 32
+  },
+  "normalization_schema_version": 1,
+  "normalization_training_frame_count": 7481735,
+  "kmeans_seed": 252758545,
+  "payload_crc32": "372e2a2a",
+  "languages": [
+    {
+      "language": "en",
+      "dimensions": 32,
+      "centroid_count": 128,
+      "training_samples": 4628995,
+      "iterations": 272,
+      "converged": true,
+      "inertia": 4.44885625443720520e7,
+      "backend": "cuda-nearest-assignment+rayon-reduction"
+    },
+    {
+      "language": "fr",
+      "dimensions": 32,
+      "centroid_count": 128,
+      "training_samples": 740395,
+      "iterations": 201,
+      "converged": true,
+      "inertia": 6.87444744451375306e6,
+      "backend": "cuda-nearest-assignment+rayon-reduction"
+    },
+    {
+      "language": "hi",
+      "dimensions": 32,
+      "centroid_count": 128,
+      "training_samples": 2112345,
+      "iterations": 195,
+      "converged": true,
+      "inertia": 1.52354704634269606e7,
+      "backend": "cuda-nearest-assignment+rayon-reduction"
+    }
+  ]
+}

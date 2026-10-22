@@ -1,4 +1,3 @@
-
 pub struct OverlapStrategy {
     pub chunk_size: usize,    // Max word count per chunk
     pub chunk_overlap: usize, // Overlapping words between sequential chunks
@@ -6,7 +5,10 @@ pub struct OverlapStrategy {
 
 impl OverlapStrategy {
     pub fn new(chunk_size: usize, chunk_overlap: usize) -> Self {
-        Self { chunk_size, chunk_overlap }
+        Self {
+            chunk_size,
+            chunk_overlap,
+        }
     }
 
     /// Divides text using zero-copy token windows to minimize heap churn.
@@ -42,19 +44,19 @@ impl OverlapStrategy {
         // 2. Sliding Window Calculation
         while start < num_words {
             let end = (start + self.chunk_size).min(num_words);
-            
+
             // Extract exact slice bounds directly out of our boundary cache
             let chunk_start_byte = word_bounds[start].0;
             let chunk_end_byte = word_bounds[end - 1].1;
-            
+
             // Slice the source document directly with zero-copy overhead, then box it cleanly
             let chunk_slice = &text[chunk_start_byte..chunk_end_byte];
             chunks.push(chunk_slice.into());
-            
+
             if end == num_words {
                 break;
             }
-            
+
             // Advance window positions safely
             let step = self.chunk_size.saturating_sub(self.chunk_overlap);
             if step == 0 {
@@ -80,7 +82,7 @@ mod tests {
         // Strategy: 3 words per chunk, 1 word overlap
         let strategy = OverlapStrategy::new(3, 1);
         let sample_text = "alpha beta gamma delta epsilon zeta";
-        
+
         let chunks = strategy.compute_windows(sample_text);
 
         // Expected progression:
@@ -89,8 +91,12 @@ mod tests {
         // Window 2: "gamma delta epsilon" (Words 2, 3, 4)
         // Next window starts at index 4 (epsilon)
         // Window 3: "epsilon zeta" (Words 4, 5)
-        assert_eq!(chunks.len(), 3, "Sliding window distribution failed to capture all phrases.");
-        
+        assert_eq!(
+            chunks.len(),
+            3,
+            "Sliding window distribution failed to capture all phrases."
+        );
+
         assert_eq!(chunks[0].as_ref(), "alpha beta gamma");
         assert_eq!(chunks[1].as_ref(), "gamma delta epsilon");
         assert_eq!(chunks[2].as_ref(), "epsilon zeta");
@@ -107,7 +113,11 @@ mod tests {
 
         let chunks = strategy.compute_windows(sample_text);
 
-        assert_eq!(chunks.len(), 1, "Short text block shouldn't split into multiple intervals.");
+        assert_eq!(
+            chunks.len(),
+            1,
+            "Short text block shouldn't split into multiple intervals."
+        );
         assert_eq!(chunks[0].as_ref(), "small asset ledger");
     }
 
@@ -116,7 +126,10 @@ mod tests {
         let strategy = OverlapStrategy::new(5, 1);
         let chunks = strategy.compute_windows("");
 
-        assert!(chunks.is_empty(), "Passing an empty text buffer must yield an empty chunk array.");
+        assert!(
+            chunks.is_empty(),
+            "Passing an empty text buffer must yield an empty chunk array."
+        );
     }
 
     // ==========================================
@@ -136,7 +149,11 @@ mod tests {
         // Chunk 0: "one two"
         // Chunk 1: "two three"
         // Chunk 2: "three four"
-        assert_eq!(chunks.len(), 3, "Infinite loop safeguard step failed to calculate correctly.");
+        assert_eq!(
+            chunks.len(),
+            3,
+            "Infinite loop safeguard step failed to calculate correctly."
+        );
         assert_eq!(chunks[0].as_ref(), "one two");
         assert_eq!(chunks[1].as_ref(), "two three");
         assert_eq!(chunks[2].as_ref(), "three four");

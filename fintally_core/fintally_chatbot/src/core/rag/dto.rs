@@ -3,11 +3,11 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IngestionRequest {
-    // CELERON TUNING: Box<str> drops stack allocation from 24 bytes to 16 bytes 
+    // CELERON TUNING: Box<str> drops stack allocation from 24 bytes to 16 bytes
     // by completely eliminating the unused capacity field.
     pub file_path: Box<str>,
-    pub document_type: Box<str>, 
-    
+    pub document_type: Box<str>,
+
     // Swapping HashMap for BTreeMap packs metadata contiguously into small node arrays,
     // avoiding the massive allocation overhead of sparse hash tables.
     pub metadata: Option<BTreeMap<Box<str>, Box<str>>>,
@@ -41,7 +41,7 @@ pub struct TextChunkMatch {
 pub struct QueryResponse {
     // When merging massive context text blocks for LLMs, Box<str> locks down the final memory
     // allocation, freeing up the excess capacity padding used during string construction.
-    pub context_block: Box<str>, 
+    pub context_block: Box<str>,
     pub matches: Vec<TextChunkMatch>,
 }
 
@@ -66,16 +66,23 @@ mod tests {
 
         // Serialize to JSON string footprint
         let serialized = serde_json::to_string(&original).expect("Failed serialization");
-        
+
         // Deserialize back into structured memory architecture
-        let deserialized: IngestionRequest = serde_json::from_str(&serialized).expect("Failed deserialization");
+        let deserialized: IngestionRequest =
+            serde_json::from_str(&serialized).expect("Failed deserialization");
 
         assert_eq!(deserialized.file_path, original.file_path);
         assert_eq!(deserialized.document_type, original.document_type);
-        
+
         let extracted_metadata = deserialized.metadata.unwrap();
-        assert_eq!(extracted_metadata.get("department").map(|s| s.as_ref()), Some("finance"));
-        assert_eq!(extracted_metadata.get("confidential").map(|s| s.as_ref()), Some("true"));
+        assert_eq!(
+            extracted_metadata.get("department").map(|s| s.as_ref()),
+            Some("finance")
+        );
+        assert_eq!(
+            extracted_metadata.get("confidential").map(|s| s.as_ref()),
+            Some("true")
+        );
     }
 
     #[test]
@@ -145,7 +152,11 @@ mod tests {
         assert_eq!(deserialized.matches[0].chunk_id, 1024);
         assert_eq!(deserialized.matches[0].score, 0.925);
         assert_eq!(
-            deserialized.matches[0].metadata.get("author").unwrap().as_ref(),
+            deserialized.matches[0]
+                .metadata
+                .get("author")
+                .unwrap()
+                .as_ref(),
             "system_agent"
         );
     }

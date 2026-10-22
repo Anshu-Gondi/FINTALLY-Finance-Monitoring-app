@@ -1,3 +1,3 @@
-pub mod memory;
-pub mod ffi;
 pub mod engine;
+pub mod ffi;
+pub mod memory;

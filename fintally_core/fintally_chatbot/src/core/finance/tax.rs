@@ -143,10 +143,7 @@ mod tests {
 
         let taxes = calculate_tax(100_000.0, &profile).unwrap();
 
-        assert!(approx_eq(
-            *taxes.get(&TaxDomain::Income).unwrap(),
-            10_000.0
-        ));
+        assert!(approx_eq(*taxes.get(&TaxDomain::Income).unwrap(), 10_000.0));
     }
 
     #[test]
@@ -163,10 +160,7 @@ mod tests {
 
         let taxes = calculate_tax(50_000.0, &profile).unwrap();
 
-        assert!(approx_eq(
-            *taxes.get(&TaxDomain::Funeral).unwrap(),
-            5_000.0
-        ));
+        assert!(approx_eq(*taxes.get(&TaxDomain::Funeral).unwrap(), 5_000.0));
     }
 
     #[test]
@@ -192,10 +186,7 @@ mod tests {
 
         let taxes = calculate_tax(100_000.0, &profile).unwrap();
 
-        assert!(approx_eq(
-            *taxes.get(&TaxDomain::Income).unwrap(),
-            10_000.0
-        ));
+        assert!(approx_eq(*taxes.get(&TaxDomain::Income).unwrap(), 10_000.0));
         assert!(approx_eq(
             *taxes.get(&TaxDomain::Insurance).unwrap(),
             5_000.0

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::core::rag::embedding::types::DocumentChunk;
+use std::collections::HashMap;
 
 pub struct MetadataFilter;
 
@@ -17,7 +17,8 @@ impl MetadataFilter {
         for (key, value) in criteria {
             // Linear scan over sequential memory buffer.
             // Compares the underlying &str slices directly without allocating memory.
-            let chunk_entry = chunk.metadata
+            let chunk_entry = chunk
+                .metadata
                 .iter()
                 .find(|(chunk_key, _)| chunk_key.as_ref() == key.as_str());
 
@@ -41,7 +42,9 @@ mod tests {
 
     /// Helper to instantiate a document chunk with a predefined metadata block.
     /// Updated to match the strict schema fields required by the current project build.
-    fn make_chunk_with_metadata(metadata_map: std::collections::BTreeMap<String, String>) -> DocumentChunk {
+    fn make_chunk_with_metadata(
+        metadata_map: std::collections::BTreeMap<String, String>,
+    ) -> DocumentChunk {
         // Convert BTreeMap to the Boxed slice-of-pairs format required by your struct
         let metadata: Box<[(Box<str>, Box<str>)]> = metadata_map
             .into_iter()
@@ -68,7 +71,10 @@ mod tests {
         let chunk = make_chunk_with_metadata(metadata);
 
         let criteria = std::collections::HashMap::new();
-        assert!(MetadataFilter::matches(&chunk, &criteria), "Empty criteria failed to pass.");
+        assert!(
+            MetadataFilter::matches(&chunk, &criteria),
+            "Empty criteria failed to pass."
+        );
     }
 
     #[test]
@@ -81,7 +87,10 @@ mod tests {
         criteria.insert("source".to_string(), "ledger.pdf".to_string());
         criteria.insert("year".to_string(), "2026".to_string());
 
-        assert!(!MetadataFilter::matches(&chunk, &criteria), "Length validation guardrail failed to reject query.");
+        assert!(
+            !MetadataFilter::matches(&chunk, &criteria),
+            "Length validation guardrail failed to reject query."
+        );
     }
 
     // ==========================================
@@ -99,7 +108,10 @@ mod tests {
         criteria.insert("department".to_string(), "accounting".to_string());
         criteria.insert("security_level".to_string(), "L2".to_string());
 
-        assert!(MetadataFilter::matches(&chunk, &criteria), "Valid matching metadata tags were rejected.");
+        assert!(
+            MetadataFilter::matches(&chunk, &criteria),
+            "Valid matching metadata tags were rejected."
+        );
     }
 
     #[test]
@@ -111,7 +123,10 @@ mod tests {
         let mut criteria = std::collections::HashMap::new();
         criteria.insert("environment".to_string(), "staging".to_string());
 
-        assert!(!MetadataFilter::matches(&chunk, &criteria), "System allowed value mismatch pass.");
+        assert!(
+            !MetadataFilter::matches(&chunk, &criteria),
+            "System allowed value mismatch pass."
+        );
     }
 
     #[test]
@@ -123,6 +138,9 @@ mod tests {
         let mut criteria = std::collections::HashMap::new();
         criteria.insert("tenant_id".to_string(), "alice".to_string());
 
-        assert!(!MetadataFilter::matches(&chunk, &criteria), "System failed to detect missing filter key criteria.");
+        assert!(
+            !MetadataFilter::matches(&chunk, &criteria),
+            "System failed to detect missing filter key criteria."
+        );
     }
 }

@@ -1,0 +1,73 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "linux-gcc-release",
+      "displayName": "Linux / WSL2 GCC Release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/cmake/linux-gcc-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "gcc",
+        "FIN_VOICE_BUILD_TESTS": "ON",
+        "FIN_VOICE_BUILD_BENCHMARKS": "OFF",
+        "FIN_VOICE_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "linux-gcc-debug",
+      "displayName": "Linux / WSL2 GCC Debug + ASan/UBSan",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/cmake/linux-gcc-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_COMPILER": "gcc",
+        "FIN_VOICE_BUILD_TESTS": "ON",
+        "FIN_VOICE_ENABLE_ASAN_UBSAN": "ON",
+        "FIN_VOICE_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "linux-clang-release",
+      "displayName": "Linux / WSL2 Clang Release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/cmake/linux-clang-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "clang",
+        "FIN_VOICE_BUILD_TESTS": "ON",
+        "FIN_VOICE_BUILD_BENCHMARKS": "OFF",
+        "FIN_VOICE_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
+    {
+      "name": "windows-msvc-release",
+      "displayName": "Windows MSVC Release",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/cmake/windows-msvc-release",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Release",
+        "FIN_VOICE_BUILD_TESTS": "ON",
+        "FIN_VOICE_WARNINGS_AS_ERRORS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "linux-gcc-release", "configurePreset": "linux-gcc-release" },
+    { "name": "linux-gcc-debug", "configurePreset": "linux-gcc-debug" },
+    { "name": "linux-clang-release", "configurePreset": "linux-clang-release" },
+    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release", "configuration": "Release" }
+  ],
+  "testPresets": [
+    { "name": "linux-gcc-release", "configurePreset": "linux-gcc-release", "output": { "outputOnFailure": true } },
+    { "name": "linux-gcc-debug", "configurePreset": "linux-gcc-debug", "output": { "outputOnFailure": true } },
+    { "name": "linux-clang-release", "configurePreset": "linux-clang-release", "output": { "outputOnFailure": true } },
+    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release", "configuration": "Release", "output": { "outputOnFailure": true } }
+  ]
+}

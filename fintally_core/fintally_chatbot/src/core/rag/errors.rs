@@ -72,22 +72,25 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
     use std::io::{Error as IoError, ErrorKind};
-    use std::sync::Arc;
     use std::path::Path;
+    use std::sync::Arc;
 
     // Core workspace references
-    use crate::core::rag::service::RagService;
-    use crate::core::rag::ingestion::pipeline::IngestionPipeline;
-    use crate::core::rag::vectorstore::usearch_store::UsearchStore;
-    use crate::core::rag::vectorstore::memory_store::MemoryVectorStore;
     use crate::core::rag::embedding::generator::{EmbeddingGenerator, NativeEmbedder};
+    use crate::core::rag::ingestion::pipeline::IngestionPipeline;
     use crate::core::rag::retrieval::retriever::VectorRetriever;
+    use crate::core::rag::service::RagService;
+    use crate::core::rag::vectorstore::memory_store::MemoryVectorStore;
+    use crate::core::rag::vectorstore::usearch_store::UsearchStore;
 
     // Target reference to your real downloaded unquantized BGE model directories
     const BGE_VAULT_PATH: &str = "../llm_models/embedding/bge_safetensors_output";
 
     // Dynamic test builder that constructs your complete service layers natively
-    fn setup_test_service(idx_path: Option<String>, chk_path: Option<String>) -> Option<RagService> {
+    fn setup_test_service(
+        idx_path: Option<String>,
+        chk_path: Option<String>,
+    ) -> Option<RagService> {
         if !Path::new(BGE_VAULT_PATH).exists() {
             return None; // Safely skip execution if model files aren't physically present
         }
@@ -96,8 +99,8 @@ mod tests {
 
         // FIX: Match the dimensions of the BGE model instead of hardcoding `4`.
         // 384 is standard for bge-small. Use 768 if you are using bge-base.
-        let test_usearch_store = UsearchStore::new(384, 100)
-            .expect("Failed to initialize test USearch storage layout");
+        let test_usearch_store =
+            UsearchStore::new(384, 100).expect("Failed to initialize test USearch storage layout");
 
         Some(RagService::new(
             IngestionPipeline::new(512, 50),
@@ -107,7 +110,7 @@ mod tests {
             VectorRetriever::new(0.5),
             5,
             idx_path,
-            chk_path
+            chk_path,
         ))
     }
 
@@ -150,7 +153,10 @@ mod tests {
     fn test_error_display_formatting() {
         let err = RagError::EmbeddingError("ONNX runtime uninitialized".into());
         let formatted_string = format!("{}", err);
-        assert_eq!(formatted_string, "Python embedding engine failure: ONNX runtime uninitialized");
+        assert_eq!(
+            formatted_string,
+            "Python embedding engine failure: ONNX runtime uninitialized"
+        );
 
         let serialization_err = RagError::SerializationError("JSON key mismatch".into());
         assert_eq!(
@@ -175,7 +181,8 @@ mod tests {
         };
         assert!(!lazy_service.has_persisted_data());
 
-        let strict_service = setup_test_service(Some("idx.bin".into()), Some("chunks.json".into())).unwrap();
+        let strict_service =
+            setup_test_service(Some("idx.bin".into()), Some("chunks.json".into())).unwrap();
         assert!(strict_service.has_persisted_data());
     }
 
@@ -191,12 +198,8 @@ mod tests {
         filters.insert("file_type".into(), "pdf".into());
         filters.insert("department".into(), "finance".into());
 
-        let query_execution = service.query(
-            "Fetch Q4 balance sheets",
-            Some(3),
-            Some(0.1),
-            Some(filters)
-        );
+        let query_execution =
+            service.query("Fetch Q4 balance sheets", Some(3), Some(0.1), Some(filters));
 
         assert!(
             query_execution.is_ok(),
@@ -224,7 +227,10 @@ mod tests {
                 assert!(msg.contains("Missing Index Dump Path Setup"));
             }
             other => {
-                panic!("Expected a SerializationError but caught structural variant: {:?}", other)
+                panic!(
+                    "Expected a SerializationError but caught structural variant: {:?}",
+                    other
+                )
             }
         }
     }
