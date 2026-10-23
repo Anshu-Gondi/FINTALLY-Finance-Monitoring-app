@@ -1,0 +1,125 @@
+name: Performance / Resource Regression
+description: Report or investigate a latency, throughput, CPU, cache, allocation, memory, or thermal regression with reproducible measurements.
+title: "perf: "
+labels:
+  - performance
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Performance claims need repeatable measurements. Separate algorithm changes from compiler flags, CPU frequency, thermals, background load, and cache state. Do not include private financial data.
+
+        FinTally's design target is bounded runtime work with an approximately 100 KiB accounted DSP/runtime working-set ceiling. State which memory components you measured; RSS, allocator counters, and the accounted working set are different metrics.
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: What regression or bottleneck do you observe?
+      description: Name the operation and describe the effect. Include whether this is a regression, a new optimization target, or a constrained-device limitation.
+      placeholder: Operation, expected behavior, observed symptom, user/system impact.
+    validations:
+      required: true
+
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Before-and-after measurements
+      description: Provide raw measurements and units. If there is no baseline yet, say so explicitly rather than estimating.
+      placeholder: |
+        | Metric | Baseline | Current | Unit | Runs / confidence |
+        |---|---:|---:|---|---|
+        | p50 latency | | | us/ms | |
+        | p95 latency | | | us/ms | |
+        | p99 latency | | | us/ms | |
+        | Throughput | | | frames/s or ops/s | |
+        | CPU cycles / operation | | | cycles | |
+        | Allocations / operation | | | count | |
+        | Peak RSS | | | KiB/MiB | |
+        | Accounted runtime working set | | | bytes | |
+        | Cache misses | | | events or misses/op | |
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and benchmark methodology
+      description: Include exact commands, benchmark case, input size, warm-up, iteration count, repetitions, and how results were collected.
+      placeholder: |
+        - Commands / case filter:
+        - Input shape and size:
+        - Warm-up and measured iterations:
+        - Number of independent runs:
+        - Timer / profiler / counter tool:
+        - Raw log or CSV attachment:
+    validations:
+      required: true
+
+  - type: textarea
+    id: machine
+    attributes:
+      label: Hardware and build environment
+      description: Clock and cache measurements depend on the CPU, kernel, permissions, compiler, and build profile.
+      value: |
+        - CPU / target device:
+        - OS / kernel / target triple:
+        - RAM and relevant cache sizes (if known):
+        - Rust / C compiler / CMake versions:
+        - Debug/release profile and feature flags:
+        - CPU affinity / governor / frequency policy:
+        - Temperature / throttling / background load:
+        - Relevant commit(s):
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: budget
+    attributes:
+      label: Target budget and constraints
+      description: Explain the required latency or resource limit, its source, and which runtime components it covers.
+      placeholder: |
+        - Required latency / throughput:
+        - Accounted working-set ceiling and included components:
+        - Stack / heap / allocator constraints:
+        - Queue capacity and overload behavior:
+        - Required hardware / SIMD portability:
+        - Accuracy / determinism trade-offs that are not acceptable:
+    validations:
+      required: true
+
+  - type: textarea
+    id: hypotheses
+    attributes:
+      label: Current hypothesis and proposed approach
+      description: What do you think causes the issue? Which change would you test first, and what other explanation might fit the evidence?
+      placeholder: Include profiling evidence and alternatives. Avoid optimizing based only on intuition.
+    validations:
+      required: false
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: Validation plan
+      description: Explain how you will prove the change improves the target case without making other cases, safety, or constrained targets worse.
+      placeholder: |
+        - Same-input before/after benchmark:
+        - Worst-case and multicontext runs:
+        - Allocation and memory checks:
+        - Cache/hardware-counter checks where available:
+        - Correctness / safety regression tests:
+        - Accept/reject threshold:
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: evidence_checks
+    attributes:
+      label: Evidence checks
+      options:
+        - label: I distinguished measured values from estimates or unavailable hardware counters.
+          required: true
+        - label: I did not attribute timing changes to the algorithm without considering clock, thermal, cache, and background-load effects.
+          required: true
+        - label: I removed private financial data and secrets from attached inputs and logs.
+          required: true

@@ -1,0 +1,151 @@
+name: Feature / Architecture Proposal
+description: Propose a capability or design change with a problem statement, implementation approach, constraints, tests, and measurable acceptance criteria.
+title: "proposal: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        FinTally is intended to be an ultra-low-latency, privacy-conscious personal finance tracker with an AI assistant. Proposals should explain the user problem first, then justify the implementation with measurable outcomes.
+
+        **Architecture defaults:** prefer straightforward concrete data structures and functions, explicit ownership, bounded work, and simple control flow. Avoid needless layers, duplicated state, heap allocation in hot paths, and abstraction for abstraction's sake. Traits and dynamic dispatch are not prohibited; introduce them when they solve a real boundary, extensibility, or testability need, and explain their cost/benefit on latency-sensitive paths.
+
+        **Financial safety:** the model is not the source of truth. Deterministic validation and explicit user approval must gate financial mutations. Never include real personal finance data or credentials in this issue.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem do you see today?
+      description: Describe the current limitation, pain point, or missing capability. Who is affected, and how can it be observed?
+      placeholder: Current behavior, use case, impact, and evidence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: requested
+    attributes:
+      label: What do you want to add or change?
+      description: Describe the intended capability and visible behavior. Keep the problem separate from the proposed implementation.
+      placeholder: Expected behavior and a concrete example using synthetic data.
+    validations:
+      required: true
+
+  - type: textarea
+    id: architecture
+    attributes:
+      label: How would you update the architecture?
+      description: Identify likely modules and responsibility boundaries. Explain data flow, ownership/lifetimes, APIs/ABIs, and which existing components should or should not change.
+      placeholder: |
+        - Affected subsystem(s) / files:
+        - New or changed responsibility:
+        - Data flow and ownership:
+        - Public API / FFI / file-format impact:
+        - Migration or rollout plan:
+    validations:
+      required: true
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed implementation approach
+      description: Explain the algorithm and main design choices. Include alternatives considered and why the selected approach is preferable.
+      placeholder: |
+        - Algorithm / data structure:
+        - Alternative(s) considered:
+        - Why this approach:
+        - Failure and fallback behavior:
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Hard constraints and invariants
+      description: State budgets and compatibility requirements. Do not invent a numeric requirement if it has not been measured or agreed.
+      value: |
+        - Runtime working-set target: approximately 100 KiB accounted for DSP/runtime components; identify which components are included.
+        - Bounded queues and explicit overload/backpressure behavior:
+        - Target hardware / CPU features (including constrained target profile):
+        - Latency / throughput budget and measurement method:
+        - Allocation / buffer / stack constraints:
+        - ABI / API / data-format compatibility:
+        - Determinism / reproducibility:
+        - Privacy and financial approval requirements:
+        - File size: each Rust source file must remain below 1,000 lines; split by responsibility when needed.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: rust_design
+    attributes:
+      label: Rust and native-code design justification
+      description: Explain why any new trait, dyn Trait, generic layer, wrapper type, virtual dispatch, FFI boundary, or allocation is needed. Prefer concrete types and static dispatch in hot paths unless measured evidence or a real interface requirement supports more abstraction.
+      placeholder: |
+        - New abstractions (if any) and the reason for each:
+        - Hot path vs. cold/control path:
+        - Allocation / dispatch / indirection costs:
+        - C/Rust boundary and ownership rules:
+    validations:
+      required: true
+
+  - type: textarea
+    id: performance
+    attributes:
+      label: Expected performance impact and benchmark plan
+      description: Give a baseline and target where possible. State how you will measure latency, throughput, CPU cycles, memory, allocations, and cache behavior. Mark unknown values as not yet measured.
+      placeholder: |
+        - Current baseline:
+        - Expected target / acceptance threshold:
+        - Benchmark case and input size:
+        - Warm/cold-cache conditions and repetitions:
+        - Hardware counters / clock / thermal context:
+        - Working-set and allocation impact:
+        - Regression threshold:
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Tests and acceptance criteria
+      description: Provide objective, verifiable outcomes. Include positive and negative paths rather than only a happy-path demo.
+      placeholder: |
+        - [ ] Happy path:
+        - [ ] Boundary / worst-case input:
+        - [ ] Malformed input and error handling:
+        - [ ] Queue full / backpressure / shutdown (if relevant):
+        - [ ] Concurrency / ABI tests (if relevant):
+        - [ ] Financial safety and explicit approval tests (if relevant):
+        - [ ] Benchmark before/after with same environment:
+        - [ ] Documentation updated:
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk level
+      description: Choose the highest relevant risk introduced by this proposal.
+      options:
+        - Low — isolated behavior, no public interface change
+        - Medium — performance, lifecycle, or internal architecture change
+        - High — concurrency, memory safety, FFI, financial safety, or persistence change
+        - Unsure — requires maintainer review
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contributor_checks
+    attributes:
+      label: Design checks
+      options:
+        - label: I searched for an existing issue or implementation before proposing this change.
+          required: true
+        - label: I have separated the problem statement from the preferred implementation.
+          required: true
+        - label: I will not claim performance improvements without a reproducible before/after measurement.
+          required: true
+        - label: I have not included secrets or private financial data.
+          required: true

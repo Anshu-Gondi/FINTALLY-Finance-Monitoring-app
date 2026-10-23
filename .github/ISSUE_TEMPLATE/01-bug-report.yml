@@ -1,0 +1,135 @@
+name: Bug / Correctness Report
+description: Report a reproducible correctness, reliability, safety, or compatibility problem in FinTally.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve FinTally. Report the behavior you observed and how to reproduce it.
+
+        **Privacy and financial safety:** never include real account numbers, credentials, access tokens, private financial records, or other personal data. Redact logs and use synthetic examples. Do not publish exploitable security vulnerabilities here; use the repository's private vulnerability-reporting channel if enabled.
+
+  - type: dropdown
+    id: subsystem
+    attributes:
+      label: Affected subsystem
+      description: Choose the closest area; select Other if uncertain.
+      options:
+        - Rust runtime / control plane
+        - Native C core / DSP / SIMD
+        - Audio / ASR integration
+        - Transcript cleanup / intent classification / slots
+        - Prompt generation / model-output validation
+        - Threading / queues / UI bridge
+        - Offline builder / datasets / codebooks
+        - Benchmarks / profiling
+        - Build / CI / packaging
+        - Documentation
+        - Other / unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What did you observe?
+      description: State the actual behavior, error, incorrect result, crash, or regression. Include relevant sanitized logs.
+      placeholder: Describe the observed behavior and its impact.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+      description: Describe the correct behavior, including any relevant invariant.
+      placeholder: Explain what should happen and how correctness can be checked.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction steps
+      description: Include the command, input, configuration, and steps required to reproduce the issue. Use synthetic transcripts and data.
+      placeholder: |
+        1. Build/configuration:
+        2. Command or API call:
+        3. Synthetic input:
+        4. Actual result:
+        5. Expected result:
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and severity
+      description: Explain what is affected. Mention correctness, lost/duplicated work, privacy, financial-safety gates, latency, memory, CPU, or compatibility where relevant.
+      placeholder: Who or what is affected? Is there a safe workaround?
+    validations:
+      required: true
+
+  - type: textarea
+    id: fix_idea
+    attributes:
+      label: Proposed fix or desired change (if known)
+      description: What would you change, and how should the change fit the current architecture? It is fine to say you do not know yet.
+      placeholder: Proposed behavior, files/subsystems likely involved, migration or compatibility concerns.
+    validations:
+      required: false
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Relevant constraints
+      description: Record known limits or invariants instead of assuming them. Examples include the 102,400-byte accounted DSP working-set ceiling, bounded queues, target hardware, C ABI compatibility, and explicit approval for financial mutations.
+      placeholder: |
+        - Runtime memory / working-set effect:
+        - Latency / throughput requirement:
+        - Target hardware / CPU features:
+        - ABI / API / data-format compatibility:
+        - Financial safety / determinism / privacy:
+    validations:
+      required: false
+
+  - type: textarea
+    id: tests
+    attributes:
+      label: Tests and evidence
+      description: List tests run and their results. Include happy-path, boundary, malformed-input, failure, overload, or concurrency coverage as applicable.
+      placeholder: |
+        - Commands run:
+        - Tests passed/failed:
+        - Benchmark/profile evidence, if relevant:
+        - Missing test cases:
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include only details relevant to reproduction.
+      value: |
+        - OS / target triple:
+        - Rust version (`rustc -V`):
+        - C compiler / CMake version:
+        - Build profile and feature flags:
+        - CPU / RAM / optional accelerator:
+        - FinTally commit or branch:
+      render: markdown
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: safety_checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I removed secrets and private/personal financial data from this report.
+          required: true
+        - label: I searched existing issues for a duplicate report.
+          required: true
