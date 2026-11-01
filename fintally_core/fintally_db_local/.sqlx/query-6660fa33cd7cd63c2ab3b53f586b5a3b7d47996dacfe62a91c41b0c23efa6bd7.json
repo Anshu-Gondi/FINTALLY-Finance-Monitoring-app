@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE budget_allocations\n        SET category = ?1,\n            amount_minor_units = ?2,\n            period_start_unix = ?3,\n            period_end_unix = ?4,\n            updated_at_unix = ?5,\n            revision = revision + 1\n        WHERE id = ?6 AND user_id = ?7 AND revision = ?8\n        RETURNING id AS \"id!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6660fa33cd7cd63c2ab3b53f586b5a3b7d47996dacfe62a91c41b0c23efa6bd7"
+}

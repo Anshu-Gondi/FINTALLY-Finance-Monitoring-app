@@ -1,0 +1,25 @@
+[package]
+name = "fintally_kernel"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+license-file.workspace = true
+
+[dependencies]
+fintally_app = { path = "../fintally_app" }
+fintally_db = { path = "../fintally_db" }
+fintally_db_local = { path = "../fintally_db_local" }
+fintally_ipc_protocol = { path = "../fintally_ipc_protocol" }
+getrandom = "0.2"
+sha2 = "0.10"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "macros"] }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+zeroize = "1.8"
+dotenvy = "0.15"
+
+[dev-dependencies]
+bcrypt = "0.15"

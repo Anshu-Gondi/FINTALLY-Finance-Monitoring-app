@@ -494,7 +494,7 @@ async fn main() {
         .expect("Failed to build pure-Rust Vector engine service layer"),
     );
 
-    jobs::jobs::start_scheduler(pool.clone(), rag_service.clone());
+    jobs::jobs::start_rag_scheduler(rag_service.clone());
     println!("⚙️  Thread pool processes registered. Background schedulers operational.");
 
     // ─── 1. Resolve + Initialize Native Llama Engine Model ────────────────

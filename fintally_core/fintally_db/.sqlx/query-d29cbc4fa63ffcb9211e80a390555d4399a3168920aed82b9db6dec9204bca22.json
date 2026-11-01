@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO transactions (\n                    user_id, name, price, description, datetime, category,\n                    is_recurring, recurring_frequency, receipt_url,\n                    template_id, scheduled_for\n                )\n                VALUES ($1, $2, $3, $4, $5, $6, FALSE, NULL, $7, $8, $9)\n                ON CONFLICT (template_id, scheduled_for)\n                    WHERE template_id IS NOT NULL AND scheduled_for IS NOT NULL\n                DO NOTHING\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Float8",
+        "Text",
+        "Int8",
+        "Varchar",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d29cbc4fa63ffcb9211e80a390555d4399a3168920aed82b9db6dec9204bca22"
+}

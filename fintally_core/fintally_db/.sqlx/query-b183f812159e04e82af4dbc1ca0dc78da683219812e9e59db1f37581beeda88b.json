@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO transactions\n            (user_id, name, price, description, datetime, category, is_recurring,\n             recurring_frequency, receipt_url)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::recurring_frequency, NULL)\n        RETURNING\n            id,\n            CASE WHEN octet_length(name) <= 128 THEN name ELSE NULL END AS \"name?\",\n            (octet_length(name) <= 128) AS \"name_within_limit!\",\n            price,\n            CASE WHEN octet_length(description) <= 512 THEN description ELSE NULL END AS \"description?\",\n            (octet_length(description) <= 512) AS \"description_within_limit!\",\n            datetime AS datetime_unix_seconds,\n            CASE WHEN octet_length(category) <= 64 THEN category ELSE NULL END AS \"category?\",\n            (octet_length(category) <= 64) AS \"category_within_limit!\",\n            is_recurring,\n            recurring_frequency::text AS \"recurring_frequency?\",\n            CASE WHEN receipt_url IS NULL OR octet_length(receipt_url) <= 512 THEN receipt_url ELSE NULL END AS \"receipt_url?\",\n            (receipt_url IS NULL OR octet_length(receipt_url) <= 512) AS \"receipt_url_within_limit!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "name_within_limit!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "price",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "description?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "description_within_limit!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "datetime_unix_seconds",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "category?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "category_within_limit!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_recurring",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "recurring_frequency?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "receipt_url?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "receipt_url_within_limit!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Varchar",
+        "Float8",
+        "Text",
+        "Int8",
+        "Varchar",
+        "Bool",
+        {
+          "Custom": {
+            "name": "recurring_frequency",
+            "kind": {
+              "Enum": [
+                "Daily",
+                "Weekly",
+                "Monthly"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      false,
+      null,
+      null,
+      false,
+      null,
+      null,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "b183f812159e04e82af4dbc1ca0dc78da683219812e9e59db1f37581beeda88b"
+}

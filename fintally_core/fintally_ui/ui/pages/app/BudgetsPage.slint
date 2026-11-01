@@ -1,0 +1,243 @@
+import { Button, LineEdit, ScrollView } from "std-widgets.slint";
+
+// Budget UI is presentation-only. Every operation is delegated to the Rust
+// controller, which uses the typed IPC client and authenticated kernel session.
+export component BudgetsPage inherits Rectangle {
+    background: #070b16;
+
+    in-out property <string> status-text: "Sign in to manage budgets.";
+    in-out property <bool> busy: false;
+    in-out property <[string]> budget-rows: [];
+    in-out property <bool> editor-open: false;
+    in-out property <string> edit-budget-id: "";
+    in-out property <string> edit-budget-revision: "";
+    in-out property <string> form-category: "General";
+    in-out property <string> form-amount: "";
+    in-out property <string> form-start-unix: "";
+    in-out property <string> form-end-unix: "";
+    in-out property <bool> delete-confirmation-open: false;
+    in-out property <string> delete-budget-id: "";
+    in-out property <string> delete-budget-revision: "";
+
+    callback refresh-requested();
+    callback new-requested();
+    callback form-submit-requested(string, string, string, string);
+    callback form-cancel-requested();
+    callback edit-requested(int);
+    callback delete-requested(int);
+    callback delete-confirmed(string, string);
+    callback delete-cancelled();
+
+    ScrollView {
+        width: 100%;
+        height: 100%;
+        mouse-drag-pan-enabled: true;
+        VerticalLayout {
+            padding: 20px;
+            spacing: 14px;
+
+            Text {
+                text: "Budgets";
+                font-size: 28px;
+                font-weight: 700;
+                color: #edf5ff;
+            }
+            Text {
+                text: "Set spending limits, monitor period-based utilization, and manage your budget allocations.";
+                color: #a5b5cd;
+                wrap: word-wrap;
+            }
+            Text {
+                text: "Amounts are entered in major currency units and converted exactly to integer minor units. Period values are Unix timestamps in seconds; leave the end blank for an open-ended period.";
+                color: #91a5c1;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                Button {
+                    text: root.busy ? "Loading…" : "Refresh budgets";
+                    enabled: !root.busy;
+                    clicked => { root.refresh-requested(); }
+                }
+                Button {
+                    text: "New budget";
+                    enabled: !root.busy;
+                    clicked => {
+                        root.new-requested();
+                        root.editor-open = true;
+                    }
+                }
+            }
+
+            if root.editor-open: Rectangle {
+                background: #101a2c;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #31435f;
+                VerticalLayout {
+                    padding: 14px;
+                    spacing: 9px;
+                    Text {
+                        text: root.edit-budget-id == "" ? "Create budget" : "Edit budget #" + root.edit-budget-id;
+                        color: #edf5ff;
+                        font-size: 18px;
+                        font-weight: 650;
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.form-category;
+                        placeholder-text: "Category (for example Food)";
+                        enabled: !root.busy;
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.form-amount;
+                        placeholder-text: "Budget amount (for example 8000.00)";
+                        enabled: !root.busy;
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.form-start-unix;
+                        placeholder-text: "Period start · Unix timestamp seconds";
+                        enabled: !root.busy;
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.form-end-unix;
+                        placeholder-text: "Period end · Unix timestamp, blank for open-ended";
+                        enabled: !root.busy;
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button {
+                            text: root.busy ? "Saving…" : (root.edit-budget-id == "" ? "Create budget" : "Save changes");
+                            enabled: !root.busy;
+                            clicked => {
+                                root.form-submit-requested(
+                                    root.form-category,
+                                    root.form-amount,
+                                    root.form-start-unix,
+                                    root.form-end-unix
+                                );
+                            }
+                        }
+                        Button {
+                            text: "Cancel";
+                            enabled: !root.busy;
+                            clicked => { root.form-cancel-requested(); }
+                        }
+                    }
+                }
+            }
+
+            if root.delete-confirmation-open: Rectangle {
+                background: #2a1720;
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: #784153;
+                HorizontalLayout {
+                    padding: 12px;
+                    spacing: 8px;
+                    Text {
+                        horizontal-stretch: 1;
+                        text: "Delete budget #" + root.delete-budget-id + "? This removes its allocation and associated configuration.";
+                        color: #ffe8ed;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                    }
+                    Button {
+                        text: "Confirm delete";
+                        enabled: !root.busy;
+                        clicked => {
+                            root.delete-confirmed(root.delete-budget-id, root.delete-budget-revision);
+                        }
+                    }
+                    Button {
+                        text: "Keep budget";
+                        enabled: !root.busy;
+                        clicked => { root.delete-cancelled(); }
+                    }
+                }
+            }
+
+            Rectangle {
+                background: #101a2c;
+                border-radius: 14px;
+                border-width: 1px;
+                border-color: #26364f;
+                min-height: 220px;
+                vertical-stretch: 1;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 8px;
+                    Text {
+                        text: "Your budget allocations";
+                        color: #edf5ff;
+                        font-size: 17px;
+                        font-weight: 650;
+                    }
+                    if root.budget-rows.length == 0: Text {
+                        text: "No budgets loaded. Refresh to view existing budgets or create your first budget.";
+                        color: #a5b5cd;
+                        wrap: word-wrap;
+                    }
+                    ScrollView {
+                        vertical-stretch: 1;
+                        min-height: 150px;
+                        mouse-drag-pan-enabled: true;
+                        VerticalLayout {
+                            spacing: 7px;
+                            for row[index] in root.budget-rows: Rectangle {
+                                background: #152238;
+                                border-radius: 8px;
+                                border-width: 1px;
+                                border-color: #263b59;
+                                min-height: 76px;
+                                HorizontalLayout {
+                                    padding: 10px;
+                                    spacing: 8px;
+                                    Text {
+                                        horizontal-stretch: 1;
+                                        text: row;
+                                        color: #d7e3f4;
+                                        vertical-alignment: center;
+                                        wrap: word-wrap;
+                                    }
+                                    Button {
+                                        text: "Edit";
+                                        enabled: !root.busy;
+                                        clicked => { root.edit-requested(index); }
+                                    }
+                                    Button {
+                                        text: "Delete";
+                                        enabled: !root.busy;
+                                        clicked => { root.delete-requested(index); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                background: #101a2c;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #26364f;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 6px;
+                    Text { text: "Budget service status"; color: #edf5ff; font-size: 15px; font-weight: 650; }
+                    Text { text: root.status-text; color: #b4c3d9; wrap: word-wrap; }
+                }
+            }
+        }
+    }
+}

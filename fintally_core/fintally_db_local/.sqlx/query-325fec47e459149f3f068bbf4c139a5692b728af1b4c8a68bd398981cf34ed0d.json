@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE transactions\n        SET name = CASE WHEN CAST(?1 AS INTEGER) <> 0 THEN CAST(?2 AS TEXT) ELSE name END,\n            price = CASE WHEN CAST(?3 AS INTEGER) <> 0 THEN CAST(?4 AS REAL) ELSE price END,\n            description = CASE WHEN CAST(?5 AS INTEGER) <> 0 THEN CAST(?6 AS TEXT) ELSE description END,\n            datetime = CASE WHEN CAST(?7 AS INTEGER) <> 0 THEN CAST(?8 AS INTEGER) ELSE datetime END,\n            category = CASE WHEN CAST(?9 AS INTEGER) <> 0 THEN CAST(?10 AS TEXT) ELSE category END,\n            is_recurring = CASE WHEN CAST(?11 AS INTEGER) <> 0 THEN CAST(?12 AS INTEGER) ELSE is_recurring END,\n            recurring_frequency = CASE WHEN CAST(?13 AS INTEGER) <> 0 THEN CAST(?14 AS TEXT) ELSE recurring_frequency END,\n            schedule_anchor_at = CASE\n                WHEN (CAST(?7 AS INTEGER) <> 0 AND CAST(?8 AS INTEGER) IS NOT datetime)\n                    THEN CAST(?8 AS INTEGER)\n                WHEN (CAST(?11 AS INTEGER) <> 0 AND CAST(?12 AS INTEGER) IS NOT is_recurring)\n                    THEN datetime\n                WHEN (CAST(?13 AS INTEGER) <> 0 AND CAST(?14 AS TEXT) IS NOT recurring_frequency)\n                    THEN COALESCE(schedule_anchor_at, datetime)\n                ELSE schedule_anchor_at\n            END,\n            last_generated_at = CASE\n                WHEN ((CAST(?7 AS INTEGER) <> 0 AND CAST(?8 AS INTEGER) IS NOT datetime)\n                   OR (CAST(?11 AS INTEGER) <> 0 AND CAST(?12 AS INTEGER) IS NOT is_recurring)\n                   OR (CAST(?13 AS INTEGER) <> 0 AND CAST(?14 AS TEXT) IS NOT recurring_frequency)) THEN NULL ELSE last_generated_at\n            END,\n            next_run_at = CASE\n                WHEN ((CAST(?7 AS INTEGER) <> 0 AND CAST(?8 AS INTEGER) IS NOT datetime)\n                   OR (CAST(?11 AS INTEGER) <> 0 AND CAST(?12 AS INTEGER) IS NOT is_recurring)\n                   OR (CAST(?13 AS INTEGER) <> 0 AND CAST(?14 AS TEXT) IS NOT recurring_frequency)) THEN NULL ELSE next_run_at\n            END\n        WHERE id = CAST(?15 AS INTEGER) AND user_id = CAST(?16 AS INTEGER)\n        RETURNING\n            id AS \"id!\",\n            CASE WHEN length(CAST(name AS BLOB)) <= 128 THEN name ELSE NULL END AS \"name?: String\",\n            (length(CAST(name AS BLOB)) <= 128) AS \"name_within_limit!: bool\",\n            price AS \"price!\",\n            CASE WHEN length(CAST(description AS BLOB)) <= 512 THEN description ELSE NULL END AS \"description?: String\",\n            (length(CAST(description AS BLOB)) <= 512) AS \"description_within_limit!: bool\",\n            datetime AS \"datetime_unix_seconds!\",\n            CASE WHEN length(CAST(category AS BLOB)) <= 64 THEN category ELSE NULL END AS \"category?: String\",\n            (length(CAST(category AS BLOB)) <= 64) AS \"category_within_limit!: bool\",\n            is_recurring AS \"is_recurring!: bool\",\n            recurring_frequency AS \"recurring_frequency?: String\",\n            CASE WHEN receipt_url IS NULL OR length(CAST(receipt_url AS BLOB)) <= 512 THEN receipt_url ELSE NULL END AS \"receipt_url?: String\",\n            (receipt_url IS NULL OR length(CAST(receipt_url AS BLOB)) <= 512) AS \"receipt_url_within_limit!: bool\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name?: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name_within_limit!: bool",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price!",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "description?: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "description_within_limit!: bool",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "datetime_unix_seconds!",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "category?: String",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_within_limit!: bool",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "is_recurring!: bool",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "recurring_frequency?: String",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "receipt_url?: String",
+        "ordinal": 11,
+        "type_info": "Text"
+      },
+      {
+        "name": "receipt_url_within_limit!: bool",
+        "ordinal": 12,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 16
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "325fec47e459149f3f068bbf4c139a5692b728af1b4c8a68bd398981cf34ed0d"
+}

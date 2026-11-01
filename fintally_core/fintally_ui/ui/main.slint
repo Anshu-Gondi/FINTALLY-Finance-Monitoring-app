@@ -1,0 +1,331 @@
+import { LoginPage } from "pages/auth/LoginPage.slint";
+import { SignupPage } from "pages/auth/SignupPage.slint";
+import { GoogleSignInPage } from "pages/auth/GoogleSignInPage.slint";
+import { AppNavigation } from "pages/app/AppNavigation.slint";
+import { PageArea } from "pages/app/PageArea.slint";
+
+export component MainWindow inherits Window {
+    title: "FinTally";
+    preferred-width: 1180px;
+    preferred-height: 800px;
+    min-width: 320px;
+    min-height: 480px;
+    background: #070b16;
+
+    // Preserve the current Rust callback/property names used by the existing controller.
+    in-out property <string> current-page: "login";
+    in-out property <bool> authenticated: false;
+    in-out property <string> email: "";
+    in-out property <string> password-input: "";
+    in-out property <string> confirm-password-input: "";
+    in-out property <string> status-text: "Sign in to continue.";
+    in-out property <string> transactions-text: "Your transactions will appear here after sign-in.";
+    in-out property <[string]> transaction-rows: [];
+    in-out property <int> transaction-page: 1;
+    in-out property <bool> transaction-has-more: false;
+    in-out property <bool> transaction-has-items: false;
+    in-out property <bool> transaction-editor-open: false;
+    in-out property <string> transaction-edit-id: "";
+    in-out property <string> transaction-delete-id: "";
+    in-out property <bool> transaction-delete-confirmation-open: false;
+    in-out property <string> transaction-form-name: "";
+    in-out property <string> transaction-form-amount: "";
+    in-out property <string> transaction-form-category: "General";
+    in-out property <string> transaction-form-description: "";
+    in-out property <string> transaction-form-timestamp: "";
+    in-out property <bool> transaction-form-recurring: false;
+    in-out property <string> transaction-form-frequency: "monthly";
+    in-out property <bool> busy: false;
+    in-out property <string> chat-message-input: "";
+    in-out property <bool> voice-active: false;
+    in-out property <bool> local-only-mode: true;
+    in-out property <[string]> budget-rows: [];
+    in-out property <bool> budget-editor-open: false;
+    in-out property <string> budget-edit-id: "";
+    in-out property <string> budget-edit-revision: "";
+    in-out property <string> budget-form-category: "General";
+    in-out property <string> budget-form-amount: "";
+    in-out property <string> budget-form-start-unix: "";
+    in-out property <string> budget-form-end-unix: "";
+    in-out property <bool> budget-delete-confirmation-open: false;
+    in-out property <string> budget-delete-id: "";
+    in-out property <string> budget-delete-revision: "";
+
+    // Display route is a derived fallback: after a successful login, the old
+    // controller may only flip authenticated=true. In that case show Dashboard.
+    property <string> authenticated-page: (root.current-page == "login"
+        || root.current-page == "signup" || root.current-page == "google")
+        ? "dashboard" : root.current-page;
+    property <string> auth-page: (root.current-page == "signup" || root.current-page == "google")
+        ? root.current-page : "login";
+
+    callback login-requested(string, string, bool);
+    callback refresh-requested();
+    callback transaction-new-requested();
+    callback transaction-form-submit-requested(string, string, string, string, string, bool, string);
+    callback transaction-form-cancel-requested();
+    callback transaction-edit-requested(int);
+    callback transaction-delete-requested(int);
+    callback transaction-delete-confirmed(string);
+    callback transaction-delete-cancelled();
+    callback transaction-page-requested(int);
+    callback budget-refresh-requested();
+    callback budget-new-requested();
+    callback budget-form-submit-requested(string, string, string, string);
+    callback budget-form-cancel-requested();
+    callback budget-edit-requested(int);
+    callback budget-delete-requested(int);
+    callback budget-delete-confirmed(string, string);
+    callback budget-delete-cancelled();
+    callback clear-local-session-requested();
+    // These callbacks are wired to the existing versioned IPC client.
+    callback signup-requested(string, string, bool);
+    callback google-authentication-requested();
+    callback logout-requested();
+    callback navigation-requested(string);
+    callback page-refresh-requested(string);
+    callback chat-send-requested(string);
+    callback vision-requested();
+    callback voice-start-requested();
+    callback voice-stop-requested();
+    callback settings-save-requested(bool);
+
+    if !root.authenticated: VerticalLayout {
+        padding: 0px;
+        if root.auth-page == "login": LoginPage {
+            width: 100%; height: 100%;
+            email-input <=> root.email;
+            password-input <=> root.password-input;
+            status-text <=> root.status-text;
+            busy <=> root.busy;
+            local-only-mode <=> root.local-only-mode;
+            sign-in-requested(email_value, password_value, local_only_value) => {
+                root.local-only-mode = local_only_value;
+                root.login-requested(email_value, password_value, local_only_value);
+                root.password-input = "";
+            }
+            signup-navigation-requested => {
+                root.current-page = "signup";
+                root.status-text = "Create your FinTally account.";
+            }
+            google-navigation-requested => {
+                root.current-page = "google";
+                root.status-text = "Continue securely with Google.";
+            }
+        }
+        if root.auth-page == "signup": SignupPage {
+            width: 100%; height: 100%;
+            email-input <=> root.email;
+            password-input <=> root.password-input;
+            confirm-password-input <=> root.confirm-password-input;
+            status-text <=> root.status-text;
+            busy <=> root.busy;
+            local-only-mode <=> root.local-only-mode;
+            signup-requested(email_value, password_value, confirmation, local_only_value) => {
+                if password_value != confirmation {
+                    root.status-text = "Passwords do not match.";
+                } else if email_value == "" || password_value == "" {
+                    root.status-text = "Enter an email and password before creating an account.";
+                } else {
+                    root.local-only-mode = local_only_value;
+                    root.signup-requested(email_value, password_value, local_only_value);
+                }
+                root.password-input = "";
+                root.confirm-password-input = "";
+            }
+            login-navigation-requested => {
+                root.current-page = "login";
+                root.status-text = "Sign in to continue.";
+            }
+            google-navigation-requested => {
+                root.current-page = "google";
+                root.status-text = "Continue securely with Google.";
+            }
+        }
+        if root.auth-page == "google": GoogleSignInPage {
+            width: 100%; height: 100%;
+            status-text <=> root.status-text;
+            busy <=> root.busy;
+            google-authentication-requested => { root.google-authentication-requested(); }
+            back-to-login-requested => {
+                root.current-page = "login";
+                root.status-text = "Sign in to continue.";
+            }
+            go-to-signup-requested => {
+                root.current-page = "signup";
+                root.status-text = "Create your FinTally account.";
+            }
+        }
+    }
+
+    if root.authenticated: VerticalLayout {
+        padding: 0px;
+        if root.width < 720px: VerticalLayout {
+            spacing: 0px;
+            PageArea {
+                horizontal-stretch: 1;
+                vertical-stretch: 1;
+                min-height: 0px;
+                current-page: root.authenticated-page;
+                status-text <=> root.status-text;
+                transactions-text <=> root.transactions-text;
+                transaction-rows <=> root.transaction-rows;
+                transaction-page <=> root.transaction-page;
+                transaction-has-more <=> root.transaction-has-more;
+                transaction-has-items <=> root.transaction-has-items;
+                transaction-editor-open <=> root.transaction-editor-open;
+                transaction-edit-id <=> root.transaction-edit-id;
+                transaction-delete-id <=> root.transaction-delete-id;
+                transaction-delete-confirmation-open <=> root.transaction-delete-confirmation-open;
+                transaction-form-name <=> root.transaction-form-name;
+                transaction-form-amount <=> root.transaction-form-amount;
+                transaction-form-category <=> root.transaction-form-category;
+                transaction-form-description <=> root.transaction-form-description;
+                transaction-form-timestamp <=> root.transaction-form-timestamp;
+                transaction-form-recurring <=> root.transaction-form-recurring;
+                transaction-form-frequency <=> root.transaction-form-frequency;
+                budget-rows <=> root.budget-rows;
+                budget-editor-open <=> root.budget-editor-open;
+                budget-edit-id <=> root.budget-edit-id;
+                budget-edit-revision <=> root.budget-edit-revision;
+                budget-form-category <=> root.budget-form-category;
+                budget-form-amount <=> root.budget-form-amount;
+                budget-form-start-unix <=> root.budget-form-start-unix;
+                budget-form-end-unix <=> root.budget-form-end-unix;
+                budget-delete-confirmation-open <=> root.budget-delete-confirmation-open;
+                budget-delete-id <=> root.budget-delete-id;
+                budget-delete-revision <=> root.budget-delete-revision;
+                busy <=> root.busy;
+                chat-message-input <=> root.chat-message-input;
+                voice-active <=> root.voice-active;
+                local-only-mode <=> root.local-only-mode;
+                refresh-requested(page_id) => {
+                    root.page-refresh-requested(page_id);
+                    if page_id == "transactions" { root.refresh-requested(); }
+                    if page_id == "budgets" { root.budget-refresh-requested(); }
+                }
+                transaction-new-requested => { root.transaction-new-requested(); }
+                transaction-form-submit-requested(name, amount, category, description, timestamp, recurring, frequency) => {
+                    root.transaction-form-submit-requested(name, amount, category, description, timestamp, recurring, frequency);
+                }
+                transaction-form-cancel-requested => { root.transaction-form-cancel-requested(); }
+                transaction-edit-requested(index) => { root.transaction-edit-requested(index); }
+                transaction-delete-requested(index) => { root.transaction-delete-requested(index); }
+                transaction-delete-confirmed(id) => { root.transaction-delete-confirmed(id); }
+                transaction-delete-cancelled => { root.transaction-delete-cancelled(); }
+                transaction-page-requested(page) => { root.transaction-page-requested(page); }
+                budget-new-requested => { root.budget-new-requested(); }
+                budget-form-submit-requested(category, amount, start, end) => {
+                    root.budget-form-submit-requested(category, amount, start, end);
+                }
+                budget-form-cancel-requested => { root.budget-form-cancel-requested(); }
+                budget-edit-requested(index) => { root.budget-edit-requested(index); }
+                budget-delete-requested(index) => { root.budget-delete-requested(index); }
+                budget-delete-confirmed(id, revision) => { root.budget-delete-confirmed(id, revision); }
+                budget-delete-cancelled => { root.budget-delete-cancelled(); }
+                chat-send-requested(message) => { root.chat-send-requested(message); }
+                vision-requested => { root.vision-requested(); }
+                voice-start-requested => { root.voice-start-requested(); }
+                voice-stop-requested => { root.voice-stop-requested(); }
+                settings-save-requested(local_only) => { root.settings-save-requested(local_only); }
+            }
+            AppNavigation {
+                width: 100%;
+                height: 58px;
+                compact: true;
+                selected-page: root.authenticated-page;
+                navigate-requested(page_id) => {
+                    root.current-page = page_id;
+                    root.navigation-requested(page_id);
+                }
+                logout-requested => {
+                    root.logout-requested();
+                }
+            }
+        }
+        if root.width >= 720px: HorizontalLayout {
+            spacing: 0px;
+            AppNavigation {
+                width: 218px;
+                height: 100%;
+                compact: false;
+                selected-page: root.authenticated-page;
+                navigate-requested(page_id) => {
+                    root.current-page = page_id;
+                    root.navigation-requested(page_id);
+                }
+                logout-requested => {
+                    root.logout-requested();
+                }
+            }
+            PageArea {
+                horizontal-stretch: 1;
+                vertical-stretch: 1;
+                min-width: 0px;
+                min-height: 0px;
+                current-page: root.authenticated-page;
+                status-text <=> root.status-text;
+                transactions-text <=> root.transactions-text;
+                transaction-rows <=> root.transaction-rows;
+                transaction-page <=> root.transaction-page;
+                transaction-has-more <=> root.transaction-has-more;
+                transaction-has-items <=> root.transaction-has-items;
+                transaction-editor-open <=> root.transaction-editor-open;
+                transaction-edit-id <=> root.transaction-edit-id;
+                transaction-delete-id <=> root.transaction-delete-id;
+                transaction-delete-confirmation-open <=> root.transaction-delete-confirmation-open;
+                transaction-form-name <=> root.transaction-form-name;
+                transaction-form-amount <=> root.transaction-form-amount;
+                transaction-form-category <=> root.transaction-form-category;
+                transaction-form-description <=> root.transaction-form-description;
+                transaction-form-timestamp <=> root.transaction-form-timestamp;
+                transaction-form-recurring <=> root.transaction-form-recurring;
+                transaction-form-frequency <=> root.transaction-form-frequency;
+                budget-rows <=> root.budget-rows;
+                budget-editor-open <=> root.budget-editor-open;
+                budget-edit-id <=> root.budget-edit-id;
+                budget-edit-revision <=> root.budget-edit-revision;
+                budget-form-category <=> root.budget-form-category;
+                budget-form-amount <=> root.budget-form-amount;
+                budget-form-start-unix <=> root.budget-form-start-unix;
+                budget-form-end-unix <=> root.budget-form-end-unix;
+                budget-delete-confirmation-open <=> root.budget-delete-confirmation-open;
+                budget-delete-id <=> root.budget-delete-id;
+                budget-delete-revision <=> root.budget-delete-revision;
+                busy <=> root.busy;
+                chat-message-input <=> root.chat-message-input;
+                voice-active <=> root.voice-active;
+                local-only-mode <=> root.local-only-mode;
+                refresh-requested(page_id) => {
+                    root.page-refresh-requested(page_id);
+                    if page_id == "transactions" { root.refresh-requested(); }
+                    if page_id == "budgets" { root.budget-refresh-requested(); }
+                }
+                transaction-new-requested => { root.transaction-new-requested(); }
+                transaction-form-submit-requested(name, amount, category, description, timestamp, recurring, frequency) => {
+                    root.transaction-form-submit-requested(name, amount, category, description, timestamp, recurring, frequency);
+                }
+                transaction-form-cancel-requested => { root.transaction-form-cancel-requested(); }
+                transaction-edit-requested(index) => { root.transaction-edit-requested(index); }
+                transaction-delete-requested(index) => { root.transaction-delete-requested(index); }
+                transaction-delete-confirmed(id) => { root.transaction-delete-confirmed(id); }
+                transaction-delete-cancelled => { root.transaction-delete-cancelled(); }
+                transaction-page-requested(page) => { root.transaction-page-requested(page); }
+                budget-new-requested => { root.budget-new-requested(); }
+                budget-form-submit-requested(category, amount, start, end) => {
+                    root.budget-form-submit-requested(category, amount, start, end);
+                }
+                budget-form-cancel-requested => { root.budget-form-cancel-requested(); }
+                budget-edit-requested(index) => { root.budget-edit-requested(index); }
+                budget-delete-requested(index) => { root.budget-delete-requested(index); }
+                budget-delete-confirmed(id, revision) => { root.budget-delete-confirmed(id, revision); }
+                budget-delete-cancelled => { root.budget-delete-cancelled(); }
+                chat-send-requested(message) => { root.chat-send-requested(message); }
+                vision-requested => { root.vision-requested(); }
+                voice-start-requested => { root.voice-start-requested(); }
+                voice-stop-requested => { root.voice-stop-requested(); }
+                settings-save-requested(local_only) => { root.settings-save-requested(local_only); }
+            }
+        }
+    }
+}

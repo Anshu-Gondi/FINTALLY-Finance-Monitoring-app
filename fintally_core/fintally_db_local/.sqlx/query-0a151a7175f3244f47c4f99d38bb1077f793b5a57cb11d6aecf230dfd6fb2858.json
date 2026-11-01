@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            b.id AS \"id!\",\n            b.category AS \"category!\",\n            b.amount_minor_units AS \"amount_minor_units!\",\n            CAST(COALESCE((\n                SELECT COALESCE(SUM(CAST(ROUND(ABS(t.price) * 100.0) AS INTEGER)), 0)\n                FROM transactions AS t\n                WHERE t.user_id = b.user_id\n                  AND t.price < 0\n                  AND t.datetime >= b.period_start_unix\n                  AND (b.period_end_unix IS NULL OR t.datetime <= b.period_end_unix)\n                  AND (b.category = 'Overall' OR t.category = b.category)\n            ), 0) AS INTEGER) AS \"spent_minor_units!: i64\",\n            b.period_start_unix AS \"period_start_unix!\",\n            b.period_end_unix AS \"period_end_unix?\",\n            (b.is_active != 0) AS \"is_active!: bool\",\n            b.revision AS \"revision!\"\n        FROM budget_allocations AS b\n        WHERE b.user_id = ?1 AND b.id = ?2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "category!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "amount_minor_units!",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "spent_minor_units!: i64",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "period_start_unix!",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "period_end_unix?",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "is_active!: bool",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "revision!",
+        "ordinal": 7,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "0a151a7175f3244f47c4f99d38bb1077f793b5a57cb11d6aecf230dfd6fb2858"
+}
