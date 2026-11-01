@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE transactions\n                SET last_generated_at = $1,\n                    schedule_anchor_at = $2,\n                    next_run_at = $3,\n                    ends_at = $4,\n                    is_recurring = TRUE,\n                    recurring_frequency = $5::recurring_frequency\n                WHERE id = $6 AND user_id = $7\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8",
+        {
+          "Custom": {
+            "name": "recurring_frequency",
+            "kind": {
+              "Enum": [
+                "Daily",
+                "Weekly",
+                "Monthly"
+              ]
+            }
+          }
+        },
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3150114468863db2a886fc1f54222e9f7eb61960ec4685c5531bf9418bc9aed6"
+}

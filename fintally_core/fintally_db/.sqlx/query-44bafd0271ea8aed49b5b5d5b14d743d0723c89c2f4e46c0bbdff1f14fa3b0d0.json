@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            b.id AS \"id!\",\n            b.category AS \"category!\",\n            b.amount_minor_units AS \"amount_minor_units!\",\n            COALESCE((\n                SELECT COALESCE(SUM(ROUND(ABS(t.price::numeric) * 100)), 0)::bigint\n                FROM transactions AS t\n                WHERE t.user_id = b.user_id\n                  AND t.price < 0\n                  AND t.datetime >= b.period_start_unix\n                  AND (b.period_end_unix IS NULL OR t.datetime <= b.period_end_unix)\n                  AND (b.category = 'Overall' OR t.category = b.category)\n            ), 0)::bigint AS \"spent_minor_units!\",\n            b.period_start_unix AS \"period_start_unix!\",\n            b.period_end_unix AS \"period_end_unix?\",\n            b.is_active AS \"is_active!\",\n            b.revision AS \"revision!\"\n        FROM budget_allocations AS b\n        WHERE b.user_id = $1\n        ORDER BY b.is_active DESC, b.period_start_unix DESC, b.id DESC\n        LIMIT $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "category!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "amount_minor_units!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "spent_minor_units!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "period_start_unix!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "period_end_unix?",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "is_active!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "revision!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "44bafd0271ea8aed49b5b5d5b14d743d0723c89c2f4e46c0bbdff1f14fa3b0d0"
+}

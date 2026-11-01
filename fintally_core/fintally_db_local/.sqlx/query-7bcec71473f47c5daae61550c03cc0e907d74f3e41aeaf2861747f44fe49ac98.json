@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                INSERT INTO transactions (\n                    user_id, name, price, description, datetime, category,\n                    is_recurring, recurring_frequency, receipt_url,\n                    template_id, scheduled_for\n                )\n                VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0, NULL, ?7, ?8, ?9)\n                ON CONFLICT (template_id, scheduled_for)\n                    WHERE template_id IS NOT NULL AND scheduled_for IS NOT NULL\n                DO NOTHING\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "7bcec71473f47c5daae61550c03cc0e907d74f3e41aeaf2861747f44fe49ac98"
+}

@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO transactions\n            (user_id, name, price, description, datetime, category, is_recurring,\n             recurring_frequency, receipt_url)\n        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, NULL)\n        RETURNING\n            id AS \"id!\",\n            CASE WHEN length(CAST(name AS BLOB)) <= 128 THEN name ELSE NULL END AS \"name?: String\",\n            (length(CAST(name AS BLOB)) <= 128) AS \"name_within_limit!: bool\",\n            price AS \"price!\",\n            CASE WHEN length(CAST(description AS BLOB)) <= 512 THEN description ELSE NULL END AS \"description?: String\",\n            (length(CAST(description AS BLOB)) <= 512) AS \"description_within_limit!: bool\",\n            datetime AS \"datetime_unix_seconds!\",\n            CASE WHEN length(CAST(category AS BLOB)) <= 64 THEN category ELSE NULL END AS \"category?: String\",\n            (length(CAST(category AS BLOB)) <= 64) AS \"category_within_limit!: bool\",\n            is_recurring AS \"is_recurring!: bool\",\n            recurring_frequency AS \"recurring_frequency?: String\",\n            CASE WHEN receipt_url IS NULL OR length(CAST(receipt_url AS BLOB)) <= 512 THEN receipt_url ELSE NULL END AS \"receipt_url?: String\",\n            (receipt_url IS NULL OR length(CAST(receipt_url AS BLOB)) <= 512) AS \"receipt_url_within_limit!: bool\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name?: String",
+        "ordinal": 1,
+        "type_info": "Null"
+      },
+      {
+        "name": "name_within_limit!: bool",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "price!",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "description?: String",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "description_within_limit!: bool",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "datetime_unix_seconds!",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "category?: String",
+        "ordinal": 7,
+        "type_info": "Null"
+      },
+      {
+        "name": "category_within_limit!: bool",
+        "ordinal": 8,
+        "type_info": "Null"
+      },
+      {
+        "name": "is_recurring!: bool",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "recurring_frequency?: String",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "receipt_url?: String",
+        "ordinal": 11,
+        "type_info": "Null"
+      },
+      {
+        "name": "receipt_url_within_limit!: bool",
+        "ordinal": 12,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": [
+      true,
+      null,
+      null,
+      false,
+      null,
+      null,
+      false,
+      null,
+      null,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "5edc45f3161a61c67c409ce07e31224839d32f5bae453761fcf11e30d7886fa9"
+}

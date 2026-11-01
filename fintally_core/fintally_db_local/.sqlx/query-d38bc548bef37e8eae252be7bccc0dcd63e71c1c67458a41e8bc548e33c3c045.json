@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO budget_allocations (\n            user_id, category, amount_minor_units, period_start_unix,\n            period_end_unix, is_active, created_at_unix, updated_at_unix, revision\n        ) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?6, 1)\n        RETURNING id AS \"id!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "d38bc548bef37e8eae252be7bccc0dcd63e71c1c67458a41e8bc548e33c3c045"
+}

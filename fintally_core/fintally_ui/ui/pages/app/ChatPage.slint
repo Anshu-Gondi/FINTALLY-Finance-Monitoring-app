@@ -1,0 +1,48 @@
+import { Button, LineEdit } from "std-widgets.slint";
+
+// Page shell only. Wire this callback to a typed IPC client method from Rust.
+export component ChatPage inherits Rectangle {
+    background: #070b16;
+    in-out property <string> status-text: "Ready. Connect this page to its app service.";
+    in-out property <bool> busy: false;
+    in-out property <string> message-input: "";
+    callback send-requested(string);
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 14px;
+        Text {
+            text: "Chat and RAG";
+            font-size: 28px;
+            font-weight: 700;
+            color: #edf5ff;
+        }
+        Text {
+            text: "Responses are untrusted content. Keep prompts/results bounded and support cancel/retry.";
+            color: #a5b5cd;
+            wrap: word-wrap;
+        }
+                LineEdit {
+                    text <=> root.message-input;
+                    placeholder-text: "Ask FinTally…";
+                    enabled: !root.busy;
+                }
+                Button {
+                    text: root.busy ? "Sending…" : "Send message";
+                    enabled: !root.busy;
+                    clicked => { root.send-requested(root.message-input); root.message-input = ""; }
+                }
+        Rectangle {
+            background: #101a2c;
+            border-radius: 14px;
+            border-width: 1px;
+            border-color: #26364f;
+            VerticalLayout {
+                padding: 16px;
+                spacing: 8px;
+                Text { text: "Page status"; font-size: 16px; font-weight: 600; color: #edf5ff; }
+                Text { text: root.status-text; color: #b4c3d9; wrap: word-wrap; }
+            }
+        }
+    }
+}

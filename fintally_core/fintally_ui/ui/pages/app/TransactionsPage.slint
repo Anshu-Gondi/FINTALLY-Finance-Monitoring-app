@@ -1,0 +1,301 @@
+import { Button, CheckBox, ComboBox, LineEdit, ScrollView } from "std-widgets.slint";
+
+// Interactive transaction CRUD page. All mutations are delegated to the Rust
+// controller and then sent through the typed IPC client.
+export component TransactionsPage inherits Rectangle {
+    background: #070b16;
+
+    in-out property <string> status-text: "Sign in to load transactions.";
+    in-out property <string> transactions-text: "No transactions loaded.";
+    in-out property <bool> busy: false;
+    in-out property <[string]> transaction-rows: [];
+    in-out property <int> transaction-page: 1;
+    in-out property <bool> transaction-has-more: false;
+    in-out property <bool> transaction-has-items: false;
+
+    in-out property <bool> editor-open: false;
+    in-out property <string> edit-transaction-id: "";
+    in-out property <string> delete-transaction-id: "";
+    in-out property <bool> delete-confirmation-open: false;
+
+    in-out property <string> form-name: "";
+    in-out property <string> form-amount: "";
+    in-out property <string> form-category: "General";
+    in-out property <string> form-description: "";
+    in-out property <string> form-timestamp: "";
+    in-out property <bool> form-recurring: false;
+    in-out property <string> form-frequency: "monthly";
+
+    callback refresh-requested();
+    callback new-requested();
+    callback form-submit-requested(string, string, string, string, string, bool, string);
+    callback form-cancel-requested();
+    callback edit-requested(int);
+    callback delete-requested(int);
+    callback delete-confirmed(string);
+    callback delete-cancelled();
+    callback page-requested(int);
+
+    ScrollView {
+        width: 100%;
+        height: 100%;
+        VerticalLayout {
+            padding: 22px;
+            spacing: 14px;
+
+            Text {
+                text: "Transactions";
+                font-size: 28px;
+                font-weight: 700;
+                color: #edf5ff;
+            }
+            Text {
+                text: "Create, review, edit and remove your transaction records.";
+                color: #a5b5cd;
+                wrap: word-wrap;
+            }
+            Text {
+                text: "Recurring schedules run in the FinTally kernel, independently of this page. Daily and weekly schedules use UTC; monthly schedules preserve the original calendar day and clamp to month-end.";
+                color: #91a5c1;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+
+            HorizontalLayout {
+                spacing: 10px;
+                Button {
+                    text: busy ? "Loading…" : "Refresh";
+                    enabled: !busy;
+                    clicked => { root.refresh-requested(); }
+                }
+                Button {
+                    text: "New transaction";
+                    enabled: !busy;
+                    clicked => {
+                        root.new-requested();
+                        root.editor-open = true;
+                    }
+                }
+                Text {
+                    text: root.status-text;
+                    color: #a5b5cd;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+
+            if root.editor-open: Rectangle {
+                background: #101a2c;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #31435f;
+                VerticalLayout {
+                    padding: 14px;
+                    spacing: 9px;
+                    Text {
+                        text: root.edit-transaction-id == "" ? "New transaction" : "Edit transaction #" + root.edit-transaction-id;
+                        color: #edf5ff;
+                        font-size: 18px;
+                        font-weight: 650;
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.form-name;
+                        placeholder-text: "Transaction name (required)";
+                        enabled: !root.busy;
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        LineEdit {
+                            horizontal-stretch: 1;
+                            height: 40px;
+                            text <=> root.form-amount;
+                            placeholder-text: "Amount (e.g. 1250.75)";
+                            enabled: !root.busy;
+                        }
+                        LineEdit {
+                            horizontal-stretch: 1;
+                            height: 40px;
+                            text <=> root.form-category;
+                            placeholder-text: "Category";
+                            enabled: !root.busy;
+                        }
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.form-description;
+                        placeholder-text: "Description (optional)";
+                        enabled: !root.busy;
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.form-timestamp;
+                        placeholder-text: "Date/time as Unix timestamp in seconds";
+                        enabled: !root.busy;
+                    }
+                    HorizontalLayout {
+                        spacing: 12px;
+                        CheckBox {
+                            text: "Recurring";
+                            checked <=> root.form-recurring;
+                            enabled: !root.busy;
+                        }
+                        ComboBox {
+                            horizontal-stretch: 1;
+                            height: 40px;
+                            model: ["daily", "weekly", "monthly"];
+                            current-value <=> root.form-frequency;
+                            enabled: !root.busy && root.form-recurring;
+                        }
+                    }
+                    if root.form-recurring: Text {
+                        text: "The kernel scheduler creates future transactions using this frequency. The UI only configures the schedule; it never runs recurring jobs.";
+                        color: #91a5c1;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button {
+                            text: root.busy ? "Saving…" : (root.edit-transaction-id == "" ? "Create transaction" : "Save changes");
+                            enabled: !root.busy;
+                            clicked => {
+                                root.form-submit-requested(
+                                    root.form-name,
+                                    root.form-amount,
+                                    root.form-category,
+                                    root.form-description,
+                                    root.form-timestamp,
+                                    root.form-recurring,
+                                    root.form-frequency
+                                );
+                            }
+                        }
+                        Button {
+                            text: "Cancel";
+                            enabled: !root.busy;
+                            clicked => {
+                                root.form-cancel-requested();
+                                root.editor-open = false;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if root.delete-confirmation-open: Rectangle {
+                background: #2a1720;
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: #784153;
+                HorizontalLayout {
+                    padding: 12px;
+                    spacing: 10px;
+                    Text {
+                        horizontal-stretch: 1;
+                        text: "Delete transaction #" + root.delete-transaction-id + "? This cannot be undone.";
+                        color: #ffe8ed;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                    }
+                    Button {
+                        text: "Confirm delete";
+                        enabled: !root.busy;
+                        clicked => { root.delete-confirmed(root.delete-transaction-id); }
+                    }
+                    Button {
+                        text: "Keep it";
+                        enabled: !root.busy;
+                        clicked => { root.delete-cancelled(); }
+                    }
+                }
+            }
+
+            Rectangle {
+                background: #101a2c;
+                border-radius: 14px;
+                border-width: 1px;
+                border-color: #26364f;
+                min-height: 260px;
+                vertical-stretch: 1;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 8px;
+                    HorizontalLayout {
+                        Text {
+                            text: "Your transactions";
+                            color: #edf5ff;
+                            font-size: 17px;
+                            font-weight: 650;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            horizontal-stretch: 1;
+                            text: "Page navigation";
+                            color: #91a5c1;
+                            horizontal-alignment: right;
+                            vertical-alignment: center;
+                        }
+                    }
+                    if !root.transaction-has-items: Text {
+                        text: "No transactions loaded. Select Refresh, or create your first transaction.";
+                        color: #a5b5cd;
+                        wrap: word-wrap;
+                    }
+                    ScrollView {
+                        vertical-stretch: 1;
+                        min-height: 180px;
+                        mouse-drag-pan-enabled: true;
+                        VerticalLayout {
+                            spacing: 7px;
+                            for row[index] in root.transaction-rows: Rectangle {
+                                background: #152238;
+                                border-radius: 8px;
+                                border-width: 1px;
+                                border-color: #263b59;
+                                min-height: 68px;
+                                HorizontalLayout {
+                                    padding: 10px;
+                                    spacing: 8px;
+                                    Text {
+                                        horizontal-stretch: 1;
+                                        text: row;
+                                        color: #d7e3f4;
+                                        vertical-alignment: center;
+                                        wrap: word-wrap;
+                                    }
+                                    Button {
+                                        text: "Edit";
+                                        enabled: !root.busy;
+                                        clicked => { root.edit-requested(index); }
+                                    }
+                                    Button {
+                                        text: "Delete";
+                                        enabled: !root.busy;
+                                        clicked => { root.delete-requested(index); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Button {
+                            text: "Previous";
+                            enabled: !root.busy && root.transaction-page > 1;
+                            clicked => { root.page-requested(root.transaction-page - 1); }
+                        }
+                        Button {
+                            text: "Next";
+                            enabled: !root.busy && root.transaction-has-more;
+                            clicked => { root.page-requested(root.transaction-page + 1); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

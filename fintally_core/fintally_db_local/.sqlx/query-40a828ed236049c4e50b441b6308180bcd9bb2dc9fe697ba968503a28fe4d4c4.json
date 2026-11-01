@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                UPDATE transactions\n                SET last_generated_at = ?1,\n                    schedule_anchor_at = ?2,\n                    next_run_at = NULL,\n                    ends_at = ?3,\n                    is_recurring = 0,\n                    recurring_frequency = NULL\n                WHERE id = ?4 AND user_id = ?5\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "40a828ed236049c4e50b441b6308180bcd9bb2dc9fe697ba968503a28fe4d4c4"
+}

@@ -1,0 +1,42 @@
+import { Button } from "std-widgets.slint";
+
+// Page shell only. Wire this callback to a typed IPC client method from Rust.
+export component EmiPage inherits Rectangle {
+    background: #070b16;
+    in-out property <string> status-text: "Ready. Connect this page to its app service.";
+    in-out property <bool> busy: false;
+    callback refresh-requested();
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 14px;
+        Text {
+            text: "EMI plans";
+            font-size: 28px;
+            font-weight: 700;
+            color: #edf5ff;
+        }
+        Text {
+            text: "Review repayment schedules and deterministic EMI calculations.";
+            color: #a5b5cd;
+            wrap: word-wrap;
+        }
+                Button {
+                    text: root.busy ? "Loading…" : "Refresh";
+                    enabled: !root.busy;
+                    clicked => { root.refresh-requested(); }
+                }
+        Rectangle {
+            background: #101a2c;
+            border-radius: 14px;
+            border-width: 1px;
+            border-color: #26364f;
+            VerticalLayout {
+                padding: 16px;
+                spacing: 8px;
+                Text { text: "Page status"; font-size: 16px; font-weight: 600; color: #edf5ff; }
+                Text { text: root.status-text; color: #b4c3d9; wrap: word-wrap; }
+            }
+        }
+    }
+}

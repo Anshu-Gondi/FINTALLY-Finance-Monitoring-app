@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM transactions WHERE id = $1 AND user_id = $2 RETURNING receipt_url",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "receipt_url",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "922bcc31400a8c17d78fbbb253f2fe9aeaecf0f33859f2c9835b28cd872f4ad5"
+}

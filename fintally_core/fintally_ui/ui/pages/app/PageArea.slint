@@ -1,0 +1,182 @@
+import { DashboardPage } from "DashboardPage.slint";
+import { TransactionsPage } from "TransactionsPage.slint";
+import { BudgetsPage } from "BudgetsPage.slint";
+import { EmiPage } from "EmiPage.slint";
+import { AnalyticsPage } from "AnalyticsPage.slint";
+import { ChatPage } from "ChatPage.slint";
+import { VisionPage } from "VisionPage.slint";
+import { VoicePage } from "VoicePage.slint";
+import { SettingsPage } from "SettingsPage.slint";
+
+export component PageArea inherits Rectangle {
+    background: #070b16;
+    in-out property <string> current-page: "dashboard";
+    in-out property <string> status-text: "Ready.";
+    in-out property <string> transactions-text: "Sign in to load transactions.";
+    in-out property <[string]> transaction-rows: [];
+    in-out property <int> transaction-page: 1;
+    in-out property <bool> transaction-has-more: false;
+    in-out property <bool> transaction-has-items: false;
+    in-out property <bool> transaction-editor-open: false;
+    in-out property <string> transaction-edit-id: "";
+    in-out property <string> transaction-delete-id: "";
+    in-out property <bool> transaction-delete-confirmation-open: false;
+    in-out property <string> transaction-form-name: "";
+    in-out property <string> transaction-form-amount: "";
+    in-out property <string> transaction-form-category: "General";
+    in-out property <string> transaction-form-description: "";
+    in-out property <string> transaction-form-timestamp: "";
+    in-out property <bool> transaction-form-recurring: false;
+    in-out property <string> transaction-form-frequency: "monthly";
+    in-out property <bool> busy: false;
+    in-out property <string> chat-message-input: "";
+    in-out property <bool> voice-active: false;
+    in-out property <bool> local-only-mode: true;
+    in-out property <[string]> budget-rows: [];
+    in-out property <bool> budget-editor-open: false;
+    in-out property <string> budget-edit-id: "";
+    in-out property <string> budget-edit-revision: "";
+    in-out property <string> budget-form-category: "General";
+    in-out property <string> budget-form-amount: "";
+    in-out property <string> budget-form-start-unix: "";
+    in-out property <string> budget-form-end-unix: "";
+    in-out property <bool> budget-delete-confirmation-open: false;
+    in-out property <string> budget-delete-id: "";
+    in-out property <string> budget-delete-revision: "";
+
+    callback refresh-requested(string);
+    callback transaction-new-requested();
+    callback transaction-form-submit-requested(string, string, string, string, string, bool, string);
+    callback transaction-form-cancel-requested();
+    callback transaction-edit-requested(int);
+    callback transaction-delete-requested(int);
+    callback transaction-delete-confirmed(string);
+    callback transaction-delete-cancelled();
+    callback transaction-page-requested(int);
+    callback budget-new-requested();
+    callback budget-form-submit-requested(string, string, string, string);
+    callback budget-form-cancel-requested();
+    callback budget-edit-requested(int);
+    callback budget-delete-requested(int);
+    callback budget-delete-confirmed(string, string);
+    callback budget-delete-cancelled();
+    callback chat-send-requested(string);
+    callback vision-requested();
+    callback voice-start-requested();
+    callback voice-stop-requested();
+    callback settings-save-requested(bool);
+
+    if root.current-page == "dashboard": DashboardPage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        busy <=> root.busy;
+        refresh-requested => { root.refresh-requested("dashboard"); }
+    }
+    if root.current-page == "transactions": TransactionsPage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        transactions-text <=> root.transactions-text;
+        busy <=> root.busy;
+        transaction-rows <=> root.transaction-rows;
+        transaction-page <=> root.transaction-page;
+        transaction-has-more <=> root.transaction-has-more;
+        transaction-has-items <=> root.transaction-has-items;
+        editor-open <=> root.transaction-editor-open;
+        edit-transaction-id <=> root.transaction-edit-id;
+        delete-transaction-id <=> root.transaction-delete-id;
+        delete-confirmation-open <=> root.transaction-delete-confirmation-open;
+        form-name <=> root.transaction-form-name;
+        form-amount <=> root.transaction-form-amount;
+        form-category <=> root.transaction-form-category;
+        form-description <=> root.transaction-form-description;
+        form-timestamp <=> root.transaction-form-timestamp;
+        form-recurring <=> root.transaction-form-recurring;
+        form-frequency <=> root.transaction-form-frequency;
+        refresh-requested => { root.refresh-requested("transactions"); }
+        new-requested => { root.transaction-new-requested(); }
+        form-submit-requested(name, amount, category, description, timestamp, recurring, frequency) => {
+            root.transaction-form-submit-requested(name, amount, category, description, timestamp, recurring, frequency);
+        }
+        form-cancel-requested => { root.transaction-form-cancel-requested(); }
+        edit-requested(index) => { root.transaction-edit-requested(index); }
+        delete-requested(index) => { root.transaction-delete-requested(index); }
+        delete-confirmed(id) => { root.transaction-delete-confirmed(id); }
+        delete-cancelled => { root.transaction-delete-cancelled(); }
+        page-requested(page) => { root.transaction-page-requested(page); }
+    }
+    if root.current-page == "budgets": BudgetsPage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        busy <=> root.busy;
+        budget-rows <=> root.budget-rows;
+        editor-open <=> root.budget-editor-open;
+        edit-budget-id <=> root.budget-edit-id;
+        edit-budget-revision <=> root.budget-edit-revision;
+        form-category <=> root.budget-form-category;
+        form-amount <=> root.budget-form-amount;
+        form-start-unix <=> root.budget-form-start-unix;
+        form-end-unix <=> root.budget-form-end-unix;
+        delete-confirmation-open <=> root.budget-delete-confirmation-open;
+        delete-budget-id <=> root.budget-delete-id;
+        delete-budget-revision <=> root.budget-delete-revision;
+        refresh-requested => { root.refresh-requested("budgets"); }
+        new-requested => { root.budget-new-requested(); }
+        form-submit-requested(category, amount, start, end) => {
+            root.budget-form-submit-requested(category, amount, start, end);
+        }
+        form-cancel-requested => { root.budget-form-cancel-requested(); }
+        edit-requested(index) => { root.budget-edit-requested(index); }
+        delete-requested(index) => { root.budget-delete-requested(index); }
+        delete-confirmed(id, revision) => { root.budget-delete-confirmed(id, revision); }
+        delete-cancelled => { root.budget-delete-cancelled(); }
+    }
+    if root.current-page == "emi": EmiPage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        busy <=> root.busy;
+        refresh-requested => { root.refresh-requested("emi"); }
+    }
+    if root.current-page == "analytics": AnalyticsPage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        busy <=> root.busy;
+        refresh-requested => { root.refresh-requested("analytics"); }
+    }
+    if root.current-page == "chat": ChatPage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        busy <=> root.busy;
+        message-input <=> root.chat-message-input;
+        send-requested(message) => { root.chat-send-requested(message); }
+    }
+    if root.current-page == "vision": VisionPage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        busy <=> root.busy;
+        start-analysis-requested => { root.vision-requested(); }
+    }
+    if root.current-page == "voice": VoicePage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        busy <=> root.busy;
+        voice-active <=> root.voice-active;
+        start-voice-requested => { root.voice-start-requested(); }
+        stop-voice-requested => { root.voice-stop-requested(); }
+    }
+    if root.current-page == "settings": SettingsPage {
+        width: 100%; height: 100%;
+        status-text <=> root.status-text;
+        busy <=> root.busy;
+        local-only-mode <=> root.local-only-mode;
+        save-requested => { root.settings-save-requested(root.local-only-mode); }
+    }
+    if root.current-page != "dashboard" && root.current-page != "transactions"
+        && root.current-page != "budgets" && root.current-page != "emi"
+        && root.current-page != "analytics" && root.current-page != "chat"
+        && root.current-page != "vision" && root.current-page != "voice"
+        && root.current-page != "settings": Text {
+            text: "Unknown page. Return to Dashboard.";
+            color: #b91c1c;
+            wrap: word-wrap;
+        }
+}

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FinTally</title>
+  </head>
+  <body>
+    <!-- Slint WebAssembly draws into canvas; generated bundle names depend on wasm-pack output. -->
+    <canvas id="canvas"></canvas>
+    <script type="module">
+      // Merge this example with your current web/index.html. Use the actual
+      // generated package entry point produced by wasm-pack for your crate.
+      import init from "./pkg/fintally_ui.js";
+      init();
+    </script>
+  </body>
+</html>

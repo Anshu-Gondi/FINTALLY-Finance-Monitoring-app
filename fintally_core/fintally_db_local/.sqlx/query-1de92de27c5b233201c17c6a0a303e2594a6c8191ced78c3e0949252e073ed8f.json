@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO budget_threshold_rules (\n                user_id, budget_id, threshold_percent, is_enabled,\n                created_at_unix, updated_at_unix\n            ) VALUES (?1, ?2, ?3, 1, ?4, ?4)\n            ON CONFLICT (budget_id, threshold_percent) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "1de92de27c5b233201c17c6a0a303e2594a6c8191ced78c3e0949252e073ed8f"
+}

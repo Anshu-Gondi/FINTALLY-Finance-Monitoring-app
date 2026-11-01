@@ -1,0 +1,50 @@
+import { Button } from "std-widgets.slint";
+
+// Page shell only. Wire this callback to a typed IPC client method from Rust.
+export component VoicePage inherits Rectangle {
+    background: #070b16;
+    in-out property <string> status-text: "Ready. Connect this page to its app service.";
+    in-out property <bool> busy: false;
+    in-out property <bool> voice-active: false;
+    callback start-voice-requested();
+    callback stop-voice-requested();
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 14px;
+        Text {
+            text: "Voice assistant";
+            font-size: 28px;
+            font-weight: 700;
+            color: #edf5ff;
+        }
+        Text {
+            text: "Audio is streamed through a bounded pipeline; review transcript and confirm financial intent before execution.";
+            color: #a5b5cd;
+            wrap: word-wrap;
+        }
+                Button {
+                    text: root.voice-active ? "Stop voice session" : "Start voice session";
+                    enabled: !root.busy;
+                    clicked => {
+                        if root.voice-active {
+                            root.stop-voice-requested();
+                        } else {
+                            root.start-voice-requested();
+                        }
+                    }
+                }
+        Rectangle {
+            background: #101a2c;
+            border-radius: 14px;
+            border-width: 1px;
+            border-color: #26364f;
+            VerticalLayout {
+                padding: 16px;
+                spacing: 8px;
+                Text { text: "Page status"; font-size: 16px; font-weight: 600; color: #edf5ff; }
+                Text { text: root.status-text; color: #b4c3d9; wrap: word-wrap; }
+            }
+        }
+    }
+}

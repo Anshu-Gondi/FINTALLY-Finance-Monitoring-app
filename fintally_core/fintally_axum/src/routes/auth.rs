@@ -195,8 +195,14 @@ pub async fn google_auth(
         .map_err(|_| AuthRouteError::InvalidCredentials)?;
 
     // FIXED: Extracted fields directly since they return standard String data types
-    let email = id_token.get_payload().get_email();
-    let name = id_token.get_payload().get_name();
+    let payload = &id_token.payload;
+
+    let email = payload
+        .email
+        .as_deref()
+        .ok_or(AuthRouteError::InvalidCredentials)?;
+
+    let name = payload.name.as_deref().unwrap_or(email);
 
     let user = sqlx::query!("SELECT id FROM users WHERE email = $1", email)
         .fetch_optional(&db_ctx.pool)

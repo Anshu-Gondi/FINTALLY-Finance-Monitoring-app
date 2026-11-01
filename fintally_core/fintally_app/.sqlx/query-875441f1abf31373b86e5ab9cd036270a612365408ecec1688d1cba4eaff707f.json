@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO transactions\n            (id, user_id, name, price, description, datetime, category,\n             is_recurring, recurring_frequency, receipt_url)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, $8,\n                ($9::text)::public.recurring_frequency, $10)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Varchar",
+        "Float8",
+        "Text",
+        "Int8",
+        "Varchar",
+        "Bool",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "875441f1abf31373b86e5ab9cd036270a612365408ecec1688d1cba4eaff707f"
+}

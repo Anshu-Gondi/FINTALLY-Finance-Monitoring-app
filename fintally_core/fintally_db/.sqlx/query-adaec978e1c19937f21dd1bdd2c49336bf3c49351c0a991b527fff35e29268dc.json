@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO budget_threshold_rules (\n                user_id, budget_id, threshold_percent, is_enabled,\n                created_at_unix, updated_at_unix\n            ) VALUES ($1, $2, $3, TRUE, $4, $4)\n            ON CONFLICT (budget_id, threshold_percent) DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int2",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "adaec978e1c19937f21dd1bdd2c49336bf3c49351c0a991b527fff35e29268dc"
+}

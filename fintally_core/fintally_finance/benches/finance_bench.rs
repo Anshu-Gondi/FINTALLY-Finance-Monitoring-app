@@ -18,7 +18,7 @@ fn bench_compound_interest(c: &mut Criterion) {
 
         group.bench_function(format!("n={}", size), |b| {
             b.iter(|| {
-                compound_interest_core(
+                compound_interest_batch(
                     black_box(&p),
                     black_box(&r),
                     black_box(&y),

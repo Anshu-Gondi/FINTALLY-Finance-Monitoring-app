@@ -1,0 +1,69 @@
+import { Button } from "std-widgets.slint";
+
+// Provider verification is deliberately disabled until the kernel has a real,
+// signature/issuer/audience/expiry-validating OIDC verifier.
+export component GoogleSignInPage inherits Rectangle {
+    background: #070b16;
+    in-out property <string> status-text: "Google sign-in is not enabled in this build.";
+    in-out property <bool> busy: false;
+
+    callback google-authentication-requested();
+    callback back-to-login-requested();
+    callback go-to-signup-requested();
+
+    VerticalLayout {
+        padding: root.width < 480px ? 16px : 28px;
+        alignment: center;
+        spacing: 16px;
+        Rectangle {
+            width: root.width < 540px ? root.width - 32px : 460px;
+            background: #101a2c;
+            border-radius: 24px;
+            border-width: 1px;
+            border-color: #25445a;
+            VerticalLayout {
+                padding: root.width < 480px ? 20px : 30px;
+                spacing: 14px;
+                Rectangle {
+                    width: 64px;
+                    height: 4px;
+                    background: #a78bfa;
+                    border-radius: 2px;
+                }
+                Text {
+                    text: "Google sign-in";
+                    font-size: 26px;
+                    font-weight: 700;
+                    color: #eef6ff;
+                }
+                Text {
+                    text: "This provider flow is intentionally unavailable until FinTally can verify Google credentials on the server. Use email and password for now.";
+                    color: #a5b5cd;
+                    wrap: word-wrap;
+                }
+                Button {
+                    width: 100%;
+                    text: "Google sign-in is not configured";
+                    enabled: false;
+                }
+                Button {
+                    width: 100%;
+                    text: "Use email and password";
+                    enabled: !root.busy;
+                    clicked => { root.back-to-login-requested(); }
+                }
+                Button {
+                    width: 100%;
+                    text: "Create an email account";
+                    enabled: !root.busy;
+                    clicked => { root.go-to-signup-requested(); }
+                }
+                Text {
+                    text: root.status-text;
+                    color: #d7e4f7;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+}

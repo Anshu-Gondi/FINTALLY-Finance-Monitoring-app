@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        DELETE FROM budget_allocations\n        WHERE id = ?1 AND user_id = ?2 AND revision = ?3\n        RETURNING id AS \"id!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "fa7c0dc7145718834839bd7e7bd0e5f5178e6bbe31f1037c106535d61368e1aa"
+}

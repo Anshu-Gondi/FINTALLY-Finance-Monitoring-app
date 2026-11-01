@@ -1,5 +1,7 @@
+pub mod budgets;
 pub mod chat_service;
 pub mod models;
+pub mod transactions;
 
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::PgPool;
@@ -34,4 +36,18 @@ impl DbContext {
 
         Ok(Self { pool })
     }
+}
+
+/// Applies all additive PostgreSQL migrations to the explicitly selected
+/// CloudSync store. LocalOnly startup never calls this function or needs a
+/// PostgreSQL connection. The migration set now includes recurring transactions
+/// and budget notification storage.
+pub async fn migrate_cloud_schema(pool: &PgPool) -> Result<(), sqlx::migrate::MigrateError> {
+    sqlx::migrate!("./migrations").run(pool).await
+}
+
+/// Backwards-compatible name retained for existing callers. This has always
+/// applied the complete migration directory, not only recurrence DDL.
+pub async fn migrate_recurring_schema(pool: &PgPool) -> Result<(), sqlx::migrate::MigrateError> {
+    migrate_cloud_schema(pool).await
 }

@@ -1,0 +1,120 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE transactions\n        SET name = CASE WHEN $1 THEN $2 ELSE name END,\n            price = CASE WHEN $3 THEN $4 ELSE price END,\n            description = CASE WHEN $5 THEN $6 ELSE description END,\n            datetime = CASE WHEN $7 THEN $8 ELSE datetime END,\n            category = CASE WHEN $9 THEN $10 ELSE category END,\n            is_recurring = CASE WHEN $11 THEN $12 ELSE is_recurring END,\n            recurring_frequency = CASE WHEN $13 THEN $14::recurring_frequency ELSE recurring_frequency END,\n            schedule_anchor_at = CASE\n                WHEN ($7 AND $8 IS DISTINCT FROM datetime) THEN $8\n                WHEN ($11 AND $12 IS DISTINCT FROM is_recurring) THEN datetime\n                WHEN ($13 AND $14::recurring_frequency IS DISTINCT FROM recurring_frequency)\n                    THEN COALESCE(schedule_anchor_at, datetime)\n                ELSE schedule_anchor_at\n            END,\n            last_generated_at = CASE\n                WHEN (($7 AND $8 IS DISTINCT FROM datetime)\n                   OR ($11 AND $12 IS DISTINCT FROM is_recurring)\n                   OR ($13 AND $14::recurring_frequency IS DISTINCT FROM recurring_frequency))\n                THEN NULL ELSE last_generated_at\n            END,\n            next_run_at = CASE\n                WHEN (($7 AND $8 IS DISTINCT FROM datetime)\n                   OR ($11 AND $12 IS DISTINCT FROM is_recurring)\n                   OR ($13 AND $14::recurring_frequency IS DISTINCT FROM recurring_frequency))\n                THEN NULL ELSE next_run_at\n            END\n        WHERE id = $15 AND user_id = $16\n        RETURNING\n            id,\n            CASE WHEN octet_length(name) <= 128 THEN name ELSE NULL END AS \"name?\",\n            (octet_length(name) <= 128) AS \"name_within_limit!\",\n            price,\n            CASE WHEN octet_length(description) <= 512 THEN description ELSE NULL END AS \"description?\",\n            (octet_length(description) <= 512) AS \"description_within_limit!\",\n            datetime AS datetime_unix_seconds,\n            CASE WHEN octet_length(category) <= 64 THEN category ELSE NULL END AS \"category?\",\n            (octet_length(category) <= 64) AS \"category_within_limit!\",\n            is_recurring,\n            recurring_frequency::text AS \"recurring_frequency?\",\n            CASE WHEN receipt_url IS NULL OR octet_length(receipt_url) <= 512 THEN receipt_url ELSE NULL END AS \"receipt_url?\",\n            (receipt_url IS NULL OR octet_length(receipt_url) <= 512) AS \"receipt_url_within_limit!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "name_within_limit!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "price",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "description?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "description_within_limit!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "datetime_unix_seconds",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "category?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "category_within_limit!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "is_recurring",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "recurring_frequency?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "receipt_url?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "receipt_url_within_limit!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Varchar",
+        "Bool",
+        "Float8",
+        "Bool",
+        "Text",
+        "Bool",
+        "Int8",
+        "Bool",
+        "Varchar",
+        "Bool",
+        "Bool",
+        "Bool",
+        {
+          "Custom": {
+            "name": "recurring_frequency",
+            "kind": {
+              "Enum": [
+                "Daily",
+                "Weekly",
+                "Monthly"
+              ]
+            }
+          }
+        },
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      false,
+      null,
+      null,
+      false,
+      null,
+      null,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "a88c1596fe03366eeb4248ed5d0bde85d7be303a3df5e5d1622d33b303625dbd"
+}

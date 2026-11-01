@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO budget_allocations (\n            user_id, category, amount_minor_units, period_start_unix,\n            period_end_unix, is_active, created_at_unix, updated_at_unix, revision\n        )\n        VALUES ($1, $2, $3, $4, $5, TRUE, $6, $6, 1)\n        RETURNING id AS \"id!\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Int8",
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "6ab24423adcbeafb9632e1d01f7509641adbffedfaf6153457f4e0fc7c8246b9"
+}

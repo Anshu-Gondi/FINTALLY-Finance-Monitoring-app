@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            id AS \"transaction_id!\",\n            CASE WHEN length(CAST(name AS BLOB)) <= 128 THEN name ELSE NULL END AS \"name?: String\",\n            (length(CAST(name AS BLOB)) <= 128) AS \"name_within_limit!: bool\",\n            price AS \"price!\",\n            CASE WHEN length(CAST(description AS BLOB)) <= 512 THEN description ELSE NULL END AS \"description?: String\",\n            (length(CAST(description AS BLOB)) <= 512) AS \"description_within_limit!: bool\",\n            datetime AS \"datetime_unix_seconds!\",\n            CASE WHEN length(CAST(category AS BLOB)) <= 64 THEN category ELSE NULL END AS \"category?: String\",\n            (length(CAST(category AS BLOB)) <= 64) AS \"category_within_limit!: bool\"\n        FROM transactions WHERE id = ?1 AND user_id = ?2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "transaction_id!",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name?: String",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name_within_limit!: bool",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "price!",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "description?: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "description_within_limit!: bool",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "datetime_unix_seconds!",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "category?: String",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "category_within_limit!: bool",
+        "ordinal": 8,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "9ee10435939dad78a63a3935cb9ce2203edfb0cb48e474c296220ab493cc25f2"
+}
