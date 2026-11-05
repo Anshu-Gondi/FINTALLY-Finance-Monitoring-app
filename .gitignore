@@ -32,9 +32,9 @@ chatbot-backend/llm_models/          # Cuts out deep GGUF models (tinyllama, phi
 # ─── Rust Workspace Crates & Native Compilations ──────────────────
 # Strips all heavy Cargo compile artifacts
 **/target/
-chatbot-backend/fintally_core/target/
-chatbot-backend/fintally_core/nextest_full.log
-chatbot-backend/fintally_core/build_errors.log
+chatbot-backend/kinetib_core/target/
+chatbot-backend/kinetib_core/nextest_full.log
+chatbot-backend/kinetib_core/build_errors.log
 
 # ─── Python Virtual Environments & Interpreter Caches ───────────────
 chatbot-backend/venv/
@@ -81,9 +81,9 @@ Thumbs.db
 temp/
 
 # Ignore sensitive keys and tokens
-fintally_core/.secure_vault/
-fintally_core/client_secret.json
+kinetib_core/.secure_vault/
+kinetib_core/client_secret.json
 
 # Ignore local document sources
-fintally_core/trusted_docs_source/
-fintally_core/client_secret.json
+kinetib_core/trusted_docs_source/
+kinetib_core/client_secret.json

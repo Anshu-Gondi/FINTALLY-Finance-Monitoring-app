@@ -44,7 +44,7 @@ jobs:
 
             # Build image
             docker build \
-              --file ./fintally_core/dockerfile \
+              --file ./kinetib_core/dockerfile \
               --build-arg CUDA_COMPUTE_CAP=75 \
               ${TAG_FLAGS} \
               .

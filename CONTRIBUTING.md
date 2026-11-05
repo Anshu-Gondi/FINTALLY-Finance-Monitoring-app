@@ -1,6 +1,6 @@
 ## Git Commit Message Convention
 
-FINTALLY uses clear, concise, and action-oriented Git commit messages.
+KINETIB uses clear, concise, and action-oriented Git commit messages.
 
 Commit messages should describe **what the commit changes**, not the entire implementation process.
 
@@ -117,7 +117,7 @@ A commit may contain multiple file changes when those changes are necessary part
 
 ## Commit Categories
 
-FINTALLY does not require a rigid conventional-commit prefix, but the action should make the purpose clear.
+KINETIB does not require a rigid conventional-commit prefix, but the action should make the purpose clear.
 
 Common actions include:
 
@@ -166,7 +166,7 @@ document local assistant architecture
 
 ## Performance-Oriented Commits
 
-Because FINTALLY is designed around **low memory usage and low latency**, performance-related commits should identify the optimization clearly.
+Because KINETIB is designed around **low memory usage and low latency**, performance-related commits should identify the optimization clearly.
 
 Prefer:
 
@@ -247,7 +247,7 @@ This prevents the frontend from crashing during transaction updates.
 
 ## Commit History Principle
 
-FINTALLY's Git history should help future contributors understand how the project evolved.
+KINETIB's Git history should help future contributors understand how the project evolved.
 
 A useful commit message should allow someone looking at:
 

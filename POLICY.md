@@ -1,8 +1,8 @@
-# FINTALLY — Open Source, Sovereignty & Privacy Policy
+# KINETIB — Open Source, Sovereignty & Privacy Policy
 
 **Copyright © 2026 Anshu Gondi**
 
-FINTALLY is an open-source, privacy-first financial management and local-assistant project created and maintained by **Anshu Gondi**.
+KINETIB is an open-source, privacy-first financial management and local-assistant project created and maintained by **Anshu Gondi**.
 
 The project exists to explore how personal financial management can be built around **user ownership, local execution, privacy, transparency, and high-performance systems engineering** rather than requiring users to surrender their financial data to a centralized service.
 
@@ -10,13 +10,13 @@ The project exists to explore how personal financial management can be built aro
 
 ## 1. Project Philosophy
 
-FINTALLY is built around the principle:
+KINETIB is built around the principle:
 
 > **Your financial data should belong to you.**
 
 Financial records, transactions, budgets, accounts, financial context, assistant interactions, and related personal information are sensitive data.
 
-FINTALLY therefore prioritizes:
+KINETIB therefore prioritizes:
 
 * Local-first execution
 * User-controlled data
@@ -35,7 +35,7 @@ The project is intentionally designed so that users can inspect the software the
 
 ## 2. Open Source Development
 
-FINTALLY is an open-source project.
+KINETIB is an open-source project.
 
 Contributions are welcome from developers, researchers, security researchers, systems programmers, performance engineers, designers, documentation writers, testers, and other contributors who want to improve the project.
 
@@ -53,7 +53,7 @@ Potential areas of contribution include, but are not limited to:
 
 ### Backend & Systems Engineering
 
-The FINTALLY backend is **Rust-first**.
+The KINETIB backend is **Rust-first**.
 
 Rust serves as the **primary backend orchestration, coordination, service, and execution layer**. It is responsible for connecting the major components of the system, managing application state and services, coordinating native engines, handling concurrency, and exposing the interfaces required by the frontend and other components.
 
@@ -92,7 +92,7 @@ The architectural principle is:
 
 Before contributing, contributors are encouraged to understand the existing architecture, design decisions, performance requirements, privacy model, resource constraints, and future roadmap.
 
-FINTALLY is intentionally a **multi-language systems project**, with **React.js forming the primary frontend layer, Rust forming the primary backend orchestration layer, and other systems-programming languages forming specialized native engines and extensions for Rust**.
+KINETIB is intentionally a **multi-language systems project**, with **React.js forming the primary frontend layer, Rust forming the primary backend orchestration layer, and other systems-programming languages forming specialized native engines and extensions for Rust**.
 
 Contributions should respect the responsibilities and boundaries of each architectural layer rather than introducing technologies solely for convenience.
 
@@ -100,9 +100,9 @@ Contributions should respect the responsibilities and boundaries of each archite
 
 ## 3. Local-First Architecture
 
-The primary FINTALLY experience is designed around local execution.
+The primary KINETIB experience is designed around local execution.
 
-FINTALLY follows a layered architecture in which the **frontend is built with React.js**, while **Rust forms the primary backend orchestration and execution layer**.
+KINETIB follows a layered architecture in which the **frontend is built with React.js**, while **Rust forms the primary backend orchestration and execution layer**.
 
 Specialized systems-programming languages such as **C and C++** may be used underneath Rust to implement performance-critical engines, native extensions, low-level operations, or specialized computational components.
 
@@ -122,7 +122,7 @@ The frontend communicates with the Rust backend through explicitly defined inter
 
 ### Rust Backend Orchestration Layer
 
-Rust is the **central backend orchestration layer of FINTALLY**.
+Rust is the **central backend orchestration layer of KINETIB**.
 
 It is responsible for coordinating the system's major components and providing the primary execution boundary between the frontend, local services, storage, AI components, and native engines.
 
@@ -166,7 +166,7 @@ These native components should have clearly defined boundaries and should integr
 The architecture therefore follows the general model:
 
 ```text
-                         FINTALLY
+                         KINETIB
                             │
                             ▼
                     ┌───────────────┐
@@ -199,7 +199,7 @@ The architecture therefore follows the general model:
 
 ### Resource-Constrained Design
 
-Every FINTALLY component should be designed with **low-resource environments as a first-class engineering constraint**.
+Every KINETIB component should be designed with **low-resource environments as a first-class engineering constraint**.
 
 Services, engines, libraries, and extensions should aim for:
 
@@ -223,7 +223,7 @@ The project should remain usable on systems with **limited RAM and CPU resources
 
 ### Low-Latency Engineering
 
-FINTALLY is designed with **low latency as a core systems-engineering objective**.
+KINETIB is designed with **low latency as a core systems-engineering objective**.
 
 Performance-sensitive components should prioritize:
 
@@ -275,7 +275,7 @@ Every new service or engine should be evaluated against:
 * Failure isolation
 * Security implications
 
-The exact architecture may evolve as FINTALLY develops, but its fundamental principles remain:
+The exact architecture may evolve as KINETIB develops, but its fundamental principles remain:
 
 > **React.js for the user-facing interface.**
 > **Rust as the primary backend orchestrator.**
@@ -286,7 +286,7 @@ The exact architecture may evolve as FINTALLY develops, but its fundamental prin
 
 ## 4. Privacy
 
-Privacy is a core engineering objective of FINTALLY.
+Privacy is a core engineering objective of KINETIB.
 
 The project aims to avoid collecting, transmitting, or processing users' financial information remotely when such processing is not required by the functionality being used.
 
@@ -310,7 +310,7 @@ Contributors must not introduce hidden telemetry, tracking, analytics, data harv
 
 ## 5. Local Assistant
 
-FINTALLY may include a local AI assistant capable of working with user-provided financial context.
+KINETIB may include a local AI assistant capable of working with user-provided financial context.
 
 The objective is to allow users to obtain useful assistance without requiring their financial context to be permanently transferred to a centralized AI provider.
 
@@ -324,9 +324,9 @@ It is **not a replacement for a qualified financial, investment, tax, accounting
 
 ## 6. Future Hosted / Paid Version
 
-The open-source project is also the foundation for a future hosted and/or paid FINTALLY service.
+The open-source project is also the foundation for a future hosted and/or paid KINETIB service.
 
-The purpose of the paid service is primarily to make FINTALLY accessible to people who:
+The purpose of the paid service is primarily to make KINETIB accessible to people who:
 
 * Are not technically experienced
 * Do not want to configure local infrastructure
@@ -334,7 +334,7 @@ The purpose of the paid service is primarily to make FINTALLY accessible to peop
 * Want a convenient web-based experience
 * Need managed infrastructure or additional services
 
-The existence of a future commercial service does not change the open-source nature of the applicable FINTALLY open-source code.
+The existence of a future commercial service does not change the open-source nature of the applicable KINETIB open-source code.
 
 The hosted product may have separate:
 
@@ -352,9 +352,9 @@ Users should therefore distinguish between the **open-source local software** an
 
 ## 7. No Financial Advice
 
-FINTALLY is software for financial management, organization, analysis, and education.
+KINETIB is software for financial management, organization, analysis, and education.
 
-Information generated by FINTALLY, including information generated by an AI assistant, must not be treated as professional financial, investment, tax, accounting, or legal advice.
+Information generated by KINETIB, including information generated by an AI assistant, must not be treated as professional financial, investment, tax, accounting, or legal advice.
 
 Users remain responsible for decisions made using information produced by the software.
 
@@ -387,13 +387,13 @@ Security-related contributions are highly valued, including:
 
 ## 9. Contributions
 
-FINTALLY welcomes contributions.
+KINETIB welcomes contributions.
 
 A contribution may include source code, documentation, tests, benchmarks, bug fixes, security improvements, architectural proposals, performance work, design improvements, or other work accepted into the project.
 
 Contributors should ensure that they have the legal right to submit the contribution under the project's applicable license.
 
-By submitting a contribution, the contributor agrees that the contribution may be distributed as part of FINTALLY under the project's applicable open-source license.
+By submitting a contribution, the contributor agrees that the contribution may be distributed as part of KINETIB under the project's applicable open-source license.
 
 Unless a separate written agreement states otherwise, contributors retain ownership of their original copyright in their contributions.
 
@@ -401,7 +401,7 @@ Unless a separate written agreement states otherwise, contributors retain owners
 
 ## 10. Copyright
 
-The FINTALLY project and its original code and materials were created by **Anshu Gondi**.
+The KINETIB project and its original code and materials were created by **Anshu Gondi**.
 
 Copyright in original contributions remains with their respective copyright holders unless otherwise agreed.
 
@@ -411,15 +411,15 @@ Copyright notices must not be removed from source files where they are required 
 
 ## 11. Trademark
 
-The name **FINTALLY**, associated logos, branding, and other project marks may be subject to trademark rights separate from the copyright license.
+The name **KINETIB**, associated logos, branding, and other project marks may be subject to trademark rights separate from the copyright license.
 
-Permission to use, modify, or distribute the source code does not automatically grant permission to use FINTALLY trademarks in a manner that suggests official endorsement, sponsorship, or affiliation.
+Permission to use, modify, or distribute the source code does not automatically grant permission to use KINETIB trademarks in a manner that suggests official endorsement, sponsorship, or affiliation.
 
 ---
 
 ## 12. Community Principle
 
-FINTALLY is built as a collaborative project.
+KINETIB is built as a collaborative project.
 
 Contributors are encouraged to:
 
@@ -459,7 +459,7 @@ The goal is to build a **privacy-first, user-sovereign financial management plat
 
 ## 13. Ownership of the Project
 
-FINTALLY is an open-source project created and maintained by **Anshu Gondi**.
+KINETIB is an open-source project created and maintained by **Anshu Gondi**.
 
 Open source does not mean that the project has no owner.
 
@@ -469,4 +469,4 @@ The project's source code may be used, studied, modified, and redistributed acco
 
 **Copyright © 2026 Anshu Gondi**
 
-FINTALLY is built for privacy, transparency, user sovereignty, high-performance systems engineering, extremely efficient resource usage, low-latency execution, and open collaboration.
+KINETIB is built for privacy, transparency, user sovereignty, high-performance systems engineering, extremely efficient resource usage, low-latency execution, and open collaboration.

@@ -1,0 +1,42 @@
+[package]
+name = "kinetib_ui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+license-file.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+kinetib_ipc_client = { path = "../kinetib_ipc_client" }
+kinetib_ipc_protocol = { path = "../kinetib_ipc_protocol" }
+zeroize = "1.8"
+
+[dependencies.slint]
+version = "~1.18.1"
+default-features = false
+features = ["std", "compat-1-18", "backend-winit", "renderer-femtovg", "backend-android-activity-06"]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "net", "io-util", "sync"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+futures-util = { workspace = true }
+gloo-net = { version = "0.7", default-features = false, features = ["websocket"] }
+web-sys = { version = "0.3", features = ["Window", "Location", "console"] }
+
+# Slint's iOS guide uses Winit with the Skia renderer. Cargo feature unification
+# enables this renderer for iOS targets while desktop targets retain FemtoVG.
+[target.'cfg(target_os = "ios")'.dependencies.slint]
+version = "~1.18.1"
+default-features = false
+features = ["std", "compat-1-18", "backend-winit", "renderer-skia"]
+
+[build-dependencies]
+slint-build = "~1.18.1"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

@@ -1,0 +1,19 @@
+[package]
+name = "kinetib_app"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+publish.workspace = true
+license-file.workspace = true
+
+[dependencies]
+kinetib_db = { path = "../kinetib_db" }
+kinetib_db_local = { path = "../kinetib_db_local" }
+kinetib_recurrence = { path = "../kinetib_recurrence" }
+kinetib_budget_domain = { path = "../kinetib_budget_domain" }
+kinetib_feedback_domain = { path = "../kinetib_feedback_domain" }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "macros"] }
+bcrypt = "0.15"
+thiserror.workspace = true
+tokio.workspace = true
+futures-util.workspace = true

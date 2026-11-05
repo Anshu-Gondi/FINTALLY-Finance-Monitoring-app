@@ -1,0 +1,235 @@
+import { Button, CheckBox, ComboBox, LineEdit, ScrollView, TextEdit } from "std-widgets.slint";
+
+// Responsive, presentation-only feedback form. Rust validates the values and
+// submits them through the authenticated IPC client.
+export component FeedbackPage inherits Rectangle {
+    background: #070b16;
+
+    in-out property <string> category: "General";
+    in-out property <string> affected-feature: "Not specified";
+    in-out property <string> title-input: "";
+    in-out property <string> message-input: "";
+    in-out property <string> rating: "No rating";
+    in-out property <string> contact-name: "";
+    in-out property <string> contact-email: "";
+    in-out property <bool> contact-consent: false;
+    in-out property <bool> diagnostics-consent: false;
+    in-out property <bool> local-only-mode: true;
+    in-out property <bool> busy: false;
+    in-out property <bool> retry-pending: false;
+    in-out property <string> feedback-status: "Share an idea, report a bug, or ask for support.";
+
+    callback submit-requested(string, string, string, string, string, string, string, bool, bool);
+    callback discard-retry-requested();
+    callback title-edited(string);
+    callback message-edited(string);
+    callback contact-name-edited(string);
+    callback contact-email-edited(string);
+
+    ScrollView {
+        width: 100%;
+        height: 100%;
+        mouse-drag-pan-enabled: true;
+        VerticalLayout {
+            padding: 20px;
+            spacing: 14px;
+
+            Text {
+                text: "Feedback";
+                font-size: 28px;
+                font-weight: 700;
+                color: #edf5ff;
+            }
+            Text {
+                text: "Help us improve FinTally. Your report is sent through your authenticated CloudSync session.";
+                color: #a5b5cd;
+                wrap: word-wrap;
+            }
+
+            if root.local-only-mode: Rectangle {
+                background: #2a2115;
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: #8c642d;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 4px;
+                    Text {
+                        text: "CloudSync required";
+                        color: #ffd28a;
+                        font-weight: 700;
+                    }
+                    Text {
+                        text: "Feedback is a cloud operation. Sign out and sign in using CloudSync to submit. LocalOnly data remains on this device.";
+                        color: #e8c99b;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+
+            if root.retry-pending: Rectangle {
+                background: #2a2115;
+                border-radius: 10px;
+                border-width: 1px;
+                border-color: #8c642d;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 6px;
+                    Text {
+                        text: "Submission outcome unknown";
+                        color: #ffd28a;
+                        font-weight: 700;
+                    }
+                    Text {
+                        text: "The request may have reached FinTally. Sign in again with the same account if asked, then retry sends the exact same submission ID and content.";
+                        color: #e8c99b;
+                        wrap: word-wrap;
+                    }
+                    Button {
+                        text: "Discard pending retry and edit";
+                        enabled: !root.busy;
+                        clicked => { root.discard-retry-requested(); }
+                    }
+                }
+            }
+
+            Rectangle {
+                background: #101a2c;
+                border-radius: 14px;
+                border-width: 1px;
+                border-color: #26364f;
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 10px;
+
+                    Text { text: "Feedback details"; color: #edf5ff; font-size: 18px; font-weight: 700; }
+                    Text { text: "Category"; color: #b4c3d9; }
+                    ComboBox {
+                        width: 100%;
+                        height: 40px;
+                        model: ["General", "Bug report", "Feature request", "Support"];
+                        current-value <=> root.category;
+                        enabled: !root.busy && !root.retry-pending;
+                    }
+
+                    Text { text: "Affected feature (optional)"; color: #b4c3d9; }
+                    ComboBox {
+                        width: 100%;
+                        height: 40px;
+                        model: ["Not specified", "Dashboard", "Transactions", "Budgets", "EMI", "Analytics", "Chat", "Vision", "Voice", "Authentication", "Settings", "Feedback", "Other"];
+                        current-value <=> root.affected-feature;
+                        enabled: !root.busy && !root.retry-pending;
+                    }
+
+                    Text { text: "Title (optional · 120 characters / UTF-8 bytes maximum)"; color: #b4c3d9; }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.title-input;
+                        placeholder-text: "A short summary";
+                        edited(value) => { root.title-edited(value); }
+                        enabled: !root.busy && !root.retry-pending;
+                    }
+
+                    Text { text: "Message (required · 5,000 characters / 6,000 UTF-8 bytes maximum)"; color: #b4c3d9; }
+                    TextEdit {
+                        width: 100%;
+                        height: 150px;
+                        text <=> root.message-input;
+                        placeholder-text: "Describe what happened or what you would like to see…";
+                        edited(value) => { root.message-edited(value); }
+                        enabled: !root.busy && !root.retry-pending;
+                    }
+
+                    Text { text: "How was your experience? (optional)"; color: #b4c3d9; }
+                    ComboBox {
+                        width: 100%;
+                        height: 40px;
+                        model: ["No rating", "1", "2", "3", "4", "5"];
+                        current-value <=> root.rating;
+                        enabled: !root.busy && !root.retry-pending;
+                    }
+                }
+            }
+
+            Rectangle {
+                background: #101a2c;
+                border-radius: 14px;
+                border-width: 1px;
+                border-color: #26364f;
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 10px;
+                    Text { text: "Privacy and consent"; color: #edf5ff; font-size: 18px; font-weight: 700; }
+                    CheckBox {
+                        text: "I agree that FinTally may contact me about this feedback.";
+                        checked <=> root.contact-consent;
+                        enabled: !root.busy && !root.retry-pending;
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.contact-name;
+                        placeholder-text: "Name (optional)";
+                        edited(value) => { root.contact-name-edited(value); }
+                        enabled: !root.busy && !root.retry-pending && root.contact-consent;
+                    }
+                    LineEdit {
+                        width: 100%;
+                        height: 40px;
+                        text <=> root.contact-email;
+                        placeholder-text: "Contact email (required when contact is allowed)";
+                        edited(value) => { root.contact-email-edited(value); }
+                        enabled: !root.busy && !root.retry-pending && root.contact-consent;
+                    }
+                    CheckBox {
+                        text: "I consent to sending limited diagnostics (device class only).";
+                        checked <=> root.diagnostics-consent;
+                        enabled: !root.busy && !root.retry-pending;
+                    }
+                    Text {
+                        text: "No transaction data, screenshots, file paths, hardware identifiers, OS version or locale are included.";
+                        color: #91a5c1;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+
+            Rectangle {
+                background: #101a2c;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #26364f;
+                VerticalLayout {
+                    padding: 14px;
+                    spacing: 8px;
+                    Text { text: root.feedback-status; color: #d6e2f2; wrap: word-wrap; }
+                    Button {
+                        text: root.busy ? "Submitting…" : (root.retry-pending ? "Retry same submission" : "Submit feedback");
+                        enabled: !root.busy && !root.local-only-mode;
+                        clicked => {
+                            root.submit-requested(
+                                root.category,
+                                root.affected-feature,
+                                root.title-input,
+                                root.message-input,
+                                root.rating,
+                                root.contact-name,
+                                root.contact-email,
+                                root.contact-consent,
+                                root.diagnostics-consent
+                            );
+                        }
+                    }
+                    Text {
+                        text: "Accepted submissions receive a reference ID. A feedback-history endpoint is not currently available in this client.";
+                        color: #91a5c1;
+                        font-size: 12px;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+}

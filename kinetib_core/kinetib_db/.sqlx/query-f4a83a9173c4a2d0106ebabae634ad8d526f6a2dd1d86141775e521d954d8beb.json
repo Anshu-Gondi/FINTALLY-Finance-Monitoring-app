@@ -1,0 +1,36 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO feedback_submissions (\n                user_id,\n                submission_id,\n                request_hash,\n                category,\n                affected_feature,\n                title,\n                message,\n                experience_rating,\n                contact_name,\n                contact_email,\n                contact_consent,\n                platform,\n                app_version,\n                diagnostics_consent,\n                diagnostics_json\n            )\n            VALUES (\n                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,\n                $11, $12, $13, $14, $15::jsonb\n            )\n            ON CONFLICT (user_id, submission_id) DO NOTHING\n            RETURNING submission_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "submission_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int2",
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Text",
+        "Bool",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f4a83a9173c4a2d0106ebabae634ad8d526f6a2dd1d86141775e521d954d8beb"
+}

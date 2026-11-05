@@ -1,0 +1,76 @@
+[workspace]
+resolver = "2"
+members = [
+    "analytics_engine",
+    "kinetib_finance",
+    "kinetib_chatbot",
+    "kinetib_db",
+    "kinetib_db_local",
+    "kinetib_axum",
+    "kinetib_voice",
+    "kinetib_voice/offline_builder",
+    "kinetib_app",
+    "kinetib_ipc_protocol",
+    "kinetib_recurrence",
+    "kinetib_ipc_client",
+    "kinetib_kernel",
+    "kinetib_ui",
+    "kinetib_budget_domain",
+    "kinetib_feedback_domain",
+]
+
+[workspace.package]
+version = "0.5.2"
+edition = "2021"
+authors = ["Anshu Gondi"]
+publish = false           # Prevents accidental publishing to crates.io
+license-file = "LICENSE"  # Points to your root proprietary LICENSE file
+
+[workspace.dependencies]
+candle-core = { version = "0.11.0", features = ["cuda"] }
+candle-nn = { version = "0.11.0", features = ["cuda"] }
+candle-transformers = { version = "0.11.0", features = ["cuda"] }
+memmap2 = "0.9.0"
+tokenizers = "0.22.0"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "fs",
+    "io-util",
+] }
+once_cell = "1.19"
+
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+
+async-stream = "0.3"
+async-trait = "0.1"
+futures-util = "0.3"
+futures-core = "0.3"
+futures-executor = "0.3"
+tokio-stream = "0.1"
+tokio-util = "0.7"
+
+signal-hook = "0.3"
+
+# ✨ Centralized RAG performance dependencies for your crates
+regex = "1.10"
+fxhash = "0.2.1"
+usearch = "2.25"
+
+[profile.release]
+opt-level = 3
+lto = "thin"      # ThinLTO prevents monolithic linker memory exhaustion
+codegen-units = 1 # Maximizes cross-boundary vectorization & function inlining
+panic = "abort"   # Eliminates unwinding overhead across C/Rust boundaries
+strip = true      # Drops debug symbols for smallest binary footprint
+
+[profile.dev]
+incremental = true
+opt-level = 0

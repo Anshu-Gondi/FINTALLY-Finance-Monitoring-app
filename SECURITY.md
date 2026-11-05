@@ -1,16 +1,16 @@
-# FINTALLY — Security Policy
+# KINETIB — Security Policy
 
 **Copyright © 2026 Anshu Gondi**
 
-Security is a core engineering requirement of FINTALLY.
+Security is a core engineering requirement of KINETIB.
 
-Because FINTALLY is designed to manage potentially sensitive financial information and may execute local AI, native engines, databases, networking components, and browser-facing services, security must be considered throughout the entire architecture.
+Because KINETIB is designed to manage potentially sensitive financial information and may execute local AI, native engines, databases, networking components, and browser-facing services, security must be considered throughout the entire architecture.
 
 ---
 
 ## 1. Security Philosophy
 
-FINTALLY follows a **security-by-design** approach.
+KINETIB follows a **security-by-design** approach.
 
 Security should not be treated as an isolated feature added after implementation.
 
@@ -39,7 +39,7 @@ The project favors security mechanisms that are enforced through architecture an
 
 ## 2. Scope
 
-Security issues may exist in any part of the FINTALLY ecosystem, including:
+Security issues may exist in any part of the KINETIB ecosystem, including:
 
 * React.js frontend
 * Rust backend
@@ -214,7 +214,7 @@ These classifications are guidelines rather than guarantees of a specific respon
 
 ## 8. Privacy-Sensitive Vulnerabilities
 
-FINTALLY handles potentially sensitive financial information.
+KINETIB handles potentially sensitive financial information.
 
 A vulnerability that exposes:
 
@@ -234,7 +234,7 @@ Contributors should therefore consider **privacy impact** in addition to traditi
 
 ## 9. Native Code Security
 
-Because FINTALLY may use C, C++, Rust FFI, and other native technologies, native boundaries require particular attention.
+Because KINETIB may use C, C++, Rust FFI, and other native technologies, native boundaries require particular attention.
 
 Native contributions should:
 
@@ -257,7 +257,7 @@ Performance optimization must never be used as justification for knowingly intro
 
 ## 10. Rust Security
 
-Rust is the primary backend orchestration layer of FINTALLY.
+Rust is the primary backend orchestration layer of KINETIB.
 
 Contributors should nevertheless remember that Rust does not automatically make an entire system secure.
 
@@ -345,7 +345,7 @@ Debug logging introduced during development should be reviewed before release.
 
 ## 14. Performance and Security
 
-FINTALLY treats performance and security as complementary engineering requirements.
+KINETIB treats performance and security as complementary engineering requirements.
 
 Performance optimization must not bypass necessary security controls without a documented architectural reason.
 
@@ -425,7 +425,7 @@ Security researchers who responsibly report vulnerabilities may be credited in t
 
 No software can guarantee absolute security.
 
-FINTALLY's security depends on:
+KINETIB's security depends on:
 
 * Its implementation
 * Dependencies
@@ -443,7 +443,7 @@ The project therefore aims for strong, transparent, continuously improving secur
 
 ## 19. Final Security Principle
 
-FINTALLY handles software that may operate directly on sensitive financial information.
+KINETIB handles software that may operate directly on sensitive financial information.
 
 The project's security objective is therefore:
 

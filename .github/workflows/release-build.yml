@@ -77,7 +77,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./fintally_core/Dockerfile
+          file: ./kinetib_core/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

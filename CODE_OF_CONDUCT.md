@@ -1,10 +1,10 @@
-# FINTALLY — Code of Conduct
+# KINETIB — Code of Conduct
 
 **Copyright © 2026 Anshu Gondi**
 
-FINTALLY is an open-source project built around privacy, user sovereignty, transparency, systems engineering, and open collaboration.
+KINETIB is an open-source project built around privacy, user sovereignty, transparency, systems engineering, and open collaboration.
 
-This Code of Conduct exists to make the project a respectful, technically rigorous, and welcoming environment for everyone who contributes to or participates in the FINTALLY community.
+This Code of Conduct exists to make the project a respectful, technically rigorous, and welcoming environment for everyone who contributes to or participates in the KINETIB community.
 
 ---
 
@@ -58,7 +58,7 @@ Personal attacks are not.
 
 ## 3. Technical Standards
 
-FINTALLY is a systems-oriented project.
+KINETIB is a systems-oriented project.
 
 Technical discussions should, where appropriate, focus on measurable and reproducible evidence.
 
@@ -80,7 +80,7 @@ The project values engineering correctness over arguments based solely on prefer
 
 ## 4. Architecture and Design Discussions
 
-FINTALLY intentionally has a defined architectural direction:
+KINETIB intentionally has a defined architectural direction:
 
 * React.js is the primary frontend technology.
 * Rust is the primary backend orchestration layer.
@@ -138,7 +138,7 @@ Strong disagreement about code, architecture, algorithms, performance, or implem
 
 ## 6. Privacy and User Data
 
-FINTALLY deals with potentially sensitive financial information.
+KINETIB deals with potentially sensitive financial information.
 
 Community members must never intentionally publish or expose another person's:
 
@@ -239,13 +239,13 @@ This Code of Conduct applies to:
 * Project documentation
 * Official project communication channels
 * Project-managed community spaces
-* Other spaces where an individual is representing FINTALLY
+* Other spaces where an individual is representing KINETIB
 
 ---
 
 ## 12. Good-Faith Participation
 
-FINTALLY is an engineering project.
+KINETIB is an engineering project.
 
 Mistakes are expected.
 
@@ -257,7 +257,7 @@ The objective is to improve the software, not to punish people for learning.
 
 ## 13. Final Principle
 
-The FINTALLY community should operate according to a simple principle:
+The KINETIB community should operate according to a simple principle:
 
 > **Challenge ideas rigorously. Respect people completely.**
 
