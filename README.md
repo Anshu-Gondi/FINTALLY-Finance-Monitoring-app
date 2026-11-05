@@ -1,16 +1,16 @@
-# FINTALLY - Finance Monitoring App 💰
+# KINETIB - Finance Monitoring App 💰
 
 **A high-performance full-stack finance monitoring and AI insights system powered by Pure Rust, C++ FFI, and React.**
 
 * **Author:** Anshu Gondi
-* **Repository:** [https://github.com/Anshu-Gondi/FINTALLY-Finance-Monitoring-app](https://github.com/Anshu-Gondi/FINTALLY-Finance-Monitoring-app)
+* **Repository:** [https://github.com/Anshu-Gondi/KINETIB-Finance-Monitoring-app](https://github.com/Anshu-Gondi/KINETIB-Finance-Monitoring-app)
 * **Status:** Active Development 🚀
 
 ---
 
 ## 📱 Project Overview
 
-**FINTALLY** is a high-performance, privacy-focused finance monitoring platform engineered for ultra-fast analytics and AI-assisted financial planning:
+**KINETIB** is a high-performance, privacy-focused finance monitoring platform engineered for ultra-fast analytics and AI-assisted financial planning:
 
 * Expense & income tracking
 * Smart budget management & EMI planning
@@ -37,11 +37,11 @@ This project has been upgraded to a **pure Rust Cargo Workspace with C++ FFI int
 [ React JS Frontend (Vite + pnpm) ]
                │
                ▼ (HTTP / WebSockets)
-[ Axum Web Server (`fintally_axum`) ]
+[ Axum Web Server (`kinetib_axum`) ]
                │
  ┌─────────────┼────────────────────────┬────────────────────────┐
  ▼             ▼                        ▼                        ▼
-[`fintally_chatbot`]  [`fintally_finance`]  [`analytics_engine`]  [`fintally_db`]
+[`kinetib_chatbot`]  [`kinetib_finance`]  [`analytics_engine`]  [`kinetib_db`]
  ├── RAG / Vector Engine (USearch)
  ├── LLM / Candle CUDA
  └── C++ FFI (Vision Engine & PDF Binarization)
@@ -58,13 +58,13 @@ This project has been upgraded to a **pure Rust Cargo Workspace with C++ FFI int
 * **Visualization:** Chart.js, Recharts
 * **Package Manager:** `pnpm`
 
-### Backend (`fintally_core` Workspace)
+### Backend (`kinetib_core` Workspace)
 
 * **Web Framework:** Axum (`tokio` async runtime)
 * **Machine Learning / AI:** Candle (`candle-core`, `candle-transformers` with CUDA enabled)
 * **Vector Store & RAG:** USearch, custom hybrid chunking & TF-IDF/Cosine scoring
 * **C++ Integration:** C++ FFI bindings (Vision engine, PDF processing, high-performance memory buffers)
-* **Database:** `fintally_db`
+* **Database:** `kinetib_db`
 
 ---
 
@@ -87,17 +87,17 @@ This project has been upgraded to a **pure Rust Cargo Workspace with C++ FFI int
 ## 📁 Project Structure
 
 ```text
-FINTALLY-Finance-Monitoring-app/
+KINETIB-Finance-Monitoring-app/
 ├── .github/
 │   └── workflows/
 │       ├── lint.yml
 │       └── release-build.yml
-├── fintally_core/                # Pure Rust Workspace Backend
+├── kinetib_core/                # Pure Rust Workspace Backend
 │   ├── analytics_engine/        # High-performance financial analytics
-│   ├── fintally_axum/            # Axum REST API & WebSocket service
-│   ├── fintally_chatbot/        # RAG, LLM engine, USearch, C++ FFI
-│   ├── fintally_db/             # Persistence & state management
-│   ├── fintally_finance/        # Core budget, cashflow, & EMI rules
+│   ├── kinetib_axum/            # Axum REST API & WebSocket service
+│   ├── kinetib_chatbot/        # RAG, LLM engine, USearch, C++ FFI
+│   ├── kinetib_db/             # Persistence & state management
+│   ├── kinetib_finance/        # Core budget, cashflow, & EMI rules
 │   └── Cargo.toml                # Workspace root manifest
 ├── frontend/                    # React JS Frontend
 ├── .dockerignore
@@ -123,13 +123,13 @@ FINTALLY-Finance-Monitoring-app/
 
 ```bash
 # Navigate to the Rust workspace
-cd fintally_core
+cd kinetib_core
 
 # Run test suite (using cargo nextest or standard cargo test)
 cargo test
 
 # Run the Axum web server
-cargo run -p fintally_axum --release
+cargo run -p kinetib_axum --release
 
 ```
 

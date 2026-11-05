@@ -52,7 +52,7 @@ const ChatbotPage = () => {
       id: "welcome",
       role: "assistant",
       content:
-        "SYSTEM ONLINE // FINTALLY AI READY. ENTER FINANCIAL QUERY OR ATTACH A DOCUMENT_",
+        "SYSTEM ONLINE // KINETIB AI READY. ENTER FINANCIAL QUERY OR ATTACH A DOCUMENT_",
     },
   ]);
   const [input, setInput] = useState("");
@@ -409,7 +409,7 @@ const ChatbotPage = () => {
               <h2 className="chatbot-title">
                 {activeSessionId
                   ? `SESSION #${activeSessionId}`
-                  : "FINTALLY_CORE_ASSISTANT v1.02"}
+                  : "KINETIB_CORE_ASSISTANT v1.02"}
               </h2>
             </div>
             <div className="header-actions">

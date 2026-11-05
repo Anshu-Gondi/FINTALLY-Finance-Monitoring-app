@@ -1,0 +1,18 @@
+[package]
+
+name = "kinetib_budget_domain"
+
+version.workspace = true
+
+edition.workspace = true
+
+authors.workspace = true
+
+publish.workspace = true
+
+license-file.workspace = true
+
+
+[dependencies]
+
+thiserror.workspace = true

@@ -1,0 +1,40 @@
+import { Button } from "std-widgets.slint";
+
+// Presentation navigation only. The Rust Page enum is the controller-side guard.
+export component AppNavigation inherits Rectangle {
+    background: #0a1222;
+    in-out property <string> selected-page: "dashboard";
+    in-out property <bool> compact: false;
+    callback navigate-requested(string);
+    callback logout-requested();
+
+    if root.compact: HorizontalLayout {
+        padding: 6px;
+        spacing: 4px;
+        Button { text: "Home"; clicked => { root.navigate-requested("dashboard"); } }
+        Button { text: "Txns"; clicked => { root.navigate-requested("transactions"); } }
+        Button { text: "Budget"; clicked => { root.navigate-requested("budgets"); } }
+        Button { text: "Feedback"; clicked => { root.navigate-requested("feedback"); } }
+        Button { text: "More"; clicked => { root.navigate-requested("settings"); } }
+        Button { text: "Exit"; clicked => { root.logout-requested(); } }
+    }
+
+    if !root.compact: VerticalLayout {
+        padding: 12px;
+        spacing: 8px;
+        Text { text: "FinTally"; color: #101a2c; font-size: 22px; font-weight: 700; }
+        Text { text: "FINANCE WORKSPACE"; color: #aebbd0; font-size: 10px; }
+        Button { text: "Dashboard"; clicked => { root.navigate-requested("dashboard"); } }
+        Button { text: "Transactions"; clicked => { root.navigate-requested("transactions"); } }
+        Button { text: "Budgets"; clicked => { root.navigate-requested("budgets"); } }
+        Button { text: "EMI plans"; clicked => { root.navigate-requested("emi"); } }
+        Button { text: "Analytics"; clicked => { root.navigate-requested("analytics"); } }
+        Button { text: "Chat / RAG"; clicked => { root.navigate-requested("chat"); } }
+        Button { text: "Vision"; clicked => { root.navigate-requested("vision"); } }
+        Button { text: "Voice"; clicked => { root.navigate-requested("voice"); } }
+        Button { text: "Settings"; clicked => { root.navigate-requested("settings"); } }
+        Button { text: "Feedback"; clicked => { root.navigate-requested("feedback"); } }
+        Rectangle { vertical-stretch: 1; background: transparent; }
+        Button { text: "Sign out"; clicked => { root.logout-requested(); } }
+    }
+}

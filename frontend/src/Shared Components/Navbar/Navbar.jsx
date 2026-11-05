@@ -36,7 +36,7 @@ function Navbar() {
       <div className="nav-logo">
         <Link to="/" onClick={closeMenu}>
           <img src={appLogo} alt="FinTally Logo" className="logo-img" />
-          <span>Fintally</span>
+          <span>Kinetib</span>
         </Link>
       </div>
 

@@ -1,0 +1,141 @@
+# === Rust build and package files ===
+/target/
+/Cargo.lock
+
+# If this is a binary crate, you may want to include Cargo.lock:
+# !Cargo.lock
+
+# === Local LLM Models & Heavy Weights ===
+# Specifically targets your Qwen/Llama vault folders and raw model files
+llm_models/
+*.safetensors
+*.bin
+*.gguf
+model.safetensors
+tokenizer.json
+config.json
+
+# === Application Configuration / Secrets ===
+.env
+.env.*
+!.env.example
+
+# === IDE and editor files ===
+.vscode/
+.idea/
+*.iml
+
+# === OS-specific junk ===
+.DS_Store
+Thumbs.db
+
+# === Logs and temp files ===
+*.log
+*.tmp
+*.bak
+
+# === Rust tooling ===
+# Rust language server and formatter caches
+.rustup/
+.cargo/
+.clippy.toml
+.rustfmt.toml
+
+# === Build artifacts ===
+*.rlib
+*.rmeta
+*.dSYM/
+*.pdb
+
+# === Python bindings (for PyO3/maturin builds) ===
+# Ignore build artifacts created during maturin builds
+/target/wheels/
+/target/release/*.pyd
+/target/release/*.so
+/target/debug/*.pyd
+/target/debug/*.so
+
+# === Virtual environments (if used with Python) ===
+venv/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+
+# === Backup and cache ===
+*.swp
+*.swo
+*.bak
+*.old
+.cache/
+
+kinetib_chatbot/cpp_engine/build
+
+# ============================================================
+# KINETIB - Local Development, Secrets and Build Artifacts
+# ============================================================
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local SQLite databases and journals
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+
+# Runtime files
+*.log
+*.pid
+*.sock
+
+# Rust build artifacts
+/target/
+**/target/
+
+# CMake and native build artifacts
+**/build/
+**/cmake-build-*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/compile_commands.json
+
+# Node.js build artifacts
+**/node_modules/
+**/.next/
+**/dist/
+
+# Python artifacts
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+**/venv/
+
+# Editor and operating system files
+**/.DS_Store
+**/Thumbs.db
+
+# FinTally Voice generated datasets and training artifacts
+/kinetib_voice/offline_builder/data_raw/
+/kinetib_voice/offline_builder/data/
+/kinetib_voice/offline_builder/output/
+
+# ============================================================
+# IMPORTANT: SQLx offline metadata must remain in Git.
+# Do not ignore these directories.
+# ============================================================
+
+!kinetib_db/.sqlx/
+!kinetib_db/.sqlx/*.json
+
+!kinetib_db_local/.sqlx/
+!kinetib_db_local/.sqlx/*.json
+
+# Temporary patch backups
+/.patch-backups/
